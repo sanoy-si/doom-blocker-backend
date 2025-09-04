@@ -1,6 +1,5 @@
-This has all the code from different parts of the chrome extension.
+This has all the code from different parts of this chrome extension project.
 
-Some folders are for the landing page, some are for the code for the chrome extension itself.
+Mostly what is needed is the backend (to run server side), the extension code itself, and the landing page.
 
-
-Mostly what is needed is the backend (to run server side), the extension code itself, and the landing page
+The "other stuff" section isn't really important.
