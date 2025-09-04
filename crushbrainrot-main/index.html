@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* CSS goes here */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', Arial, sans-serif;
+            line-height: 1.6;
+            background-color: black;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .container {
+            background-color: black;
+            width: 100vw;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        h1 {
+            color: white;
+            font-family: 'Poppins', Arial, sans-serif;
+            font-weight: bold;
+            text-align: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            font-size: clamp(3rem, 8vw, 12rem);
+        }
+        
+        h1#num {
+            display: block;
+        }
+        
+        h1#topazblock-com {
+            font-size: clamp(1.5rem, 4vw, 6rem);
+        }
+        
+        video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <!-- HTML content goes here -->
+
+    <div class="container">
+        <h1 id="num">30</h1>
+        <h1 id="years">years</h1>
+        <h1 id="ago">ago</h1>
+        <video id="video1" muted>
+            <source src="crt.mp4" type="video/mp4">
+        </video>
+        <h1 id="the1">the</h1>
+        <h1 id="internet">internet</h1>
+        <h1 id="changed">changed</h1>
+        <h1 id="the2">the</h1>
+        <h1 id="world">world</h1>
+        <video id="video2" muted>
+            <source src="spacex.mp4" type="video/mp4">
+        </video>
+        <h1 id="but">but</h1>
+        <h1 id="now">now</h1>
+        <h1 id="now.">now.</h1>
+        <h1 id="now..">now..</h1>
+        <h1 id="now...">now...</h1>
+        <h1 id="its">it's</h1>
+        <h1 id="broken">broken</h1>
+        <video id="video3" muted>
+            <source src="tiktok.mp4" type="video/mp4">
+        </video>
+        <h1 id="social">social</h1>
+        <h1 id="media">media</h1>
+        <h1 id="is">is</h1>
+        <h1 id="killing">killing</h1>
+        <h1 id="us">us</h1>
+        <video id="video4" muted>
+            <source src="kiling.mp4" type="video/mp4">
+        </video>
+        <h1 id="the3">the</h1>
+        <h1 id="algorithm">algorithm</h1>
+        <h1 id="has">has</h1>
+        <h1 id="control">control</h1>
+        <video id="video5" muted>
+            <source src="control.mp4" type="video/mp4">
+        </video>  
+        <h1 id="join">join</h1>
+        <h1 id="the4">the</h1>
+        <h1 id="fight">fight.</h1>
+        <h1 id="topazblock-com">topazblock.com</h1>
+    </div>
+    
+    <script>
+        // 30 years ago 
+        // (2025---> 1995) montage for each year
+        // the internet changed the world
+        // [ montage of some of the greatest moments enabled by the internet ]
+        // but now it's broken
+        // []
+        // social media (twitter, instagram, facebook, youtube, tiktok, linkedin) is killing us
+        // []
+        // the algorithm has control
+        // []
+        // join the fight. 
+        // topazblock.com
+
+        function animateNumber() {
+            const numElement = document.getElementById('num');
+            const duration = 1000; // 2 seconds
+            const targetNumber = 30;
+            const startTime = Date.now();
+            
+            // Ease-in-out function
+            function easeInOut(t) {
+                return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            }
+            
+            function updateNumber() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const easedProgress = easeInOut(progress);
+                const currentNumber = Math.floor(easedProgress * targetNumber);
+                
+                // Calculate font size - gradually increase from base size to slightly larger
+                const baseFontSize = 'clamp(2.5rem, 6vw, 8rem)';
+                const maxFontSize = 'clamp(3rem, 9vw, 14rem)';
+                
+                // Interpolate between base and max font size based on progress
+                const fontSizeProgress = easedProgress * 0.5; // 50% increase maximum
+                const currentFontSize = `clamp(${2.5 + fontSizeProgress * 0.5}rem, ${6 + fontSizeProgress * 3}vw, ${8 + fontSizeProgress * 6}rem)`;
+                
+                numElement.textContent = currentNumber;
+                numElement.style.fontSize = currentFontSize;
+                
+                if (progress < 1) {
+                    requestAnimationFrame(updateNumber);
+                } else {
+                    // Animation complete, start word sequence
+                    startWordSequence();
+                }
+            }
+            
+            updateNumber();
+        }
+
+        function startWordSequence() {
+            // Get all elements in sequence order
+            const allElements = [
+                document.getElementById('num'),
+                document.getElementById('years'),
+                document.getElementById('ago'),
+                document.getElementById('video1'),
+                document.getElementById('the1'),
+                document.getElementById('internet'),
+                document.getElementById('changed'),
+                document.getElementById('the2'),
+                document.getElementById('world'),
+                document.getElementById('video2'),
+                document.getElementById('but'),
+                document.getElementById('now'),
+                document.getElementById('now.'),
+                document.getElementById('now..'),
+                document.getElementById('now...'),
+                document.getElementById('its'),
+                document.getElementById('broken'),
+                document.getElementById('video3'),
+                document.getElementById('social'),
+                document.getElementById('media'),
+                document.getElementById('is'),
+                document.getElementById('killing'),
+                document.getElementById('us'),
+                document.getElementById('video4'),
+                document.getElementById('the3'),
+                document.getElementById('algorithm'),
+                document.getElementById('has'),
+                document.getElementById('control'),
+                document.getElementById('video5'),
+                null, // gap after video5
+                document.getElementById('join'),
+                document.getElementById('the4'),
+                document.getElementById('fight'),
+                null, // gap after fight
+                document.getElementById('topazblock-com')
+            ];
+            
+            let currentIndex = 0;
+            
+            // Duration for each element in milliseconds
+            const elementDurations = [
+                400,  // 30 (num)
+                400,  // years
+                300,  // ago
+                900, // video1 (crt.mp4)
+                300,  // the
+                200,  // internet
+                300,  // changed
+                150,  // the
+                300,  // world
+                1500, // video2
+                300,  // but
+                400,  // now
+                50,  // now.
+                50,  // now..
+                150,  // now...
+                200,  // it's
+                500,  // broken
+                2000, // video3
+                200,  // social
+                200,  // media
+                150,  // is
+                300,  // killing
+                150,  // us
+                3200, // video4
+                150,  // the
+                300,  // algorithm
+                150,  // has
+                350,  // control
+                650, // video5
+                650,  // gap after video5
+                200,  // join
+                100,  // the
+                600,  // fight.
+                150, // gap after fight
+                1000  // topazblock.com
+            ];
+            
+            function showNextElement() {
+                // Hide all elements first
+                document.querySelectorAll('h1, video').forEach(el => {
+                    el.style.display = 'none';
+                    if (el.tagName === 'VIDEO') {
+                        el.pause();
+                        el.currentTime = 0;
+                    }
+                });
+                
+                // Show current element
+                if (currentIndex < allElements.length) {
+                    const currentElement = allElements[currentIndex];
+                    
+                    // If current element is not null (not a gap), show it
+                    if (currentElement !== null) {
+                        currentElement.style.display = 'block';
+                        
+                        // If it's a video, play it
+                        if (currentElement.tagName === 'VIDEO') {
+                            currentElement.play();
+                        }
+                    }
+                    // If current element is null, it's a gap - just show black screen
+                    
+                    // Get duration for current element
+                    const duration = elementDurations[currentIndex] || 1000; // default 1 second
+                    currentIndex++;
+                    
+                    // Schedule next element after specified duration
+                    setTimeout(showNextElement, duration);
+                } else {
+                    // Sequence complete, wait 500ms then redirect
+                    setTimeout(function() {
+                        window.location.href = 'https://topazblock.com';
+                    }, 500);
+                }
+            }
+            
+            // Start the sequence
+            showNextElement();
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded');
+            animateNumber();
+        });
+    </script>
+</body>
+</html> 
+

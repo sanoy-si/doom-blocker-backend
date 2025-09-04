@@ -1,0 +1,126 @@
+{
+  "youtube": {
+  "urlPattern": "^(https?://)?(www\\.)?youtube\\.com/?$",
+  "tagsToIgnore": [
+    "ytd-continuation-item-renderer",
+    "body",
+    "video",
+    "html5-video-container",
+    "video-stream",
+    "ytd-app",
+    ".ytSuggestionComponentSuggestion",
+    "ytd-popup-container *",
+    "ytd-miniplayer *",
+    "ytd-comments *",
+    "yt-live-chat-app *",
+    "ytd-playlist-panel-renderer *"
+  ],
+  "tagsToCollapse": [".ytd-rich-section-renderer", ".ytd-horizontal-card-list-renderer"],
+  "skipExtraction": false,
+  "hidingMethod": "display"
+},
+"youtube-results": {
+  "urlPattern": "^(https?://)?(www\\.)?youtube\\.com/results\\?.*search_query=.*$",
+  "tagsToIgnore": [
+    "ytd-continuation-item-renderer",
+    "body",
+    "video",
+    "html5-video-container",
+    "video-stream",
+    ".ytSuggestionComponentSuggestion",
+    "ytd-popup-container *",
+    "grid-shelf-view-model *"
+  ],
+  "tagsToCollapse": [".ytd-rich-section-renderer", ".ytd-horizontal-card-list-renderer"],
+  "skipExtraction": false,
+  "hidingMethod": "display"
+},
+"youtubeViewer": {
+  "urlPattern": "^(https?://)?(www\\.)?youtube\\.com/watch\\?.*v=.*$",
+  "tagsToIgnore": [
+    "video-stream",
+    "ytd-app",
+    "ytd-continuation-item-renderer",
+    ".ytSuggestionComponentSuggestion",
+    "ytd-popup-container *",
+    "ytd-miniplayer *",
+    "ytd-player *",
+    "ytd-comments *",
+    "yt-live-chat-app *",
+    "ytd-playlist-panel-renderer *"
+  ],
+  "tagsToCollapse": [".ytd-rich-section-renderer", ".ytd-horizontal-card-list-renderer"],
+  "skipExtraction": false,
+  "hidingMethod": "display"
+},
+"twitter-home-explore": {
+  "urlPattern": "^(https?://)?((www\\.)?twitter\\.com|x\\.com)(/?(home|explore)(/.*)?|/?$)",
+  "tagsToIgnore": [
+    "script",
+    "style",
+    "link",
+    "noscript",
+    "body",
+    "tablist",
+    "[data-testid='DMDrawer'] *",
+    "[role='banner'] *",
+    "form[aria-label='Search'] *"
+  ],
+  "tagsToCollapse": [".ytd-rich-section-renderer", ".ytd-horizontal-card-list-renderer"],
+  "skipExtraction": false,
+  "hidingMethod": "height"
+},
+"linkedin-feed-notifications": {
+  "urlPattern": "^(https?://)?(www\\.)?linkedin\\.com/(feed|notifications)(/.*)?$",
+  "tagsToIgnore": [
+    "[id^=\"vjs-\"], [class*=\"vjs-\"]",
+    "aside:has([aria-label=\"Side Bar\"]) *",
+    "header *",
+    "footer *",
+    "div.msg-overlay-list-bubble *",
+    "div.msg-convo-wrapper *",
+    ".feed-skip-link__container *",
+    "h2 *",
+    ".global-nav__content *",
+    ".global-nav__nav *",
+    ".global-nav__primary-items *",
+    ".scaffold-layout__sidebar *"
+  ],
+  "tagsToCollapse": [".ytd-rich-section-renderer", ".ytd-horizontal-card-list-renderer"],
+  "skipExtraction": false,
+  "hidingMethod": "display"
+},
+"reddit-homepage": {
+  "urlPattern": "^(https?://)?(www\\.)?reddit\\.com/?(?:\\?.*)?$",
+  "tagsToIgnore": [".border-b-neutral-border-weak",
+  "shreddit-comment-tree-ad",
+  ".rounded-2",
+  ".mt-0"
+],
+  "tagsToCollapse": [".ytd-rich-section-renderer", ".ytd-horizontal-card-list-renderer"],
+  "skipExtraction": false,
+  "hidingMethod": "display"
+},
+"reddit-subreddits": {
+  "urlPattern": "^(https?://)?(www\\.)?reddit\\.com/r/[^/]+/?$",
+  "tagsToIgnore": [".border-b-neutral-border-weak",
+  "shreddit-comment-tree-ad",
+  ".rounded-2",
+  ".mt-0"
+],
+  "tagsToCollapse": [".ytd-rich-section-renderer"],
+  "skipExtraction": false,
+  "hidingMethod": "display"
+},
+"reddit-search": {
+  "urlPattern": "^(https?://)?(www\\.)?reddit\\.com/search.*$",
+  "tagsToIgnore": [".border-b-neutral-border-weak",
+  "shreddit-comment-tree-ad",
+  ".rounded-2",
+  ".mt-0"
+],
+  "tagsToCollapse": [".ytd-rich-section-renderer"],
+  "skipExtraction": false,
+  "hidingMethod": "display"
+}
+}

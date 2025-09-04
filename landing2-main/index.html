@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topaz - your favourite browser extension</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="logo/logo.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="logo/logo.svg" alt="Topaz Logo" class="logo" />
+                <span class="logo-text">topaz</span>
+            </div>
+            <input type="checkbox" id="nav-toggle" class="nav-toggle">
+            <ul class="nav-menu">
+                <li><a href="#about" class="nav-link">about</a></li>
+                <li><a href="#team" class="nav-link">team</a></li>
+                <li><a href="#contact" class="nav-link">contact</a></li>
+                <li>
+                    <a href="#waitlist" class="nav-link nav-cta">waitlist</a>
+                </li>
+            </ul>
+            <label for="nav-toggle" class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </label>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="content">
+        <!-- Hero Section -->
+        <section id="hero">
+            <canvas id="particle-canvas"></canvas>
+            <div class="hero-container">
+                <div class="hero-content">
+                    <h1 class="hero-title">Control <span class="underline-word">Your<svg class="underline-svg" viewBox="0 0 100 20" xmlns="http://www.w3.org/2000/svg"><path d="M5 15 Q50 5 95 15" stroke="#ff9823" stroke-width="3" fill="none" stroke-linecap="round"/></svg></span> Feed</h1>
+                    <p class="hero-subtitle">Topaz is a browser extension that lets you fully customise your social media feeds in real-time</p>
+                    <div class="hero-signup">
+                        <input type="email" placeholder="Enter your email" class="email-input" id="emailInput">
+                        <button class="waitlist-btn" id="waitlistBtn">
+                            join waitlist
+                            <svg class="btn-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="waitlist-count">
+                        <span class="count-number">1,000+</span> people already joined
+                    </div>
+                </div>
+            </div>
+            <div class="filter-toggle">
+                <div class="filter-prompt">choose what to block!</div>
+                <div class="filter-pills">
+                    <div class="toggle-pill active" data-category="brainrot">brainrot</div>
+                    <div class="toggle-pill" data-category="elonpolitics">elon politics</div>
+                    <div class="toggle-pill" data-category="sport">sport</div>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html> 

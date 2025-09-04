@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+groq
+python-dotenv
+gunicorn
+beautifulsoup4
+authlib
+httpx
+supabase
+python-multipart
+itsdangerous
+requests

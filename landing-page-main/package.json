@@ -1,0 +1,24 @@
+{
+  "name": "topaz-landing-page",
+  "version": "1.0.0",
+  "description": "Landing page for Topaz with interactive animations",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "serve": "node server.js"
+  },
+  "keywords": [
+    "landing-page",
+    "topaz",
+    "static"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

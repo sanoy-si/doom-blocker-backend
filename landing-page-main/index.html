@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <!-- SEO Meta Tags -->
+        <meta
+            name="description"
+            content="Topaz is a browser extension that lets you fully customize your social media feeds in real-time. Filter out unwanted content like brainrot, politics, and more. Topaz is currently free for life for everyone!"
+        />
+        <meta
+            name="keywords"
+            content="browser extension, social media filter, feed customization, content blocker, social media control, feed filter"
+        />
+        <meta name="author" content="Topaz" />
+
+        <!-- Open Graph Meta Tags -->
+        <meta
+            property="og:title"
+            content="Topaz - Control Your Social Media Feed"
+        />
+        <meta
+            property="og:description"
+            content="Topaz is a browser extension that lets you fully customize your social media feeds in real-time. Filter out unwanted content like brainrot, politics, and more. Topaz is currently free for life for everyone!"
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://topazblock.com" />
+        <meta
+            property="og:image"
+            content="https://topazblock.com/logo/logo.svg"
+        />
+        <meta property="og:site_name" content="Topaz" />
+
+        <!-- Twitter Card Meta Tags -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta
+            name="twitter:title"
+            content="Topaz - Control Your Social Media Feed"
+        />
+        <meta
+            name="twitter:description"
+            content="Topaz is a browser extension that lets you fully customize your social media feeds in real-time. Filter out unwanted content and take control of what you see."
+        />
+        <meta
+            name="twitter:image"
+            content="https://topazblock.com/logo/logo.svg"
+        />
+
+        <title>Topaz - your favourite browser extension</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="icon" href="logo/logo.ico" type="image/x-icon" />
+        <link rel="stylesheet" href="styles.css" />
+
+    </head>
+    <body>
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <a href="#hero" class="nav-logo">
+                    <img src="logo/logo.svg" alt="Topaz Logo" class="logo" />
+                    <span class="logo-text">topaz</span>
+                </a>
+                <input type="checkbox" id="nav-toggle" class="nav-toggle" />
+                <ul class="nav-menu">
+                    <li><a href="#demo-videos" class="nav-link">about</a></li>
+                    <li><a href="#team" class="nav-link">team</a></li>
+                    <li><a href="#socials" class="nav-link">contact</a></li>
+                    <li>
+                        <a href="download.html" class="nav-link nav-cta" target="_blank"
+                            >download</a
+                        >
+                    </li>
+                </ul>
+                <label for="nav-toggle" class="hamburger">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </label>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="content">
+            <!-- Hero Section -->
+            <section id="hero">
+                <canvas id="particle-canvas"></canvas>
+                <div class="hero-container">
+                    <div class="hero-content">
+                        <h1 class="hero-title">
+                            Control
+                            <span class="underline-word"
+                                >Your<svg
+                                    class="underline-svg"
+                                    viewBox="0 0 100 20"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                >
+                                    <path
+                                        d="M5 15 Q50 5 95 15"
+                                        stroke="#ff9823"
+                                        stroke-width="3"
+                                        fill="none"
+                                        stroke-linecap="round"
+                                    /></svg
+                            ></span>
+                            Feed
+                        </h1>
+                        <p class="hero-subtitle">
+                            Topaz Block is a browser extension that lets you fully
+                            customise your social media feeds in real-time
+                        </p>
+                        <div class="hero-download">
+                            <a href="download.html" class="download-btn" id="heroDownloadBtn" target="_blank">
+                                <svg
+                                    class="btn-arrow"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                >
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7,10 12,15 17,10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Download Now
+                            </a>
+                        </div>
+                        <div class="download-note">
+                            Beta release - no account required
+                        </div>
+                    </div>
+                </div>
+                <div class="filter-toggle">
+                    <div class="filter-prompt">choose what to block!</div>
+                    <div class="filter-pills">
+                        <div
+                            class="toggle-pill active"
+                            data-category="brainrot"
+                        >
+                            brainrot
+                        </div>
+                        <div class="toggle-pill" data-category="elonpolitics">
+                            elon politics
+                        </div>
+                        <div class="toggle-pill" data-category="sport">
+                            sport
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Demo Videos Section -->
+            <section id="demo-videos">
+                <div class="demo-container">
+                    <h2 class="demo-title">Things Topaz Block Can Do</h2>
+                    <div class="demo-grid">
+                        <div class="demo-item">
+                            <div class="video-wrapper">
+                                <video
+                                    src="demos/site-active.mp4"
+                                    autoplay
+                                    loop
+                                    muted
+                                    playsinline
+                                    preload="auto"
+                                ></video>
+                            </div>
+                            <p class="demo-description">
+                                remove brainrot, slop, and attention-optimised content
+                            </p>
+                        </div>
+
+                        <div class="demo-item">
+                            <div class="video-wrapper">
+                                <video
+                                    src="demos/site-scroll.mp4"
+                                    autoplay
+                                    loop
+                                    muted
+                                    playsinline
+                                    preload="auto"
+                                ></video>
+                            </div>
+                            <p class="demo-description">
+                                Topaz Block works in real-time as you scroll
+                            </p>
+                        </div>
+
+                        <div class="demo-item">
+                            <div class="video-wrapper">
+                                <video
+                                    src="demos/site-custom.mp4"
+                                    autoplay
+                                    loop
+                                    muted
+                                    playsinline
+                                    preload="auto"
+                                ></video>
+                            </div>
+                            <p class="demo-description">
+                                fine tune your feed based on your preferences
+                            </p>
+                        </div>
+
+                        <div class="demo-item">
+                            <div class="video-wrapper">
+                                <video
+                                    src="demos/site-search.mp4"
+                                    autoplay
+                                    loop
+                                    muted
+                                    playsinline
+                                    preload="auto"
+                                ></video>
+                            </div>
+                            <p class="demo-description">
+                                clean up YouTube search results
+                            </p>
+                        </div>
+
+                        <div class="demo-item">
+                            <div class="video-wrapper">
+                                <video
+                                    src="demos/site-profiles.mp4"
+                                    autoplay
+                                    loop
+                                    muted
+                                    playsinline
+                                    preload="auto"
+                                ></video>
+                            </div>
+                            <p class="demo-description">
+                                set up advanced rules with ultimate control in power-user mode
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Team Section -->
+            <section id="team">
+                <div class="team-container">
+                    <h2 class="team-title">Meet the Team</h2>
+                    <div class="team-grid">
+                        <div class="team-member">
+                            <div class="team-photo">
+                                <img src="team/rono.jpg" alt="Rono" />
+                            </div>
+                            <h3 class="team-name">Rudrrayan Manna</h3>
+                            <div class="team-social">
+                                <a href="https://twitter.com/rudrrayan" target="_blank" class="social-link">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                    </svg>
+                                </a>
+                                <a href="https://linkedin.com/in/rudrrayan" target="_blank" class="social-link">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                                    </svg>
+                                </a>
+                            </div>
+                            <p class="team-description">CTO, inventing algorithms and making things fast</p>
+                        </div>
+
+
+
+                        <div class="team-member">
+                            <div class="team-photo">
+                                <img src="team/sourish.jpg" alt="Sourish" />
+                            </div>
+                            <h3 class="team-name">Sourish Sharma</h3>
+                            <div class="team-social">
+                                <a href="https://twitter.com/sourishsharma17" target="_blank" class="social-link">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                    </svg>
+                                </a>
+                                <a href="https://linkedin.com/in/sourishsharma" target="_blank" class="social-link">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                                    </svg>
+                                </a>
+                            </div>
+                            <p class="team-description">CEO, building relationships and designing the experience</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Socials Section -->
+            <section id="socials">
+                <div class="socials-container">
+                    <div class="socials-links">
+                        <a href="https://twitter.com/thetopazblock" target="_blank" class="social-main-link">X</a>
+                        <a href="https://youtube.com/@thetopazblock" target="_blank" class="social-main-link">YouTube</a>
+                        <a href="https://instagram.com/thetopazblock" target="_blank" class="social-main-link">Instagram</a>
+                        <a href="https://linkedin.com/company/thetopazblock" target="_blank" class="social-main-link">LinkedIn</a>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-separator"></div>
+            <div class="footer-container">
+                <div class="footer-content">
+                    <!-- Left Column: Brand -->
+                    <div class="footer-column footer-brand">
+                        <div class="footer-logo">
+                            <img src="logo/logo.svg" alt="Topaz Logo" class="footer-logo-img" />
+                            <span class="footer-logo-text">topaz</span>
+                        </div>
+                        <div class="footer-tagline">control your feed</div>
+                        <div class="footer-copyright">© 2025 Topaz. All rights reserved.</div>
+                    </div>
+
+                    <!-- Middle Column: Updates -->
+                    <div class="footer-column footer-updates">
+                        <h4 class="footer-column-title">Latest Update</h4>
+                        <p class="footer-update-text">
+                           We're currently in beta - expect a few bugs and missing features. Contact us if you want to become a tester and shape the product!
+                           <br><br>
+                           Topaz Block currently works on YouTube, X, LinkedIn, and Reddit.
+                        </p>
+                    </div>
+
+                    <!-- Right Column: YouTube Video -->
+                    <div class="footer-column footer-video">
+                        <h4 class="footer-column-title">Our Vision</h4>
+                        <a href="https://www.youtube.com/watch?v=sktWJ9llYPI" target="_blank" class="footer-video-link">
+                            <div class="footer-video-thumbnail">
+                                <img src="media/thumbnail.jpg" alt="Latest Video Thumbnail" />
+                                <div class="footer-video-play">
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M8 5v14l11-7z"/>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="footer-video-info">
+                                <h5 class="footer-video-title">The Future of the Web is Coming | Our Vision</h5>
+                                <p class="footer-video-meta">2 min • 11 July</p>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <script src="script.js"></script>
+</text>
+
+    </body>
+</html>

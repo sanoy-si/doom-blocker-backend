@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Topaz Download</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Cabin+Sketch:wght@400;700&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="icon" href="logo/logo.ico" type="image/x-icon" />
+        <link rel="stylesheet" href="styles.css" />
+        <style>
+            .download-section {
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 50px 20px;
+                background: radial-gradient(
+                    ellipse at center,
+                    rgba(255, 152, 35, 0.08) 0%,
+                    rgba(255, 152, 35, 0.06) 20%,
+                    rgba(255, 152, 35, 0.04) 35%,
+                    rgba(255, 152, 35, 0.02) 50%,
+                    rgba(255, 152, 35, 0.01) 65%,
+                    rgba(15, 15, 15, 1) 80%
+                );
+            }
+
+            .download-container {
+                max-width: 800px;
+                width: 100%;
+                text-align: center;
+            }
+
+            .download-title {
+                font-size: 3.5rem;
+                font-weight: 700;
+                color: var(--text-primary);
+                margin-bottom: 2rem;
+                background: linear-gradient(
+                    135deg,
+                    var(--text-primary) 0%,
+                    var(--primary-color) 100%
+                );
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                animation: slideInUp 0.8s ease-out;
+            }
+
+            .download-btn {
+                background: var(--primary-color);
+                color: #000000;
+                border: none;
+                padding: 1rem 2rem;
+                border-radius: var(--border-radius);
+                font-family: inherit;
+                font-size: 1.1rem;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: inline-flex;
+                align-items: center;
+                gap: 0.75rem;
+                margin-bottom: 6rem;
+                text-decoration: none;
+                animation: slideInUp 0.8s ease-out 0.2s both;
+            }
+
+            .download-btn:hover {
+                background: var(--primary-dark);
+                transform: translateY(-2px);
+                box-shadow: var(--shadow-medium);
+            }
+
+            .download-btn:active {
+                transform: translateY(0);
+            }
+
+            .btn-icon {
+                width: 24px;
+                height: 24px;
+                transition: var(--transition);
+            }
+
+            .download-btn:hover .btn-icon {
+                transform: translateX(4px);
+            }
+
+            .video-container {
+                position: relative;
+                width: 100%;
+                max-width: 800px;
+                margin: 0 auto;
+                animation: slideInUp 0.8s ease-out 0.4s both;
+            }
+
+            .video-wrapper {
+                position: relative;
+                width: 100%;
+                height: 0;
+                padding-bottom: 56.25%; /* 16:9 aspect ratio */
+                border-radius: var(--border-radius-lg);
+                overflow: hidden;
+                box-shadow: var(--shadow-heavy);
+            }
+
+            .video-wrapper iframe {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+
+            .mobile-only {
+                display: none;
+            }
+
+            .mobile-message {
+                text-align: center;
+                padding: 2rem;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .mobile-message h1 {
+                font-size: 2rem;
+                font-weight: 600;
+                color: var(--text-primary);
+                margin-bottom: 1rem;
+                text-align: center;
+            }
+
+            .mobile-message p {
+                font-size: 1.1rem;
+                color: var(--text-secondary);
+                text-align: center;
+                max-width: 300px;
+            }
+
+            @media (max-width: 768px) {
+                .download-section {
+                    display: none;
+                }
+
+                .mobile-only {
+                    display: block;
+                }
+            }
+
+            @media (max-width: 480px) {
+                .download-title {
+                    font-size: 2rem;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Mobile Only Message -->
+        <div class="mobile-only">
+            <div class="mobile-message">
+                <h1>Topaz is currently not available on mobile</h1>
+                <p>
+                    Please visit this page on a desktop browser to download the
+                    extension.
+                </p>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="content">
+            <section class="download-section">
+                <div class="download-container">
+                    <h1 class="download-title">Get Started with Topaz</h1>
+
+                    <a
+                        href="#"
+                        id="downloadBtn"
+                        class="download-btn"
+                        target="_blank"
+                    >
+                        <svg
+                            class="btn-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path
+                                d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"
+                            />
+                            <polyline points="7,10 12,15 17,10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span id="downloadText">Download for Your Browser</span>
+                    </a>
+
+                    <div class="video-container">
+                        <div class="video-wrapper">
+                            <iframe
+                                src="https://www.youtube.com/embed/unRe5rTtcek?si=g-S2z038nJZ1Tmd7"
+                                title="Topaz Onboarding Video"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                allowfullscreen
+                            >
+                            </iframe>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <script>
+            // Browser detection and download link setup
+            function detectBrowserAndSetLink() {
+                const downloadBtn = document.getElementById("downloadBtn");
+                const downloadText = document.getElementById("downloadText");
+                const userAgent = navigator.userAgent.toLowerCase();
+
+                if (userAgent.indexOf("firefox") > -1) {
+                    // Firefox browser
+                    downloadBtn.href =
+                        "https://addons.mozilla.org/en-GB/firefox/addon/topazblock/";
+                    downloadText.textContent = "Download for Firefox";
+                } else if (
+                    userAgent.indexOf("chrome") > -1 ||
+                    userAgent.indexOf("chromium") > -1 ||
+                    userAgent.indexOf("edge") > -1
+                ) {
+                    // Chrome/Chromium/Edge browsers
+                    downloadBtn.href =
+                        "https://chromewebstore.google.com/detail/topazblock/oaafbjfeogmdgdeacfajepfdengcjaoc";
+                    downloadText.textContent = "Download for Chrome";
+                } else {
+                    // Other browsers - default to Chrome Web Store
+                    downloadBtn.href =
+                        "https://chromewebstore.google.com/detail/topazblock/oaafbjfeogmdgdeacfajepfdengcjaoc";
+                    downloadText.textContent = "Download Extension";
+                }
+            }
+
+            // Set up download link when page loads
+            document.addEventListener(
+                "DOMContentLoaded",
+                detectBrowserAndSetLink,
+            );
+        </script>
+    </body>
+</html>
