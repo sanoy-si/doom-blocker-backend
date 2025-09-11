@@ -33,8 +33,19 @@ load_dotenv('.env.local')
 
 # Load prompts from JSON
 logger.info("Loading prompts from JSON file...")
-with open('prompts_simplified.json', 'r') as f:
-    prompts_data = json.load(f)
+import os
+prompts_file_path = os.path.join(os.path.dirname(__file__), 'prompts_simplified.json')
+try:
+    with open(prompts_file_path, 'r') as f:
+        prompts_data = json.load(f)
+    logger.info("Prompts loaded successfully")
+except FileNotFoundError:
+    logger.error(f"Prompts file not found at {prompts_file_path}")
+    # Fallback to empty prompts
+    prompts_data = {}
+except Exception as e:
+    logger.error(f"Error loading prompts: {e}")
+    prompts_data = {}
 
 # Rate limiting infrastructure
 rate_limit_data = {
@@ -71,6 +82,16 @@ def track_ip_request(ip_address: str):
     return request_count
 
 app = FastAPI(title="Topaz Backend", version="1.0.0")
+
+# Add startup event for debugging
+@app.on_event("startup")
+async def startup_event():
+    logger.info("🚀 Topaz Backend starting up...")
+    logger.info(f"📁 Current working directory: {os.getcwd()}")
+    logger.info(f"📄 Prompts loaded: {len(prompts_data)} patterns")
+    logger.info(f"🔑 Groq configured: {GROQ_HEADERS is not None}")
+    logger.info(f"🗄️ Supabase configured: {supabase is not None}")
+    logger.info("✅ Startup complete!")
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -337,6 +358,22 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         manager.disconnect(websocket)
+
+# Root endpoint
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "message": "Topaz Backend API",
+        "status": "running",
+        "timestamp": time.time(),
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs",
+            "blocked_count": "/api/blocked-count",
+            "ai_analysis": "/fetch_distracting_chunks"
+        }
+    }
 
 # Health check endpoint
 @app.get("/health")
