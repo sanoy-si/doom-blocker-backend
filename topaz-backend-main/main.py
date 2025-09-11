@@ -169,7 +169,7 @@ async def update_visitor_telemetry(visitor_id: str):
 
             logger.debug(f"Updated telemetry for visitor {visitor_id} (count: {new_count})")
         except Exception as e:
-            logger.error(f"Failed to update visitor telemetry for {visitor_id}: {str(e)}")
+            logger.debug(f"Telemetry update failed (table may not exist): {str(e)}")
 
 # oauth = OAuth()
 # oauth.register(
@@ -182,12 +182,16 @@ async def update_visitor_telemetry(visitor_id: str):
 
 logger.info("Initializing Groq API configuration...")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_HEADERS = {
-    "Authorization": f"Bearer {GROQ_API_KEY}",
-    "Content-Type": "application/json"
-}
-logger.info("Groq client initialized successfully")
+if not GROQ_API_KEY:
+    logger.warning("GROQ_API_KEY not found - AI analysis will be disabled")
+    GROQ_HEADERS = None
+else:
+    GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+    GROQ_HEADERS = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    logger.info("Groq client initialized successfully")
 
 class GridAnalysisRequest(BaseModel):
     gridStructure: dict
@@ -334,6 +338,16 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error(f"WebSocket error: {e}")
         manager.disconnect(websocket)
 
+# Health check endpoint
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": time.time(),
+        "groq_configured": GROQ_HEADERS is not None
+    }
+
 # REST endpoint to get current counter (optional)
 @app.get("/api/blocked-count")
 async def get_blocked_count():
@@ -414,9 +428,15 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
         system_instruction = get_prompt_for_url(analysis_request.currentUrl, analysis_request.whitelist, analysis_request.blacklist)
         logger.info(f"📋 System instruction loaded for URL pattern ({time.time() - prompt_start:.3f}s)")
 
+        # Check if Groq API is configured
+        if not GROQ_HEADERS:
+            raise HTTPException(
+                status_code=503,
+                detail="AI_SERVICE_UNAVAILABLE: Groq API not configured"
+            )
+
         # Process entire grid structure in one API call
         api_start = time.time()
-
 
         # Clean grid data before sending to LLM
         cleaned_grid = clean_grid_structure_for_llm(grid_structure)
@@ -424,7 +444,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
 
         payload = {
-            "model": "moonshotai/kimi-k2-instruct",
+            "model": "llama-3.1-8b-instant",
             "messages": [
                 {
                     "role": "system",
