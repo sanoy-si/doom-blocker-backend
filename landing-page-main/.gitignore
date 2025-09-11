@@ -56,3 +56,4 @@ Thumbs.db
 # Package manager lock files (uncomment if you want to exclude them)
 # package-lock.json
 # yarn.lock
+.vercel

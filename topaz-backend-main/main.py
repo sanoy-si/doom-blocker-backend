@@ -165,10 +165,25 @@ app.add_middleware(
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Initialize Supabase client only if credentials are provided and valid
+if SUPABASE_URL and SUPABASE_KEY and not SUPABASE_URL.startswith("https://dummy"):
+    try:
+        supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        logger.info("Supabase client initialized successfully")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Supabase client: {e}")
+        supabase = None
+else:
+    logger.warning("Supabase disabled (dummy/missing credentials)")
+    supabase = None
 
 async def update_visitor_telemetry(visitor_id: str):
     """Update visitor telemetry in Supabase asynchronously"""
+    if not supabase:
+        logger.debug("Supabase not available - skipping telemetry update")
+        return
+        
     try:
         # First try to insert a new record
         supabase.table("telemetry").insert({
