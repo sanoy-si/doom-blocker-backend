@@ -89,7 +89,7 @@ async def startup_event():
     logger.info("🚀 Topaz Backend starting up...")
     logger.info(f"📁 Current working directory: {os.getcwd()}")
     logger.info(f"📄 Prompts loaded: {len(prompts_data)} patterns")
-    logger.info(f"🔑 Groq configured: {GROQ_HEADERS is not None}")
+    logger.info(f"🔑 OpenAI configured: {OPENAI_HEADERS is not None}")
     logger.info(f"🗄️ Supabase configured: {supabase is not None}")
     logger.info("✅ Startup complete!")
 
@@ -216,18 +216,18 @@ async def update_visitor_telemetry(visitor_id: str):
 #     server_metadata_url=f"https://{AUTH0_DOMAIN}/.well-known/openid-configuration",
 # )
 
-logger.info("Initializing Groq API configuration...")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    logger.warning("GROQ_API_KEY not found - AI analysis will be disabled")
-    GROQ_HEADERS = None
+logger.info("Initializing OpenAI API configuration...")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    logger.warning("OPENAI_API_KEY not found - AI analysis will be disabled")
+    OPENAI_HEADERS = None
 else:
-    GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-    GROQ_HEADERS = {
-        "Authorization": f"Bearer {GROQ_API_KEY}",
+    OPENAI_URL = "https://api.openai.com/v1/chat/completions"
+    OPENAI_HEADERS = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
         "Content-Type": "application/json"
     }
-    logger.info("Groq client initialized successfully")
+    logger.info("OpenAI client initialized successfully")
 
 class GridAnalysisRequest(BaseModel):
     gridStructure: dict
@@ -397,7 +397,7 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": time.time(),
-        "groq_configured": GROQ_HEADERS is not None
+        "openai_configured": OPENAI_HEADERS is not None
     }
 
 # REST endpoint to get current counter (optional)
@@ -480,11 +480,11 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
         system_instruction = get_prompt_for_url(analysis_request.currentUrl, analysis_request.whitelist, analysis_request.blacklist)
         logger.info(f"📋 System instruction loaded for URL pattern ({time.time() - prompt_start:.3f}s)")
 
-        # Check if Groq API is configured
-        if not GROQ_HEADERS:
+        # Check if OpenAI API is configured
+        if not OPENAI_HEADERS:
             raise HTTPException(
                 status_code=503,
-                detail="AI_SERVICE_UNAVAILABLE: Groq API not configured"
+                detail="AI_SERVICE_UNAVAILABLE: OpenAI API not configured"
             )
 
         # Process entire grid structure in one API call
@@ -496,7 +496,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
 
         payload = {
-            "model": "llama-3.3-70b-versatile",
+            "model": "gpt-4o-mini",
             "messages": [
                 {
                     "role": "system",
@@ -514,17 +514,17 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
             "stop": None
         }
 
-        response = requests.post(GROQ_URL, headers=GROQ_HEADERS, json=payload)
+        response = requests.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload)
 
         if response.status_code != 200:
 
-            raise HTTPException(status_code=500, detail=f"Groq API error: {response.status_code} - {response.text}")
+            raise HTTPException(status_code=500, detail=f"OpenAI API error: {response.status_code} - {response.text}")
 
         api_result = response.json()
         response_content = api_result['choices'][0]['message']['content'].strip()
 
         api_duration = time.time() - api_start
-        logger.info(f"✅ Groq API call completed ({api_duration:.3f}s)")
+        logger.info(f"✅ OpenAI API call completed ({api_duration:.3f}s)")
 
         # Parse the result
         parse_start = time.time()
