@@ -11,11 +11,10 @@ headers = {
 }
 
 # The payload (body) of the request, converted to a Python dictionary
-# NOTE: The model 'moonshotai/kimi-k2-instruct' is not a valid Groq model.
-# It has been replaced with a valid one like 'llama3-8b-8192'.
+# NOTE: Using Qwen 2.5 32B model for better performance and larger context window.
 # NOTE: 'max_completion_tokens' is renamed to 'max_tokens'.
 payload = {
-    "model": "moonshotai/kimi-k2-instruct",
+    "model": "qwen2.5-32b-instruct",
     # "messages": [
     #   {
     #           "role": "system",

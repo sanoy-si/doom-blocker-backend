@@ -11,7 +11,7 @@ headers = {
 }
 
 payload = {
-    "model": "moonshotai/kimi-k2-instruct",
+    "model": "qwen2.5-32b-instruct",
     "messages": [
         {
             "role": "system",
