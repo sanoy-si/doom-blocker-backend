@@ -91,16 +91,16 @@ export const POPUP_EVENTS = {
   UI_LOADING_END: 'ui:loadingEnd',
   UI_SETTINGS_OPEN: 'ui:settingsOpen',
   UI_SETTINGS_CLOSE: 'ui:settingsClose',
-  
+
   // ProfileGrid events
   PROFILE_GRID_RENDER_REQUEST: 'profileGrid:renderRequest',
   PROFILE_GRID_HIDE_REQUEST: 'profileGrid:hideRequest',
-  
+
   // UI Navigation events  
   UI_NAVIGATE_TO: 'ui:navigateTo',
   UI_SHOW_DIALOG: 'ui:showDialog',
   UI_SHOW_NOTIFICATION: 'ui:showNotification',
-  
+
   // UI State events
   UI_STATE_GET: 'ui:state:get',
   UI_STATE_SET: 'ui:state:set',
@@ -114,21 +114,21 @@ export const POPUP_EVENTS = {
   UI_STATE_GET_TEMP_PROFILE_CHANGES: 'ui:state:getTempProfileChanges',
   UI_STATE_GET_POWER_USER_MODE: 'ui:state:getPowerUserMode',
   UI_STATE_GET_LOADING_STATES: 'ui:state:getLoadingStates',
-  
+
   // State change events (trigger UI updates)
   STATE_EXTENSION_ENABLED_CHANGED: 'state:extensionEnabledChanged',
   STATE_PROFILES_CHANGED: 'state:profilesChanged',
 
   STATE_SETTINGS_CHANGED: 'state:settingsChanged',
   STATE_UPDATE_SETTINGS: 'state:updateSettings',
-  
+
   // Data events
   DATA_PROFILES_LOADED: 'data:profilesLoaded',
   DATA_PROFILES_UPDATED: 'data:profilesUpdated',
   DATA_PROFILE_REQUESTED: 'data:profileRequested',
   DATA_PROFILE_RECEIVED: 'data:profileReceived',
   DATA_PROFILE_SAVE_RESULT: 'data:profileSaveResult',
-  
+
   // User interaction events
   USER_PROFILE_TOGGLED: 'user:profileToggled',
   USER_PROFILE_SELECTED: 'user:profileSelected',
@@ -142,7 +142,7 @@ export const POPUP_EVENTS = {
   USER_IMPORT_REQUESTED: 'user:importRequested',
   USER_SETTINGS_UPDATED: 'user:settingsUpdated',
   USER_PROFILE_EDIT_REQUESTED: 'user:profileEditRequested',
-  
+
   // Background communication events
   BACKGROUND_CONNECTED: 'background:connected',
   BACKGROUND_DISCONNECTED: 'background:disconnected',
@@ -151,7 +151,7 @@ export const POPUP_EVENTS = {
   BACKGROUND_MESSAGE_ERROR: 'background:messageError',
   BACKGROUND_MESSAGE_SEND: 'background:messageSend',
   BACKGROUND_MESSAGE_RESPONSE: 'background:messageResponse',
-  
+
   // State events
   STATE_CHANGED: 'state:changed',
   STATE_SYNCED: 'state:synced',
@@ -164,7 +164,7 @@ export const POPUP_EVENTS = {
   POPUP_READY: 'popup:ready',
   POPUP_CLOSING: 'popup:closing',
   POPUP_ACTIVE: 'popup:active',
-  
+
   // Heartbeat events
   HEARTBEAT_SENT: 'heartbeat:sent',
   HEARTBEAT_RECEIVED: 'heartbeat:received',
@@ -178,7 +178,7 @@ export const STORAGE_KEYS = {
 };
 
 export const CONFIG = {
-    STAGING_WEBSITE: 'https://topaz-backend-devlo-611481283314.us-west1.run.app/',
+  STAGING_WEBSITE: 'https://topaz-backend1.onrender.com',
   ALLOWED_WEBSITES: ['youtube.com', 'twitter.com', 'x.com', "linkedin.com", "reddit.com"],
   TAB_ENABLE_MAX_RETRIES: 10,
   TAB_ENABLE_RETRY_DELAY: 500
@@ -187,7 +187,7 @@ export const CONFIG = {
 export const DEFAULT_TAGS = {
   'youtube.com': {
     defaultWhitelist: [],
-    defaultBlacklist: ['anything with very little long term value to a user', 'clickbait/exaggerated titles','TV/movie clips', 'brainrot', 'youtube shorts', 'youtube playables', 'shorts', 'playables']
+    defaultBlacklist: ['anything with very little long term value to a user', 'clickbait/exaggerated titles', 'TV/movie clips', 'brainrot', 'youtube shorts', 'youtube playables', 'shorts', 'playables']
   },
   'twitter.com': {
     defaultWhitelist: [],
@@ -257,7 +257,7 @@ export const DEFAULT_PROFILES = [
 
 // API endpoints
 export const API_ENDPOINTS = {
-  BASE_URL: 'https://topaz-backend-devlo-611481283314.us-west1.run.app/',
+  BASE_URL: 'https://topaz-backend1.onrender.com',
   FETCH_DISTRACTING_CHUNKS: '/fetch_distracting_chunks',
   FETCH_SEARCH_RESULTS: '/fetch_search_results'
 };

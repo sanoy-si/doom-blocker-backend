@@ -163,6 +163,7 @@ class ExtensionController {
     console.log("🔍 [TOPAZ DEBUG] Analysis required, proceeding with extraction");
     
     console.log("🔍 [TOPAZ DEBUG] Finding all grid containers");
+    console.time("[blur timing debug] DOM content loaded to blur completion");
     this.gridManager.findAllGridContainers();
 
     const elementsToBlur = this.gridManager.getElementsToBlur();

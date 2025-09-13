@@ -175,6 +175,7 @@ class API {
     // }
 
     const url = `${website}${endpoint}`;
+    console.log(`🌐 API: Making request to URL: ${url}`);
     const defaultOptions = {
       headers: this.getAuthHeaders(),
       credentials: "include",

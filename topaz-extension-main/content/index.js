@@ -7,6 +7,7 @@ function loadCSS() {
 }
 
 function initialize() {
+  console.time("🧠 TOPAZ INITIAL: Total Load Time");
   console.log("🔍 [TOPAZ DEBUG] Content script initialize() called");
   console.log("🔍 [TOPAZ DEBUG] Current URL:", window.location.href);
   console.log("🔍 [TOPAZ DEBUG] Current hostname:", window.location.hostname);
