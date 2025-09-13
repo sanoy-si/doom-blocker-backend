@@ -496,7 +496,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
 
         payload = {
-            "model": "gpt-4o-mini",
+            "model": "gpt-5-nano-2025-08-07",
             "messages": [
                 {
                     "role": "system",
