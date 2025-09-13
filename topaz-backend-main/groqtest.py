@@ -11,7 +11,7 @@ headers = {
 }
 
 payload = {
-    "model": "qwen2.5-32b-instruct",
+    "model": "llama-3.3-70b-versatile",
     "messages": [
         {
             "role": "system",

@@ -496,7 +496,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
 
         payload = {
-            "model": "qwen2.5-32b-instruct",
+            "model": "llama-3.3-70b-versatile",
             "messages": [
                 {
                     "role": "system",

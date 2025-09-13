@@ -11,10 +11,10 @@ headers = {
 }
 
 # The payload (body) of the request, converted to a Python dictionary
-# NOTE: Using Qwen 2.5 32B model for better performance and larger context window.
+# NOTE: Using Llama 3.3 70B versatile model - available on Groq free tier with large context.
 # NOTE: 'max_completion_tokens' is renamed to 'max_tokens'.
 payload = {
-    "model": "qwen2.5-32b-instruct",
+    "model": "llama-3.3-70b-versatile",
     # "messages": [
     #   {
     #           "role": "system",
