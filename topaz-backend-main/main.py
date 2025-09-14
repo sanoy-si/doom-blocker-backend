@@ -507,11 +507,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                     "content": content
                 }
             ],
-            "temperature": 0.1,
-            "max_tokens": 4096,
-            "top_p": 1,
-            "stream": False,
-            "stop": None
+            "max_completion_tokens": 4096
         }
 
         response = requests.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload)
