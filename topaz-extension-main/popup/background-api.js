@@ -140,6 +140,12 @@ const backgroundAPI = {
       const response = await sendMessage(message);
       console.log('📥 Background response:', response);
       
+      // 🚀 INSTANT FILTERING: Trigger immediate re-analysis of current page
+      if (response?.success) {
+        console.log('🔄 Triggering instant filtering on current page...');
+        await this.triggerInstantFiltering();
+      }
+      
       return {
         success: response?.success || false,
         error: response?.error
@@ -223,6 +229,32 @@ const backgroundAPI = {
       };
     } catch (error) {
       console.error('Failed to restore all elements:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // 🚀 INSTANT FILTERING: Trigger immediate filtering on current page
+  async triggerInstantFiltering() {
+    try {
+      console.log('🔄 Requesting instant filtering...');
+      
+      // Get current active tab
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) {
+        console.log('❌ No active tab found for instant filtering');
+        return { success: false, error: 'No active tab' };
+      }
+
+      // Send message to content script to re-analyze current page
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        type: 'INSTANT_FILTER_REQUEST',
+        timestamp: Date.now()
+      });
+
+      console.log('✅ Instant filtering triggered:', response);
+      return { success: true, response };
+    } catch (error) {
+      console.error('❌ Failed to trigger instant filtering:', error);
       return { success: false, error: error.message };
     }
   },

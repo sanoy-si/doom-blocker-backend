@@ -59,6 +59,10 @@ class ExtensionController {
       this.handleUrlChanged(url);
     });
 
+    // 🚀 INSTANT FILTERING: Handle instant filter requests from popup
+    this.eventBus.on("message:instant-filter", ({ sendResponse }) => {
+      this.handleInstantFilter(sendResponse);
+    });
 
     this.eventBus.on("message:error", ({ errorMessage, errorType, sendResponse }) => {
       this.handleError(errorMessage, errorType, sendResponse);
@@ -719,6 +723,36 @@ class ExtensionController {
     
     if (sendResponse) {
       sendResponse(this.messageHandler.createResponse(true, "Error notification displayed"));
+    }
+  }
+
+  // 🚀 INSTANT FILTERING: Handle instant filter requests from popup
+  async handleInstantFilter(sendResponse) {
+    console.log('🔄 Instant filtering requested - re-analyzing current page...');
+    
+    try {
+      if (this.isDisabled) {
+        console.log('❌ Extension is disabled, cannot perform instant filtering');
+        sendResponse(this.messageHandler.createResponse(false, "Extension is disabled"));
+        return;
+      }
+
+      // Clear any existing analysis timeout
+      this.clearAnalysisTimeout();
+      
+      // Restore all currently hidden elements first
+      await this.elementEffects.restoreAllElements();
+      
+      // Re-run the initial extraction with updated settings
+      console.log('🔄 Re-running content analysis with updated filters...');
+      await this.performInitialExtraction();
+      
+      console.log('✅ Instant filtering completed successfully');
+      sendResponse(this.messageHandler.createResponse(true, "Instant filtering completed"));
+      
+    } catch (error) {
+      console.error('❌ Instant filtering failed:', error);
+      sendResponse(this.messageHandler.createResponse(false, `Instant filtering failed: ${error.message}`));
     }
   }
 

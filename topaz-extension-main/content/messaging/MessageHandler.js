@@ -51,6 +51,10 @@ class MessageHandler {
         this.handleUrlChanged(message, sendResponse);
         break;
         
+      // 🚀 INSTANT FILTERING: Handle instant filter requests
+      case 'INSTANT_FILTER_REQUEST':
+        this.handleInstantFilter(message, sendResponse);
+        break;
         
       default:
         sendResponse(this.createResponse(false, `Unknown message type: ${message.type}`));
@@ -132,6 +136,13 @@ class MessageHandler {
     });
   }
 
+  // 🚀 INSTANT FILTERING: Handle instant filter requests
+  handleInstantFilter(message, sendResponse) {
+    console.log('📨 Received instant filter request:', message);
+    this.eventBus.emit('message:instant-filter', { 
+      sendResponse 
+    });
+  }
 
   sendMessageToBackground(message) {
     return new Promise((resolve, reject) => {
