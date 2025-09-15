@@ -555,7 +555,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                     "content": content
                 }
             ],
-            "max_completion_tokens": 512  # Further reduced for faster response
+            "max_completion_tokens": 256  # Much smaller for faster response
             # Note: temperature and timeout are not supported by GPT-5 Nano
         }
 
@@ -583,8 +583,11 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
             result = convert_newline_format_to_json(response_content)
             total_children_to_remove = len([child for child in response_content.split('\n') if child.strip()])
         else:
-            result = []
-            total_children_to_remove = 0
+            # FALLBACK: If AI returns empty, try simple keyword matching
+            logger.warning("🤖 AI returned empty response, trying fallback keyword matching")
+            result = fallback_keyword_matching(cleaned_grid, analysis_request.blacklist)
+            total_children_to_remove = len(result)
+            logger.info(f"🔄 Fallback found {total_children_to_remove} items to remove")
 
         parse_duration = time.time() - parse_start
         logger.info(f"🎯 Found {total_children_to_remove} children to remove ({parse_duration:.3f}s)")
@@ -686,11 +689,11 @@ def clean_grid_structure_for_llm(grid_structure):
                     grid_text = grid_text[:500] + "..."
                 cleaned_grid['gridText'] = grid_text
 
-            # Process children with size limits
+            # Process children with size limits - PRIORITIZE VISIBLE CONTENT
             if 'children' in grid:
                 children = grid['children']
-                # Limit number of children to prevent huge payloads
-                max_children = 20  # Reduced from 50 to 20 for faster processing
+                # Limit to only the first 10 children (most visible) for faster processing
+                max_children = 10  # Further reduced for speed
                 if len(children) > max_children:
                     children = children[:max_children]
                 
@@ -700,13 +703,38 @@ def clean_grid_structure_for_llm(grid_structure):
                         'text': child.get('text', '')
                     }
                     # Truncate child text to prevent huge payloads
-                    if len(cleaned_child['text']) > 100:  # Reduced from 200 to 100
-                        cleaned_child['text'] = cleaned_child['text'][:100] + "..."
+                    if len(cleaned_child['text']) > 50:  # Further reduced to 50 chars
+                        cleaned_child['text'] = cleaned_child['text'][:50] + "..."
                     cleaned_grid['children'].append(cleaned_child)
 
             cleaned_structure['grids'].append(cleaned_grid)
 
     return cleaned_structure
+
+def fallback_keyword_matching(cleaned_grid, blacklist):
+    """
+    Fallback keyword matching when AI returns empty response
+    """
+    if not blacklist or not cleaned_grid.get('grids'):
+        return []
+    
+    result = []
+    blacklist_lower = [keyword.lower() for keyword in blacklist]
+    
+    for grid in cleaned_grid.get('grids', []):
+        for child in grid.get('children', []):
+            child_text = child.get('text', '').lower()
+            child_id = child.get('id')
+            
+            # Check if any blacklist keyword is in the child text
+            for keyword in blacklist_lower:
+                if keyword in child_text:
+                    # Convert to the format expected by the frontend
+                    grid_id = child_id.split('c')[0] if 'c' in child_id else grid.get('id', 'g1')
+                    result.append({grid_id: [child_id]})
+                    break  # Only add once per child
+    
+    return result
 
 def convert_newline_format_to_json(newline_format):
     """
