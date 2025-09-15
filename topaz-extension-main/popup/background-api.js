@@ -143,7 +143,10 @@ const backgroundAPI = {
       // 🚀 INSTANT FILTERING: Trigger immediate re-analysis of current page
       if (response?.success) {
         console.log('🔄 Triggering instant filtering on current page...');
-        await this.triggerInstantFiltering();
+        const instantResult = await this.triggerInstantFiltering();
+        if (!instantResult.success) {
+          console.log('ℹ️ Instant filtering failed, but profile was saved successfully');
+        }
       }
       
       return {
@@ -245,14 +248,51 @@ const backgroundAPI = {
         return { success: false, error: 'No active tab' };
       }
 
-      // Send message to content script to re-analyze current page
-      const response = await chrome.tabs.sendMessage(tab.id, {
-        type: 'INSTANT_FILTER_REQUEST',
-        timestamp: Date.now()
-      });
+      // Check if tab is on a supported website
+      const supportedSites = ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'];
+      const isSupported = supportedSites.some(site => tab.url && tab.url.includes(site));
+      
+      if (!isSupported) {
+        console.log('ℹ️ Current tab is not on a supported website, skipping instant filtering');
+        return { success: true, message: 'Not on supported website' };
+      }
 
-      console.log('✅ Instant filtering triggered:', response);
-      return { success: true, response };
+      // Send message to content script to re-analyze current page
+      try {
+        const response = await chrome.tabs.sendMessage(tab.id, {
+          type: 'INSTANT_FILTER_REQUEST',
+          timestamp: Date.now()
+        });
+
+        console.log('✅ Instant filtering triggered:', response);
+        return { success: true, response };
+      } catch (messageError) {
+        // If content script isn't loaded, try to inject it first
+        console.log('⚠️ Content script not loaded, attempting to inject...');
+        
+        try {
+          // Inject the content script
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content/index.js']
+          });
+          
+          // Wait a moment for the script to load
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          
+          // Try sending the message again
+          const response = await chrome.tabs.sendMessage(tab.id, {
+            type: 'INSTANT_FILTER_REQUEST',
+            timestamp: Date.now()
+          });
+
+          console.log('✅ Instant filtering triggered after injection:', response);
+          return { success: true, response };
+        } catch (injectionError) {
+          console.log('ℹ️ Could not inject content script, instant filtering skipped');
+          return { success: true, message: 'Content script not available' };
+        }
+      }
     } catch (error) {
       console.error('❌ Failed to trigger instant filtering:', error);
       return { success: false, error: error.message };

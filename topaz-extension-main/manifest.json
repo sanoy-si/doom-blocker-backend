@@ -43,7 +43,7 @@
       "128": "icons/icon-128.png"
     }
   },
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "tabs", "scripting"],
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://youtube.com/*",
