@@ -145,16 +145,21 @@ class MessageHandler {
   }
 
   sendMessageToBackground(message) {
+    console.log("🔍 [TOPAZ DEBUG] MessageHandler.sendMessageToBackground called with:", message);
     return new Promise((resolve, reject) => {
       if (!chrome.runtime || !chrome.runtime.sendMessage) {
+        console.log("🔍 [TOPAZ DEBUG] Chrome runtime not available");
         reject(new Error('Chrome runtime not available'));
         return;
       }
 
+      console.log("🔍 [TOPAZ DEBUG] Sending message to background script:", message);
       chrome.runtime.sendMessage(message, (response) => {
         if (chrome.runtime.lastError) {
+          console.log("🔍 [TOPAZ DEBUG] Chrome runtime error:", chrome.runtime.lastError);
           reject(chrome.runtime.lastError);
         } else {
+          console.log("🔍 [TOPAZ DEBUG] Background response received:", response);
           resolve(response);
         }
       });

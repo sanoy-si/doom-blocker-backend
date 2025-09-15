@@ -1079,90 +1079,43 @@ function showDialog(config) {
   console.log('🪟 showDialog called with config:', config);
   
   try {
-    console.log('📦 Creating dialog overlay...');
-    const overlay = document.createElement('div');
-    overlay.className = 'dialog-overlay';
+    // Use browser's native confirm dialog instead of overlay
+    const message = config.message || config.content || 'Are you sure?';
+    const title = config.title || 'Confirm';
     
-    console.log('🔧 Building dialog HTML...');
-    const dialogHTML = `
-      <div class="dialog">
-        <div class="dialog-header">
-          <h3>${escapeHtml(config.title || 'Dialog')}</h3>
-        </div>
-        <div class="dialog-content">
-          ${config.content || escapeHtml(config.message || '')}
-        </div>
-        <div class="dialog-buttons">
-          ${(config.buttons || [{ text: 'OK', primary: true }]).map(btn => 
-            `<button class="dialog-button ${btn.primary ? 'primary' : ''}" data-action="${btn.text}">${escapeHtml(btn.text)}</button>`
-          ).join('')}
-        </div>
-      </div>
-    `;
-    
-    console.log('📝 Dialog HTML generated:', dialogHTML);
-    overlay.innerHTML = dialogHTML;
-    
-    console.log('🌐 Document body:', document.body);
-    console.log('➕ Appending overlay to document body...');
-    document.body.appendChild(overlay);
-    console.log('✅ Dialog overlay appended to DOM');
-    
-    // Add visible class to trigger CSS animation
-    setTimeout(() => {
-      overlay.classList.add('visible');
-    }, 10);
-    
-    console.log('🔍 Checking if overlay is in DOM:', document.body.contains(overlay));
-    console.log('🎨 Overlay element:', overlay);
-    console.log('📏 Overlay dimensions:', overlay.getBoundingClientRect());
-    
-    // Handle button clicks
-    console.log('🖱️ Setting up dialog button click handlers...');
-    overlay.addEventListener('click', (e) => {
-      console.log('🖱️ Dialog click event:', e.target);
-      if (e.target.classList.contains('dialog-button')) {
-        console.log('🔘 Dialog button clicked:', e.target.dataset.action);
-        const action = e.target.dataset.action;
-        const button = config.buttons?.find(b => b.text === action);
-        
-        if (button?.onClick) {
-          console.log('🔄 Executing button onClick handler...');
-          const shouldClose = button.onClick();
-          if (shouldClose !== false) {
-            console.log('🗙 Closing dialog...');
-            closeDialog(overlay);
-          }
-        } else {
-          console.log('🗙 No onClick handler, closing dialog...');
-          closeDialog(overlay);
-        }
-      } else if (e.target === overlay) {
-        console.log('🗙 Clicked outside dialog, closing...');
-        closeDialog(overlay);
+    // For simple confirmations, use native confirm
+    if (config.buttons && config.buttons.length === 2) {
+      const result = confirm(`${title}\n\n${message}`);
+      
+      // Find the appropriate button based on result
+      const button = result ? 
+        config.buttons.find(btn => btn.primary || btn.text.toLowerCase().includes('yes') || btn.text.toLowerCase().includes('ok') || btn.text.toLowerCase().includes('delete')) :
+        config.buttons.find(btn => !btn.primary || btn.text.toLowerCase().includes('no') || btn.text.toLowerCase().includes('cancel'));
+      
+      if (button && button.onClick) {
+        button.onClick();
       }
-    });
-    
-    console.log('✅ Dialog event handlers set up');
-    return overlay;
+      
+      return { result };
+    } else {
+      // For single button dialogs, use alert
+      alert(`${title}\n\n${message}`);
+      
+      const button = config.buttons && config.buttons[0];
+      if (button && button.onClick) {
+        button.onClick();
+      }
+      
+      return { result: true };
+    }
     
   } catch (error) {
     console.error('❌ Error in showDialog:', error);
-    console.error('Stack trace:', error.stack);
     return null;
   }
 }
 
-function closeDialog(dialogElement) {
-  if (dialogElement && dialogElement.parentNode) {
-    dialogElement.classList.remove('visible');
-    setTimeout(() => {
-      if (dialogElement.parentNode) {
-        dialogElement.parentNode.removeChild(dialogElement);
-      }
-    }, 200);
-  }
-}
+// closeDialog function removed - using native browser dialogs now
 
 function showNotification(config) {
   const notification = document.createElement('div');

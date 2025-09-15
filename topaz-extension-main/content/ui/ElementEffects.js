@@ -95,6 +95,93 @@ class ElementEffects {
   }
 
   /**
+   * Check if element contains video content
+   * @param {HTMLElement} element - Element to check
+   * @returns {boolean} True if element contains video
+   */
+  isVideoElement(element) {
+    if (!element) return false;
+    
+    // Check if element itself is a video
+    if (element.tagName === 'VIDEO' || element.tagName === 'IFRAME') {
+      console.log('🎥 Found video element (direct):', element.tagName, element);
+      return true;
+    }
+    
+    // Check if element contains video or iframe
+    const hasVideo = element.querySelector('video, iframe[src*="youtube"], iframe[src*="vimeo"], iframe[src*="twitch"], iframe[src*="tiktok"], iframe[src*="dailymotion"]');
+    if (hasVideo) {
+      console.log('🎥 Found video element (nested):', hasVideo.tagName, hasVideo);
+      return true;
+    }
+    
+    // Check for common video container classes/attributes
+    const videoIndicators = [
+      '[data-testid*="video"]',
+      '[class*="video"]',
+      '[class*="player"]',
+      '[id*="video"]',
+      '[id*="player"]'
+    ];
+    
+    for (const selector of videoIndicators) {
+      if (element.matches && element.matches(selector)) {
+        const nestedVideo = element.querySelector('video, iframe');
+        if (nestedVideo) {
+          console.log('🎥 Found video container with nested video:', element);
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Apply video light trace effect
+   * @param {HTMLElement} element - Element to apply effect to
+   * @param {string} id - Element ID
+   * @returns {boolean} Success status
+   */
+  applyVideoLightTraceEffect(element, id) {
+    if (!element || !document.contains(element)) {
+      console.log('🎥 Video light trace effect: Element not found or not in DOM');
+      return false;
+    }
+
+    console.log('🎥 Applying video light trace effect to element:', element);
+
+    // Remove any blur effect first
+    this.removeBlurById(id);
+
+    // Add light trace class
+    element.classList.add('topaz-video-rotating');
+    element.setAttribute(
+      DATA_ATTRIBUTES.STATE.replace("data-", ""),
+      ELEMENT_STATES.HIDDEN,
+    );
+
+    const state = this.getElementState(element);
+    state.hidden = true;
+    state.hidingMethod = 'video-light-trace';
+    state.elementId = id;
+    this.setElementState(element, state);
+
+    console.log('🎥 Video light trace effect applied, will hide in 0.5s');
+
+    // After light trace completes, hide the element instantly
+    setTimeout(() => {
+      if (document.contains(element)) {
+        element.classList.remove('topaz-video-rotating');
+        element.classList.add('topaz-video-hidden');
+        console.log('🎥 Video light trace completed, element hidden instantly');
+      }
+    }, 500); // Light trace duration is 0.5s
+
+    return true;
+  }
+
+  /**
    * Hide elements using specified method
    * @param {Array<{id: string, element: HTMLElement}>} elements - Elements to hide
    * @param {string} method - Hiding method (display, height, highlighting)
@@ -109,6 +196,14 @@ class ElementEffects {
 
     elements.forEach(({ id, element }) => {
       if (!element || !document.contains(element)) {
+        return;
+      }
+
+      // Check if this is a video element and apply light trace effect
+      if (this.isVideoElement(element)) {
+        if (this.applyVideoLightTraceEffect(element, id)) {
+          successCount++;
+        }
         return;
       }
 
@@ -221,6 +316,10 @@ class ElementEffects {
       // Restore element based on hiding method
       const state = this.getElementState(element);
 
+      if (state.hidingMethod === 'video-light-trace') {
+        element.classList.remove('topaz-video-rotating', 'topaz-video-hidden');
+      }
+
       if (
         state.hidingMethod === HIDING_METHODS.HEIGHT ||
         element.classList.contains(CSS_CLASSES.COLLAPSED)
@@ -323,6 +422,11 @@ class ElementEffects {
       let wasRestored = false;
 
       // Restore based on hiding method used
+      if (state.hidingMethod === 'video-light-trace') {
+        element.classList.remove('topaz-video-rotating', 'topaz-video-hidden');
+        wasRestored = true;
+      }
+
       if (state.hidingMethod === HIDING_METHODS.HEIGHT || element.classList.contains(CSS_CLASSES.COLLAPSED)) {
         element.classList.remove(CSS_CLASSES.COLLAPSED);
         wasRestored = true;

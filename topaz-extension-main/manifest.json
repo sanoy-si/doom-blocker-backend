@@ -58,6 +58,7 @@
     {
       "resources": [
         "content/content.css",
+        "content/video-effects.css",
         "content/loading.html",
         "content/config.json",
         "topaz.svg"

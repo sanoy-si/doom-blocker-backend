@@ -59,7 +59,7 @@
     width: 100vw;
     height: 100vh;
     background: rgba(var(--topaz-black-rgb), var(--topaz-overlay-opacity));
-    backdrop-filter: blur(var(--topaz-backdrop-blur));
+    /* Removed backdrop-filter to prevent background blur */
     z-index: var(--topaz-z-index-max); /* Maximum z-index value */
     display: flex;
     align-items: center;
@@ -177,8 +177,7 @@
 .topaz-blur-overlay {
     position: absolute;
     background: rgba(var(--topaz-black), 0.2);
-    backdrop-filter: blur(var(--topaz-overlay-blur));
-    -webkit-backdrop-filter: blur(var(--topaz-overlay-blur));
+    /* Removed backdrop-filter to prevent background blur */
     border-radius: var(--topaz-border-radius-sm);
     padding: 2px;
     z-index: var(--topaz-z-index-high);
@@ -203,6 +202,16 @@
     z-index: var(--topaz-z-index-normal) !important;
     pointer-events: none !important;
 }
+
+/* Prevent browser from blurring background when extension popup is open */
+html, body {
+    filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
+/* Import video effects */
+@import url('./video-effects.css');
 
 .topaz-element-blurred::before {
     content: "";

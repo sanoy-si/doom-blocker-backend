@@ -346,14 +346,15 @@ class BackgroundController {
       
       if (!hasRelevantChanges) {
         console.log('⏱️ TIMING: No relevant changes - aborting timer');
-        console.log('🔍 [TOPAZ DEBUG] No changes detected, not refreshing page');
+        console.log('🔍 [TOPAZ DEBUG] No changes detected, no action needed');
         return;
       }
 
-      console.log('⏱️ TIMING: Relevant changes detected, proceeding with refresh');
-      console.log('🔍 [TOPAZ DEBUG] Profile changes detected, refreshing page');
+      console.log('⏱️ TIMING: Relevant changes detected, using instant filtering instead of refresh');
+      console.log('🔍 [TOPAZ DEBUG] Profile changes detected, triggering instant filtering');
 
-      // Get the tab that had the popup open to determine which hostname to refresh
+      // Instead of refreshing tabs, use instant filtering for better UX
+      // Get the tab that had the popup open to determine which hostname to update
       let targetTab = null;
       let hostname = null;
       
@@ -378,14 +379,14 @@ class BackgroundController {
       hostname = new URL(targetTab.url).hostname.toLowerCase();
       const cleanHostname = hostname.replace(/^www\./, '');
       
-      console.log(`⏱️ TIMING: Starting tab refresh for hostname: ${cleanHostname}`);
+      console.log(`⏱️ TIMING: Starting instant filtering for hostname: ${cleanHostname}`);
       
-      // Refresh tabs for this hostname
-      await this.refreshTabsForHostname(cleanHostname);
+      // Use instant filtering instead of full refresh
+      await this.triggerInstantFilteringForHostname(cleanHostname);
       
-      // End timing - extension re-enable complete
+      // End timing - extension update complete
       console.timeEnd('⏱️ HEARTBEAT_TO_ENABLE_COMPLETE');
-      console.log('⏱️ TIMING END: Extension re-enable completed');
+      console.log('⏱️ TIMING END: Extension instant filtering completed');
 
     } catch (error) {
     }
@@ -394,11 +395,11 @@ class BackgroundController {
 
 
   /**
-   * Refresh all tabs with the specified hostname by disabling and re-enabling them
+   * Trigger instant filtering for all tabs with the specified hostname (no page refresh)
    */
-  async refreshTabsForHostname(hostname) {
+  async triggerInstantFilteringForHostname(hostname) {
     try {
-      console.log(`⏱️ TIMING: Tab refresh started for ${hostname}`);
+      console.log(`⏱️ TIMING: Instant filtering started for ${hostname}`);
       
       // Get all tabs
       const allTabs = await this.tabManager.getAllTabs();
@@ -422,31 +423,34 @@ class BackgroundController {
         return;
       }
       
-      console.log(`⏱️ TIMING: Found ${matchingTabs.length} matching tabs, sending DISABLE/ENABLE cycle`);
+      console.log(`⏱️ TIMING: Found ${matchingTabs.length} matching tabs, triggering instant filtering`);
       
-      // Send disable (with revive=false) then enable to apply new profile changes
-      const refreshPromises = matchingTabs.map(async (tab) => {
+      // Send instant filter message to apply new profile changes without refresh
+      const filterPromises = matchingTabs.map(async (tab) => {
         try {
-          // First disable without reviving elements
           await this.tabManager.sendMessageToTab(tab.id, {
-            type: MESSAGE_TYPES.DISABLE,
-            revive: false
-          });
-          
-          // Then enable to reanalyze with new profile settings
-          await this.tabManager.sendMessageToTab(tab.id, {
-            type: MESSAGE_TYPES.ENABLE
+            type: 'INSTANT_FILTER_REQUEST'
           });
         } catch (error) {
-          console.warn(`Failed to send disable/enable cycle to tab ${tab.id}:`, error.message);
+          console.warn(`Failed to send instant filter to tab ${tab.id}:`, error.message);
         }
       });
 
-      await Promise.all(refreshPromises);
-      console.log('⏱️ TIMING: All DISABLE/ENABLE cycles completed');
+      await Promise.all(filterPromises);
+      console.log('⏱️ TIMING: All instant filtering completed');
 
     } catch (error) {
+      console.error('Error in triggerInstantFilteringForHostname:', error);
     }
+  }
+
+  /**
+   * Refresh all tabs with the specified hostname by disabling and re-enabling them
+   * (DEPRECATED - kept for compatibility, but instant filtering is preferred)
+   */
+  async refreshTabsForHostname(hostname) {
+    console.log('⚠️ refreshTabsForHostname is deprecated, using instant filtering instead');
+    await this.triggerInstantFilteringForHostname(hostname);
   }
   /**
    * Handle extension toggled message
@@ -550,21 +554,27 @@ class BackgroundController {
    * Handle analyze grid structure message
    */
   async handleAnalyzeGridStructure(message, sender) {
+    console.log("🔍 [TOPAZ DEBUG] handleAnalyzeGridStructure called with:", { message, sender });
+    
     // Validate message
     if (!message.gridStructure) {
+      console.log("🔍 [TOPAZ DEBUG] No grid structure provided, throwing error");
       throw new Error('No grid structure provided');
     }
 
     if (!sender.tab?.id || !sender.tab?.url) {
+      console.log("🔍 [TOPAZ DEBUG] No tab information available, throwing error");
       throw new Error('No tab information available');
     }
 
+    console.log("🔍 [TOPAZ DEBUG] Emitting GRID_ANALYSIS_REQUEST event");
     this.eventBus.emit(EVENTS.GRID_ANALYSIS_REQUEST, {
       tabId: sender.tab.id,
       url: sender.tab.url,
       gridStructure: message.gridStructure
     });
 
+    console.log("🔍 [TOPAZ DEBUG] Calling analyzeGridStructure");
     this.analyzeGridStructure(
       message.gridStructure,
       sender.tab.url,
@@ -580,6 +590,7 @@ class BackgroundController {
    * Analyze grid structure and send results back to tab
    */
   async analyzeGridStructure(gridStructure, url, tabId) {
+    console.log("🔍 [TOPAZ DEBUG] analyzeGridStructure called with:", { gridStructure, url, tabId });
     try {
 
       // COMMENTED OUT: Login functionality disabled
@@ -617,6 +628,25 @@ class BackgroundController {
                  cleanHostname.endsWith('.' + allowedSite);
         });
       });
+
+      // DEBUG: If no applicable profiles found for YouTube, try to auto-enable
+      if (applicableProfiles.length === 0 && cleanHostname === 'youtube.com') {
+        console.log('🔍 [TOPAZ DEBUG] No applicable profiles for YouTube, checking for YouTube profile to auto-enable');
+        const youtubeProfile = allProfiles.find(p => p.profileName === 'YouTube' || p.allowedWebsites.includes('youtube.com'));
+        if (youtubeProfile && !youtubeProfile.isEnabled) {
+          console.log('🔍 [TOPAZ DEBUG] Found disabled YouTube profile, auto-enabling:', youtubeProfile.profileName);
+          youtubeProfile.isEnabled = true;
+          await this.stateManager.saveExtensionState();
+          // Re-filter with the newly enabled profile
+          const newEnabledProfiles = allProfiles.filter(profile => profile.isEnabled);
+          applicableProfiles.push(...newEnabledProfiles.filter(profile => {
+            return profile.allowedWebsites.some(allowedSite => {
+              return cleanHostname === allowedSite ||
+                     cleanHostname.endsWith('.' + allowedSite);
+            });
+          }));
+        }
+      }
 
       // Combine tags based on mode and settings
       const allWhitelistTags = [];
@@ -666,8 +696,30 @@ class BackgroundController {
         hostname: cleanHostname,
         mode: isPowerUserMode ? 'Power User' : 'Simple',
         customizationEnabled: isCustomizationEnabled,
+        applicableProfilesCount: applicableProfiles.length,
         whitelistTags: whitelistToSend,
         blacklistTags: blacklistToSend
+      });
+
+      // DEBUG: Log detailed profile information
+      console.log('🔍 [TOPAZ DEBUG] Profile Analysis:', {
+        allProfilesCount: allProfiles.length,
+        enabledProfilesCount: enabledProfiles.length,
+        applicableProfilesCount: applicableProfiles.length,
+        enabledProfiles: enabledProfiles.map(p => ({
+          name: p.profileName,
+          isDefault: p.isDefault,
+          isEnabled: p.isEnabled,
+          allowedWebsites: p.allowedWebsites,
+          customBlacklist: p.customBlacklist,
+          customWhitelist: p.customWhitelist
+        })),
+        applicableProfiles: applicableProfiles.map(p => ({
+          name: p.profileName,
+          isDefault: p.isDefault,
+          customBlacklist: p.customBlacklist,
+          customWhitelist: p.customWhitelist
+        }))
       });
 
       console.log('📋 DETAILED TAG BREAKDOWN:', {

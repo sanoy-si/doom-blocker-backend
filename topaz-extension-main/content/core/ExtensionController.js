@@ -180,6 +180,8 @@ class ExtensionController {
 
     const allGrids = this.gridManager.getAllGrids();
     console.log("🔍 [TOPAZ DEBUG] All grids found:", allGrids.length);
+    console.log("🔍 [TOPAZ DEBUG] Grid details:", allGrids.map(g => ({ id: g.id, childrenCount: g.children?.length || 0 })));
+    
     const gridStructure = {
       timestamp: new Date().toISOString(),
       totalGrids: 0,
@@ -235,6 +237,7 @@ class ExtensionController {
 
     gridStructure.totalGrids = gridStructure.grids.length;
     console.log("🔍 [TOPAZ DEBUG] Final grid structure:", gridStructure.totalGrids, "grids to analyze");
+    console.log("🔍 [TOPAZ DEBUG] Grid structure details:", JSON.stringify(gridStructure, null, 2));
 
     if (gridStructure.totalGrids > 0) {
       console.log("🔍 [TOPAZ DEBUG] Sending grid structure for analysis");
@@ -471,9 +474,14 @@ class ExtensionController {
   }
 
   async sendGridStructureForAnalysis(gridStructure) {
+    console.log("🔍 [TOPAZ DEBUG] sendGridStructureForAnalysis called with:", gridStructure);
+    
     if (this.isDisabled || !gridStructure || gridStructure.totalGrids === 0) {
+      console.log("🔍 [TOPAZ DEBUG] Skipping analysis - disabled:", this.isDisabled, "no structure:", !gridStructure, "no grids:", gridStructure?.totalGrids);
       return;
     }
+    
+    console.log("🔍 [TOPAZ DEBUG] Proceeding with analysis, clearing timeout and auto-collapsing");
     this.clearAnalysisTimeout();
     await this.autoCollapseElements();
     this.analysisTimeout = setTimeout(() => {
@@ -483,14 +491,17 @@ class ExtensionController {
       this.analysisTimeout = null;
     }, TIMINGS.ANALYSIS_TIMEOUT);
 
-
+    console.log("🔍 [TOPAZ DEBUG] Sending ANALYZE_GRID_STRUCTURE message to background");
     this.messageHandler
       .sendMessageToBackground({
         type: MESSAGE_TYPES.ANALYZE_GRID_STRUCTURE,
         gridStructure: gridStructure,
       })
-      .catch(() => {});
+      .catch((error) => {
+        console.log("🔍 [TOPAZ DEBUG] Error sending message to background:", error);
+      });
 
+    console.log("🔍 [TOPAZ DEBUG] Emitting ANALYSIS_REQUESTED event");
     this.eventBus.emit(EVENTS.ANALYSIS_REQUESTED, gridStructure);
   }
 

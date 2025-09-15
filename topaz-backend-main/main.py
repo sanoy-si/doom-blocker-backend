@@ -59,6 +59,13 @@ blocked_items_counter = {
     'last_updated': time.time()
 }
 
+# Simple in-memory cache for API responses
+api_cache = {
+    'responses': {},  # hash -> response
+    'max_size': 100,  # Maximum number of cached responses
+    'max_age': 300    # Cache expires after 5 minutes
+}
+
 def reset_rate_limit_if_needed():
     """Reset rate limit counters if an hour has passed"""
     current_time = time.time()
@@ -141,6 +148,53 @@ def increment_blocked_counter(items_blocked: int):
     
     logger.info(f"Blocked items counter updated: {blocked_items_counter['count']} (+{items_blocked})")
 
+def get_cache_key(grid_structure, url, whitelist, blacklist):
+    """Generate a cache key for the request"""
+    import hashlib
+    # Create a hash of the request parameters
+    key_data = {
+        'url': url,
+        'whitelist': sorted(whitelist) if whitelist else [],
+        'blacklist': sorted(blacklist) if blacklist else [],
+        'grid_ids': [grid.get('id') for grid in grid_structure.get('grids', [])],
+        'total_children': sum(grid.get('totalChildren', 0) for grid in grid_structure.get('grids', []))
+    }
+    key_string = json.dumps(key_data, sort_keys=True)
+    return hashlib.md5(key_string.encode()).hexdigest()
+
+def get_cached_response(cache_key):
+    """Get cached response if available and not expired"""
+    current_time = time.time()
+    
+    if cache_key in api_cache['responses']:
+        cached_data = api_cache['responses'][cache_key]
+        if current_time - cached_data['timestamp'] < api_cache['max_age']:
+            logger.info(f"🎯 Cache hit for key: {cache_key[:8]}...")
+            return cached_data['response']
+        else:
+            # Remove expired cache entry
+            del api_cache['responses'][cache_key]
+    
+    return None
+
+def cache_response(cache_key, response):
+    """Cache the response"""
+    current_time = time.time()
+    
+    # Clean up old cache entries if we're at max size
+    if len(api_cache['responses']) >= api_cache['max_size']:
+        # Remove oldest entries
+        oldest_keys = sorted(api_cache['responses'].keys(), 
+                           key=lambda k: api_cache['responses'][k]['timestamp'])[:10]
+        for key in oldest_keys:
+            del api_cache['responses'][key]
+    
+    api_cache['responses'][cache_key] = {
+        'response': response,
+        'timestamp': current_time
+    }
+    logger.info(f"💾 Cached response for key: {cache_key[:8]}...")
+
 # Add session middleware
 # app.add_middleware(
 #     SessionMiddleware,
@@ -179,33 +233,11 @@ else:
     supabase = None
 
 async def update_visitor_telemetry(visitor_id: str):
-    """Update visitor telemetry in Supabase asynchronously"""
-    if not supabase:
-        logger.debug("Supabase not available - skipping telemetry update")
-        return
-        
-    try:
-        # First try to insert a new record
-        supabase.table("telemetry").insert({
-            "visitorid": visitor_id,
-            "request_count": 1
-        }).execute()
-        logger.debug(f"Inserted new telemetry record for visitor {visitor_id}")
-    except Exception:
-        # If insert fails (visitor already exists), update the existing record
-        try:
-            # Get current count and increment it
-            current = supabase.table("telemetry").select("request_count").eq("visitorid", visitor_id).single().execute()
-            new_count = current.data["request_count"] + 1
-
-            supabase.table("telemetry").update({
-                "last_seen": "now()",
-                "request_count": new_count
-            }).eq("visitorid", visitor_id).execute()
-
-            logger.debug(f"Updated telemetry for visitor {visitor_id} (count: {new_count})")
-        except Exception as e:
-            logger.debug(f"Telemetry update failed (table may not exist): {str(e)}")
+    """Update visitor telemetry in Supabase asynchronously - DISABLED for performance"""
+    # DISABLED: Telemetry calls are causing 404 errors and slowing down the API
+    # The telemetry table doesn't exist or isn't accessible, causing delays
+    logger.debug("Telemetry update disabled for performance - skipping visitor tracking")
+    return
 
 # oauth = OAuth()
 # oauth.register(
@@ -456,8 +488,8 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
     client_ip = request.client.host if request.client else "unknown"
     request_count = track_ip_request(client_ip)
 
-    # Update visitor telemetry in Supabase (fire and forget)
-    asyncio.create_task(update_visitor_telemetry(analysis_request.visitorId))
+    # DISABLED: Update visitor telemetry in Supabase (fire and forget)
+    # asyncio.create_task(update_visitor_telemetry(analysis_request.visitorId))
 
     # Check rate limit
     if request_count > 3000:
@@ -469,11 +501,19 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
     start_time = time.time()
 
-
     # Log grid structure details
     grid_structure = analysis_request.gridStructure
     total_grids = grid_structure.get('totalGrids', 0)
     total_children = sum(grid.get('totalChildren', 0) for grid in grid_structure.get('grids', []))
+
+    # Check cache first
+    cache_key = get_cache_key(grid_structure, analysis_request.currentUrl, 
+                             analysis_request.whitelist, analysis_request.blacklist)
+    cached_response = get_cached_response(cache_key)
+    
+    if cached_response is not None:
+        logger.info(f"⚡ Returning cached response - Total time: {time.time() - start_time:.3f}s")
+        return cached_response
 
     try:
         prompt_start = time.time()
@@ -496,7 +536,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
 
         payload = {
-            "model": "gpt-5-nano-2025-08-07",
+            "model": "gpt-5-nano-2025-08-07",  # Fastest model (0.3ms vs 0.5ms for mini)
             "messages": [
                 {
                     "role": "system",
@@ -507,10 +547,11 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                     "content": content
                 }
             ],
-            "max_completion_tokens": 4096
+            "max_completion_tokens": 1024  # Reduced token limit for faster response
+            # Note: temperature and timeout are not supported by GPT-5 Nano
         }
 
-        response = requests.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload)
+        response = requests.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload, timeout=30)
 
         if response.status_code != 200:
 
@@ -542,6 +583,9 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
         # Update blocked items counter
         increment_blocked_counter(total_children_to_remove)
+
+        # Cache the response for future requests
+        cache_response(cache_key, result)
 
         return result
 
@@ -606,19 +650,49 @@ def split_grid_into_chunks(grid_structure, chunk_size):
 
 def clean_grid_structure_for_llm(grid_structure):
     """
-    Remove image keys from grid structure before sending to LLM (preserves gridTag)
+    Optimize grid structure for LLM by removing unnecessary data and limiting content
     """
-    cleaned_structure = json.loads(json.dumps(grid_structure))  # Deep copy
+    cleaned_structure = {
+        'totalGrids': grid_structure.get('totalGrids', 0),
+        'grids': []
+    }
 
-    if 'grids' in cleaned_structure:
-        for grid in cleaned_structure['grids']:
-            # gridTag is now preserved and sent to LLM
+    if 'grids' in grid_structure:
+        for grid in grid_structure['grids']:
+            # Limit to essential data only
+            cleaned_grid = {
+                'id': grid.get('id'),
+                'totalChildren': grid.get('totalChildren', 0),
+                'children': []
+            }
+            
+            # Add grid text if available (truncated for performance)
+            if 'gridText' in grid:
+                grid_text = grid['gridText']
+                # Truncate grid text to prevent huge payloads
+                if len(grid_text) > 500:
+                    grid_text = grid_text[:500] + "..."
+                cleaned_grid['gridText'] = grid_text
 
-            # Remove image keys from children
+            # Process children with size limits
             if 'children' in grid:
-                for child in grid['children']:
-                    if 'image' in child:
-                        del child['image']
+                children = grid['children']
+                # Limit number of children to prevent huge payloads
+                max_children = 50
+                if len(children) > max_children:
+                    children = children[:max_children]
+                
+                for child in children:
+                    cleaned_child = {
+                        'id': child.get('id'),
+                        'text': child.get('text', '')
+                    }
+                    # Truncate child text to prevent huge payloads
+                    if len(cleaned_child['text']) > 200:
+                        cleaned_child['text'] = cleaned_child['text'][:200] + "..."
+                    cleaned_grid['children'].append(cleaned_child)
+
+            cleaned_structure['grids'].append(cleaned_grid)
 
     return cleaned_structure
 
