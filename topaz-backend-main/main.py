@@ -533,6 +533,14 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
         # Clean grid data before sending to LLM
         cleaned_grid = clean_grid_structure_for_llm(grid_structure)
         content = json.dumps(cleaned_grid, indent=2)
+        
+        # DEBUG: Log what we're sending to the AI
+        logger.info(f"🔍 DEBUG: Sending to AI - URL: {analysis_request.currentUrl}")
+        logger.info(f"🔍 DEBUG: Whitelist: {analysis_request.whitelist}")
+        logger.info(f"🔍 DEBUG: Blacklist: {analysis_request.blacklist}")
+        logger.info(f"🔍 DEBUG: Grid structure has {len(cleaned_grid.get('grids', []))} grids")
+        logger.info(f"🔍 DEBUG: Total children: {sum(grid.get('totalChildren', 0) for grid in cleaned_grid.get('grids', []))}")
+        logger.info(f"🔍 DEBUG: System instruction length: {len(system_instruction)} chars")
 
 
         payload = {
@@ -547,7 +555,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                     "content": content
                 }
             ],
-            "max_completion_tokens": 1024  # Reduced token limit for faster response
+            "max_completion_tokens": 512  # Further reduced for faster response
             # Note: temperature and timeout are not supported by GPT-5 Nano
         }
 
@@ -562,6 +570,10 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
         api_duration = time.time() - api_start
         logger.info(f"✅ OpenAI API call completed ({api_duration:.3f}s)")
+        
+        # DEBUG: Log what the AI returned
+        logger.info(f"🔍 DEBUG: AI response length: {len(response_content)} chars")
+        logger.info(f"🔍 DEBUG: AI response preview: {response_content[:200]}...")
 
         # Parse the result
         parse_start = time.time()
@@ -678,7 +690,7 @@ def clean_grid_structure_for_llm(grid_structure):
             if 'children' in grid:
                 children = grid['children']
                 # Limit number of children to prevent huge payloads
-                max_children = 50
+                max_children = 20  # Reduced from 50 to 20 for faster processing
                 if len(children) > max_children:
                     children = children[:max_children]
                 
@@ -688,8 +700,8 @@ def clean_grid_structure_for_llm(grid_structure):
                         'text': child.get('text', '')
                     }
                     # Truncate child text to prevent huge payloads
-                    if len(cleaned_child['text']) > 200:
-                        cleaned_child['text'] = cleaned_child['text'][:200] + "..."
+                    if len(cleaned_child['text']) > 100:  # Reduced from 200 to 100
+                        cleaned_child['text'] = cleaned_child['text'][:100] + "..."
                     cleaned_grid['children'].append(cleaned_child)
 
             cleaned_structure['grids'].append(cleaned_grid)
