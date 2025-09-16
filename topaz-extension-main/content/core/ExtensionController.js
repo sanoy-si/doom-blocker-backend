@@ -16,6 +16,49 @@ class ExtensionController {
     this.messageHandler.setupMessageListener();
   }
 
+  // Reduce payload size to speed up API and align with backend cleaning rules
+  trimGridForBackend(structure) {
+    try {
+      const MAX_CHILDREN = 10;
+      const MAX_CHILD_TEXT = 50;
+      const MAX_GRID_TEXT = 500;
+
+      if (!structure || !Array.isArray(structure.grids)) return structure;
+
+      const trimmed = {
+        timestamp: structure.timestamp,
+        totalGrids: 0,
+        grids: []
+      };
+
+      for (const grid of structure.grids) {
+        const children = Array.isArray(grid.children) ? grid.children.slice(0, MAX_CHILDREN) : [];
+        const trimmedChildren = children.map((child) => ({
+          id: child.id,
+          text: (child.text || '').slice(0, MAX_CHILD_TEXT)
+        }));
+
+        let gridText = grid.gridText || '';
+        if (gridText.length > MAX_GRID_TEXT) {
+          gridText = gridText.slice(0, MAX_GRID_TEXT);
+        }
+
+        trimmed.grids.push({
+          id: grid.id,
+          totalChildren: trimmedChildren.length,
+          gridText,
+          children: trimmedChildren
+        });
+      }
+
+      trimmed.totalGrids = trimmed.grids.length;
+      return trimmed;
+    } catch (e) {
+      // Fallback to original structure on any error
+      return structure;
+    }
+  }
+
   setupEventListeners() {
     this.eventBus.on(EVENTS.DOM_MUTATED, async (data) => {
       await this.handleDOMMutation(data);
@@ -241,8 +284,10 @@ class ExtensionController {
     console.log("🔍 [TOPAZ DEBUG] Grid structure details:", JSON.stringify(gridStructure, null, 2));
 
     if (gridStructure.totalGrids > 0) {
-      console.log("🔍 [TOPAZ DEBUG] Sending grid structure for analysis");
-      this.sendGridStructureForAnalysis(gridStructure);
+      // Trim payload to match backend expectations for performance
+      const trimmedStructure = this.trimGridForBackend(gridStructure);
+      console.log("🔍 [TOPAZ DEBUG] Sending trimmed grid structure for analysis");
+      this.sendGridStructureForAnalysis(trimmedStructure);
 
       for (const gridData of gridStructure.grids) {
         const grid = this.gridManager.getGridById(gridData.id);
@@ -437,7 +482,9 @@ class ExtensionController {
         totalGrids: gridStructure.length,
         grids: gridStructure,
       };
-      this.sendGridStructureForAnalysis(analysisData);
+      // Trim payload to match backend expectations for performance
+      const trimmedAnalysisData = this.trimGridForBackend(analysisData);
+      this.sendGridStructureForAnalysis(trimmedAnalysisData);
       for (const grid of gridStructure) {
         const gridObj = this.gridManager.getGridById(grid.id);
         if (gridObj) {

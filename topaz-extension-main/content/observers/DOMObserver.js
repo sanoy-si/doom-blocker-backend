@@ -1,8 +1,7 @@
-
 class DOMObserver {
   constructor(eventBus, options = {}) {
     this.eventBus = eventBus;
-    this.throttleDelay = 50 // Delay in ms
+    this.throttleDelay = 200 // Delay in ms (increased for performance)
 
     this.observer = null;
     this.isObserving = false;

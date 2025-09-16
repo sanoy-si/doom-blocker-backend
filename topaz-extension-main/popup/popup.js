@@ -965,7 +965,7 @@ function startHeartbeatSystem() {
     } catch (error) {
       console.error('❌ Heartbeat error:', error);
     }
-  }, 100);
+  }, 1000);
   
   // Also refresh stats periodically
   const statsInterval = setInterval(async () => {

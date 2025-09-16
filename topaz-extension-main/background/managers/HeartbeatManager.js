@@ -1,4 +1,4 @@
-import { BACKGROUND_EVENTS as EVENTS, MESSAGE_TYPES } from '../../shared/constants.js';
+import { BACKGROUND_EVENTS as EVENTS, MESSAGE_TYPES, TIMINGS } from '../../shared/constants.js';
 
 /**
  * HeartbeatManager - Manages popup lifecycle detection
@@ -16,9 +16,9 @@ class HeartbeatManager {
     this.popupTabId = null;
     
     // Configuration
-    this.HEARTBEAT_INTERVAL = 10; // 10ms
-    this.HEARTBEAT_TIMEOUT = 50; // 100ms timeout for response
-    this.MAX_MISSED_BEATS = 5; // Allow 3 missed beats before considering popup closed
+    this.HEARTBEAT_INTERVAL = TIMINGS.HEARTBEAT_INTERVAL; // from shared constants
+    this.HEARTBEAT_TIMEOUT = TIMINGS.HEARTBEAT_TIMEOUT;   // from shared constants
+    this.MAX_MISSED_BEATS = 3; // Allow a few missed beats before considering popup closed
     this.missedBeats = 0;
     this.setupEventListeners();
   }

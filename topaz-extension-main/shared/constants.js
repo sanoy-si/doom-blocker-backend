@@ -263,7 +263,7 @@ export const API_ENDPOINTS = {
 };
 
 export const API_CONFIG = {
-  GRID_CHUNK_SIZE: 3000000000
+  GRID_CHUNK_SIZE: 60
 }
 
 export const UI_ELEMENTS = {
@@ -275,8 +275,8 @@ export const UI_ELEMENTS = {
 
 // Timing constants
 export const TIMINGS = {
-  HEARTBEAT_INTERVAL: 10,
-  HEARTBEAT_TIMEOUT: 30,
+  HEARTBEAT_INTERVAL: 1000,
+  HEARTBEAT_TIMEOUT: 2500,
   UI_ANIMATION_DURATION: 300
 };
 
