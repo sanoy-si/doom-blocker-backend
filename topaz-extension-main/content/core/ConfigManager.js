@@ -11,7 +11,7 @@ class ConfigManager {
   getDefaultConfig() {
     return {
       tagsToIgnore: [],
-      skipExtraction: true,
+      skipExtraction: false,  // Changed from true to false - this was preventing extraction!
       hidingMethod: HIDING_METHODS.DISPLAY,
       showBlockCounter: true
     };

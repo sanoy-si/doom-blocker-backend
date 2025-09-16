@@ -544,7 +544,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
 
         payload = {
-            "model": "gpt-5-nano-2025-08-07",  # Fastest model (0.3ms vs 0.5ms for mini)
+            "model": "gpt-4o-mini",  # Use a valid OpenAI model
             "messages": [
                 {
                     "role": "system",
@@ -555,8 +555,8 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                     "content": content
                 }
             ],
-            "max_completion_tokens": 256  # Much smaller for faster response
-            # Note: temperature and timeout are not supported by GPT-5 Nano
+            "max_tokens": 256,  # Much smaller for faster response
+            "temperature": 0.1  # Low temperature for consistent results
         }
 
         response = requests.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload, timeout=30)
