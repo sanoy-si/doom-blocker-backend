@@ -1,9 +1,26 @@
-
 class GridDetector {
   constructor() {
     this.tagsToIgnore = [];
     this.signatureCache = new Map();
     this.ancestorCache = new Map();
+  }
+
+  // Check if element is within viewport (with margin for prefetch)
+  isElementInViewport(element, margin = 200) {
+    try {
+      if (!element || typeof element.getBoundingClientRect !== 'function') return false;
+      const rect = element.getBoundingClientRect();
+      const vw = window.innerWidth || document.documentElement.clientWidth;
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      return (
+        rect.bottom >= -margin &&
+        rect.top <= vh + margin &&
+        rect.right >= -margin &&
+        rect.left <= vw + margin
+      );
+    } catch (_) {
+      return false;
+    }
   }
 
   setTagsToIgnore(tags) {
@@ -24,6 +41,8 @@ class GridDetector {
       ...this.tagsToIgnore
     ];
     for (const element of allElements) {
+      // Skip offscreen elements to reduce work
+      if (!this.isElementInViewport(element)) continue;
       // Check if element matches any CSS selector to ignore
       if (this.matchesAnySelector(element, allSelectorsToIgnore)) {
         continue;
@@ -201,11 +220,10 @@ class GridDetector {
         continue;
       }
 
-      /* 
-      if (child.offsetParent === null) {
+      // Skip children that are not currently visible in or near the viewport
+      if (!this.isElementInViewport(child)) {
         continue;
       }
-      */
 
       validChildren.push(child);
     }

@@ -1,4 +1,4 @@
-import { MESSAGE_TYPES, BACKGROUND_EVENTS as EVENTS } from '../../shared/constants.js';
+import { MESSAGE_TYPES, BACKGROUND_EVENTS as EVENTS, DEBUG } from '../../shared/constants.js';
 
 class MessageRouter {
   constructor(eventBus) {
@@ -34,20 +34,23 @@ class MessageRouter {
    * Handle incoming messages
    */
   async handleMessage(message, sender, sendResponse) {
-    console.log('🔍 [MESSAGE_ROUTER] handleMessage called');
-    console.log('🔍 [MESSAGE_ROUTER] Raw message:', JSON.stringify(message, null, 2));
-    console.log('🔍 [MESSAGE_ROUTER] Sender:', {
-      tab: sender.tab ? {
-        id: sender.tab.id,
-        url: sender.tab.url,
-        title: sender.tab.title
-      } : 'No tab info',
-      frameId: sender.frameId,
-      origin: sender.origin
-    });
+    if (DEBUG) {
+      console.log(' [MESSAGE_ROUTER] handleMessage called');
+      console.log(' [MESSAGE_ROUTER] Raw message:', JSON.stringify(message, null, 2));
+      console.log(' [MESSAGE_ROUTER] Sender:', {
+        tab: sender.tab ? {
+          id: sender.tab.id,
+          url: sender.tab.url,
+          title: sender.tab.title
+        } : 'No tab info',
+        frameId: sender.frameId,
+        origin: sender.origin
+      });
+    }
+
     const messageType = message.type;
     if (!messageType) {
-      console.error('❌ [MESSAGE_ROUTER] Message without type received');
+      console.error(' [MESSAGE_ROUTER] Message without type received');
       sendResponse({
         success: false,
         error: 'Message type is required'
@@ -66,7 +69,7 @@ class MessageRouter {
     const handler = this.handlers.get(messageType);
     
     if (!handler) {
-      console.error('❌ [MESSAGE_ROUTER] No handler found for:', messageType);
+      console.error(' [MESSAGE_ROUTER] No handler found for:', messageType);
       sendResponse({
         success: false,
         error: `Unknown message type: ${messageType}`
@@ -74,15 +77,15 @@ class MessageRouter {
       return;
     }
 
-    console.log('✅ [MESSAGE_ROUTER] Handler found for:', messageType);
+    if (DEBUG) console.log(' [MESSAGE_ROUTER] Handler found for:', messageType);
 
     try {
-      console.log('🔍 [MESSAGE_ROUTER] Executing handler for:', messageType);
+      if (DEBUG) console.log(' [MESSAGE_ROUTER] Executing handler for:', messageType);
       
       // Execute handler
       const result = await handler(message, sender);
       
-      console.log('✅ [MESSAGE_ROUTER] Handler result:', JSON.stringify(result, null, 2));
+      if (DEBUG) console.log(' [MESSAGE_ROUTER] Handler result:', JSON.stringify(result, null, 2));
       
       // Send response
       const response = {
@@ -90,18 +93,20 @@ class MessageRouter {
         ...result
       };
       
-      console.log('✅ [MESSAGE_ROUTER] Sending response:', JSON.stringify(response, null, 2));
+      if (DEBUG) console.log(' [MESSAGE_ROUTER] Sending response:', JSON.stringify(response, null, 2));
       sendResponse(response);
     } catch (error) {
-      console.error('❌ [MESSAGE_ROUTER] Error handling message:', messageType, error);
-      console.error('❌ [MESSAGE_ROUTER] Error stack:', error.stack);
+      if (DEBUG) {
+        console.error(' [MESSAGE_ROUTER] Error handling message:', messageType, error);
+        console.error(' [MESSAGE_ROUTER] Error stack:', error.stack);
+      }
       
       const errorResponse = {
         success: false,
         error: error.message || 'Internal error'
       };
       
-      console.log('❌ [MESSAGE_ROUTER] Sending error response:', JSON.stringify(errorResponse, null, 2));
+      if (DEBUG) console.log(' [MESSAGE_ROUTER] Sending error response:', JSON.stringify(errorResponse, null, 2));
       sendResponse(errorResponse);
     }
   }

@@ -78,7 +78,7 @@ class GridManager {
         const childObject = {
           id: childId,
           element: child,
-          text: child.innerText
+          text: child.textContent
         };
         gridObject.children.push(childObject);
       }
@@ -99,6 +99,50 @@ class GridManager {
     return this.grids;
   }
 
+  /**
+   * Incrementally update grids based on DOM added nodes.
+   * Returns an array of grid objects that were newly added or updated.
+   */
+  updateGridsNearNodes(addedNodes) {
+    if (!addedNodes || addedNodes.length === 0) return [];
+
+    const updated = new Set();
+
+    const considerElement = (el) => {
+      if (!el || !el.nodeType || el.nodeType !== 1) return; // Only element nodes
+      const gridContainer = this.gridDetector.findGridContainer(el);
+      if (!gridContainer) return;
+      // Validate grid
+      if (!this.gridDetector.isGridValid(gridContainer)) return;
+
+      let grid = this.getGridByElement(gridContainer);
+      if (!grid) {
+        grid = this.addGrid(gridContainer);
+      } else {
+        this.updateGridChildren(grid);
+      }
+      if (grid) updated.add(grid);
+    };
+
+    // Check each added node and some ancestors to find nearest grid container
+    for (const node of addedNodes) {
+      if (!node) continue;
+      if (node.nodeType === 1) {
+        considerElement(node);
+        // Also consider up to 3 ancestors to catch containers
+        let ancestor = node.parentElement;
+        let depth = 0;
+        while (ancestor && depth < 3) {
+          considerElement(ancestor);
+          ancestor = ancestor.parentElement;
+          depth++;
+        }
+      }
+    }
+
+    return Array.from(updated);
+  }
+
   getGridJSON() {
     const gridStructure = {
       timestamp: new Date().toISOString(),
@@ -110,7 +154,7 @@ class GridManager {
       const gridData = {
         id: grid.id,
         totalChildren: grid.children.length,
-        gridText: grid.element.innerText,
+        gridText: grid.element.textContent,
         children: grid.children.map(child => ({
           id: child.id,
           text: child.text

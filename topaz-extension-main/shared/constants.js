@@ -3,6 +3,9 @@
  * Used by both popup and background scripts
  */
 
+// Global debug flag to control verbose logging
+export const DEBUG = false;
+
 // Chrome runtime message types (shared between popup and background)
 export const MESSAGE_TYPES = {
   // Grid analysis
@@ -180,8 +183,8 @@ export const STORAGE_KEYS = {
 export const CONFIG = {
   STAGING_WEBSITE: 'https://topaz-backend1.onrender.com',
   ALLOWED_WEBSITES: ['youtube.com', 'twitter.com', 'x.com', "linkedin.com", "reddit.com"],
-  TAB_ENABLE_MAX_RETRIES: 10,
-  TAB_ENABLE_RETRY_DELAY: 500
+  TAB_ENABLE_MAX_RETRIES: 3,
+  TAB_ENABLE_RETRY_DELAY: 300
 };
 
 export const DEFAULT_TAGS = {

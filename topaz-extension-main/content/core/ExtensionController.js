@@ -345,12 +345,19 @@ class ExtensionController {
         grid.children.map((child) => [child.id, child.text]),
       ),
     }));
-    console.time("[blur timing debug] findAllGridContainers duration (DOM mutation)");
-    const newGrids = this.gridManager.findAllGridContainers();
-    console.timeEnd("[blur timing debug] findAllGridContainers duration (DOM mutation)");
+
+    // Incremental update: only update grids near added nodes
+    const addedNodes = Array.isArray(data?.mutations)
+      ? data.mutations.flatMap(m => (m.addedNodes || [])).filter(n => n && n.nodeType === 1)
+      : [];
+
+    console.time("[blur timing debug] incremental updateGridsNearNodes duration (DOM mutation)");
+    const updatedGrids = this.gridManager.updateGridsNearNodes(addedNodes);
+    console.timeEnd("[blur timing debug] incremental updateGridsNearNodes duration (DOM mutation)");
+
     const currentGrids = this.gridManager.getAllGrids();
     const gridStructure = [];
-    for (const grid of newGrids) {
+    for (const grid of updatedGrids) {
       const childrenToAnalyze = [];
 
       for (const child of grid.children) {

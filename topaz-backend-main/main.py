@@ -517,8 +517,8 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
     try:
         prompt_start = time.time()
-        system_instruction = get_prompt_for_url(analysis_request.currentUrl, analysis_request.whitelist, analysis_request.blacklist)
-        logger.info(f"📋 System instruction loaded for URL pattern ({time.time() - prompt_start:.3f}s)")
+        base_system_instruction = get_prompt_for_url(analysis_request.currentUrl, analysis_request.whitelist, analysis_request.blacklist)
+        logger.info(f"📋 Base system instruction loaded ({time.time() - prompt_start:.3f}s)")
 
         # Check if OpenAI API is configured
         if not OPENAI_HEADERS:
@@ -532,6 +532,32 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
         # Clean grid data before sending to LLM
         cleaned_grid = clean_grid_structure_for_llm(grid_structure)
+
+        # Build strong system prompt with explicit schema and valid IDs to avoid hallucinations
+        def get_valid_child_ids(cleaned):
+            ids = []
+            for grid in cleaned.get('grids', []):
+                for child in grid.get('children', []):
+                    cid = child.get('id')
+                    if cid:
+                        ids.append(cid)
+            return ids
+
+        def build_system_prompt(base_prompt: str, cleaned: dict) -> str:
+            valid_ids = get_valid_child_ids(cleaned)
+            ids_block = "\n".join(valid_ids)
+            rules = (
+                "\n\nSTRICT OUTPUT RULES:\n"
+                "- Output ONLY a newline-separated list of child IDs to hide (e.g., g1c0, g1c5).\n"
+                "- Do NOT include any explanations, JSON, code fences, or extra text.\n"
+                "- If nothing should be hidden, return an empty string.\n"
+                "- You MUST only return IDs from the VALID_CHILD_IDS list below. Never invent IDs.\n"
+                "- Prefer to hide content matching blacklist terms and unrelated to whitelist intent.\n"
+                "\nVALID_CHILD_IDS:\n" + ids_block + "\n"
+            )
+            return f"{base_prompt}{rules}"
+
+        system_instruction = build_system_prompt(base_system_instruction, cleaned_grid)
         content = json.dumps(cleaned_grid, indent=2)
         
         # DEBUG: Log what we're sending to the AI
@@ -556,7 +582,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                 }
             ],
             "max_tokens": 256,  # Much smaller for faster response
-            "temperature": 0.1  # Low temperature for consistent results
+            "temperature": 0.0  # Deterministic for consistent results
         }
 
         response = requests.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload, timeout=30)
@@ -575,13 +601,37 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
         logger.info(f"🔍 DEBUG: AI response length: {len(response_content)} chars")
         logger.info(f"🔍 DEBUG: AI response preview: {response_content[:200]}...")
 
-        # Parse the result
+        # Parse and sanitize the result
         parse_start = time.time()
 
-        # Convert newline format to JSON format
-        if response_content and response_content.strip():
-            result = convert_newline_format_to_json(response_content)
-            total_children_to_remove = len([child for child in response_content.split('\n') if child.strip()])
+        def sanitize_llm_response(text: str, cleaned: dict) -> str:
+            """Extract only valid child IDs present in the cleaned grid from arbitrary model text."""
+            try:
+                # Collect valid IDs set
+                valid = set()
+                for grid in cleaned.get('grids', []):
+                    for child in grid.get('children', []):
+                        cid = child.get('id')
+                        if cid:
+                            valid.add(cid)
+                # Regex to find tokens like g12c3 etc.
+                ids = re.findall(r"g\d+c\d+", text or "")
+                # Filter to only valid ids and deduplicate preserving order
+                seen = set()
+                filtered = []
+                for cid in ids:
+                    if cid in valid and cid not in seen:
+                        filtered.append(cid)
+                        seen.add(cid)
+                return "\n".join(filtered)
+            except Exception:
+                return ""
+
+        # Sanitize first, then convert
+        sanitized = sanitize_llm_response(response_content, cleaned_grid)
+        if sanitized and sanitized.strip():
+            result = convert_newline_format_to_json(sanitized)
+            total_children_to_remove = len([child for child in sanitized.split('\n') if child.strip()])
         else:
             # FALLBACK: If AI returns empty, try simple keyword matching
             logger.warning("🤖 AI returned empty response, trying fallback keyword matching")
