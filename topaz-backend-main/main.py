@@ -582,7 +582,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                 }
             ],
             "max_tokens": 256,  # Much smaller for faster response
-            "temperature": 0.0  # Deterministic for consistent results
+            "temperature": 0.6  # Deterministic for consistent results
         }
 
         response = requests.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload, timeout=30)
