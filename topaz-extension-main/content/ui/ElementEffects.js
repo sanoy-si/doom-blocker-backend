@@ -5,6 +5,50 @@ class ElementEffects {
   constructor() {
     // Use WeakMap to track element states without polluting DOM
     this.elementStates = new WeakMap();
+    // When true, do not actually hide elements; used by preview mode
+    this.suppressHiding = false;
+  }
+
+  /**
+   * Add glowing preview outline to elements
+   * @param {HTMLElement[]} elements 
+   */
+  addPreviewGlow(elements = []) {
+    if (!Array.isArray(elements)) return 0;
+    let count = 0;
+    elements.forEach(el => {
+      if (el && document.contains(el)) {
+        el.classList.add('topaz-preview-glow');
+        count++;
+      }
+    });
+    return count;
+  }
+
+  /**
+   * Remove glowing preview outline from elements
+   * @param {HTMLElement[]} elements 
+   */
+  removePreviewGlow(elements = []) {
+    if (!Array.isArray(elements)) return 0;
+    let count = 0;
+    elements.forEach(el => {
+      if (el && document.contains(el)) {
+        el.classList.remove('topaz-preview-glow');
+        count++;
+      }
+    });
+    return count;
+  }
+
+  /**
+   * Re-hide elements by id/element pairs using current hiding method
+   * @param {{id:string, element:HTMLElement}[]} items
+   * @param {string} method
+   */
+  rehideItems(items = [], method) {
+    if (!Array.isArray(items) || items.length === 0) return 0;
+    return this.hideElements(items, method);
   }
 
   /**
@@ -197,6 +241,14 @@ class ElementEffects {
     elements.forEach(({ id, element }) => {
       if (!element || !document.contains(element)) {
         return;
+      }
+
+      // If preview suppression is enabled, do not hide - just add glow marker
+      if (this.suppressHiding) {
+        try {
+          element.classList.add('topaz-preview-glow');
+        } catch (_) {}
+        return; // do not count as hidden
       }
 
       // Check if this is a video element and apply light trace effect
@@ -504,6 +556,14 @@ class ElementEffects {
    */
   setElementState(element, state) {
     this.elementStates.set(element, state);
+  }
+
+  /**
+   * Enable/disable suppression of hiding (preview mode)
+   * @param {boolean} flag
+   */
+  setSuppressHiding(flag) {
+    this.suppressHiding = !!flag;
   }
 
   /**

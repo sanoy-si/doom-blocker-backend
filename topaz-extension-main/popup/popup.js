@@ -186,6 +186,12 @@ function setupEventListeners() {
     editResetButton.addEventListener('click', handleResetProfile);
   }
   
+  // Preview toggle button (show/hide hidden items with glow)
+  const previewToggleButton = document.getElementById('previewToggleButton');
+  if (previewToggleButton) {
+    previewToggleButton.addEventListener('click', handlePreviewToggleClick);
+  }
+  
   // Simple mode send button
   const simpleSendButton = document.getElementById('simpleSendButton');
   if (simpleSendButton) {
@@ -587,6 +593,26 @@ function handleSimpleSendButtonClick() {
 function handleSimpleSaveButtonClick() {
   console.log('Simple save button clicked - closing popup');
   window.close();
+}
+
+// Preview toggle click handler
+let previewEnabled = false;
+async function handlePreviewToggleClick() {
+  try {
+    previewEnabled = !previewEnabled;
+    const btn = document.getElementById('previewToggleButton');
+    if (btn) {
+      btn.classList.toggle('active', previewEnabled);
+      btn.textContent = previewEnabled ? 'Hide Hidden Content' : 'Show Hidden Content';
+    }
+    const result = await window.backgroundAPI.togglePreviewHidden(previewEnabled);
+    console.log('Preview toggle result:', result);
+    if (!result?.success) {
+      console.warn('Preview toggle failed:', result?.error);
+    }
+  } catch (e) {
+    console.error('Failed to toggle preview:', e);
+  }
 }
 
 

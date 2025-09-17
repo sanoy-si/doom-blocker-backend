@@ -12,6 +12,8 @@ class ExtensionController {
     this.elementEffects = new ElementEffects();
     this.contentFingerprint = new ContentFingerprint();
     this.elementsAnalyzedInCurrentCycle = new Map(); // Track elements sent for analysis
+    // Track preview state and items for toggle preview feature
+    this.previewState = { enabled: false, items: [] };
     this.setupEventListeners();
     this.messageHandler.setupMessageListener();
   }
@@ -100,6 +102,11 @@ class ExtensionController {
 
     this.eventBus.on("message:url-changed", ({ url }) => {
       this.handleUrlChanged(url);
+    });
+
+    // Preview toggle from popup
+    this.eventBus.on('message:toggle-preview-hidden', ({ enable, sendResponse }) => {
+      this.handleTogglePreviewHidden(!!enable, sendResponse);
     });
 
     // 🚀 INSTANT FILTERING: Handle instant filter requests from popup
@@ -902,6 +909,65 @@ class ExtensionController {
       }
     } catch (e) {
       console.warn('Quick visible analysis failed:', e);
+    }
+  }
+
+  // Toggle preview: show hidden items with glow, or re-hide them
+  async handleTogglePreviewHidden(enable, sendResponse) {
+    try {
+      console.log('[Preview] Toggle requested. enable =', enable);
+      if (enable) {
+        // Suppress new hiding actions during preview mode
+        this.elementEffects.setSuppressHiding(true);
+        const hidden = this.elementEffects.getHiddenElements();
+        console.log('[Preview] Hidden elements found:', hidden?.length || 0);
+        if (!hidden || hidden.length === 0) {
+          this.previewState = { enabled: true, items: [] };
+          if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'No hidden items to preview'));
+          return;
+        }
+
+        // Capture current hiding method/state before restore
+        const items = hidden.map(({ id, element }) => {
+          const st = this.elementEffects.getElementState(element) || {};
+          return { id, element, method: st.hidingMethod };
+        });
+
+        // Restore elements so they become visible, then add a glow outline
+        await this.elementEffects.restoreElements(items.map(i => i.element));
+        const glowCount = this.elementEffects.addPreviewGlow(items.map(i => i.element));
+        console.log('[Preview] Restored and applied glow to elements:', glowCount);
+
+        this.previewState = { enabled: true, items };
+        if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'Preview enabled', { count: items.length }));
+      } else {
+        const items = this.previewState.items || [];
+        console.log('[Preview] Disabling preview. Items to re-hide:', items.length);
+        if (items.length > 0) {
+          const removed = this.elementEffects.removePreviewGlow(items.map(i => i.element));
+          console.log('[Preview] Removed glow count:', removed);
+          // Re-hide using original hiding methods; fallback to current config if missing
+          const byMethod = new Map();
+          for (const it of items) {
+            const method = it.method || this.configManager.getHidingMethod();
+            if (!byMethod.has(method)) byMethod.set(method, []);
+            byMethod.get(method).push({ id: it.id, element: it.element });
+          }
+          for (const [method, list] of byMethod.entries()) {
+            const hid = this.elementEffects.hideElements(list, method);
+            console.log(`[Preview] Re-hidden ${hid} items with method:`, method);
+          }
+        }
+        this.previewState = { enabled: false, items: [] };
+        // Re-enable hiding now that preview is disabled
+        this.elementEffects.setSuppressHiding(false);
+        // Re-run quick visible analysis to apply any new filters instantly
+        await this.quickAnalyzeVisible();
+        if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'Preview disabled'));
+      }
+    } catch (e) {
+      console.error('Preview toggle failed:', e);
+      if (sendResponse) sendResponse(this.messageHandler.createResponse(false, `Preview toggle failed: ${e.message}`));
     }
   }
 

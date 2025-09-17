@@ -314,6 +314,56 @@ const backgroundAPI = {
       return { success: false, error: error.message };
     }
   }
+  ,
+
+  // Toggle preview of hidden content on the active tab
+  async togglePreviewHidden(enable) {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (!tab || !tab.id) {
+        return { success: false, error: 'No active tab' };
+      }
+
+      try {
+        const response = await chrome.tabs.sendMessage(tab.id, {
+          type: 'TOGGLE_PREVIEW_HIDDEN',
+          enable: !!enable,
+          timestamp: Date.now()
+        });
+        return { success: true, response };
+      } catch (messageError) {
+        // Fallback: inject the full content script stack (same order as manifest)
+        try {
+          const files = [
+            'content/utils/constants.js',
+            'content/core/EventBus.js',
+            'content/core/ConfigManager.js',
+            'content/grid/GridDetector.js',
+            'content/grid/GridManager.js',
+            'content/grid/ContentFingerprint.js',
+            'content/ui/ElementEffects.js',
+            'content/ui/NotificationManager.js',
+            'content/observers/DOMObserver.js',
+            'content/messaging/MessageHandler.js',
+            'content/core/ExtensionController.js',
+            'content/index.js'
+          ];
+          await chrome.scripting.executeScript({ target: { tabId: tab.id }, files });
+          await new Promise(r => setTimeout(r, 500));
+          const response = await chrome.tabs.sendMessage(tab.id, {
+            type: 'TOGGLE_PREVIEW_HIDDEN',
+            enable: !!enable,
+            timestamp: Date.now()
+          });
+          return { success: true, response };
+        } catch (injectionError) {
+          return { success: false, error: 'Content script not available' };
+        }
+      }
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 };
 
 // Export for use in other files

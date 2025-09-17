@@ -55,6 +55,13 @@ class MessageHandler {
       case 'INSTANT_FILTER_REQUEST':
         this.handleInstantFilter(message, sendResponse);
         break;
+      case 'TOGGLE_PREVIEW_HIDDEN':
+        console.log('📨 Received TOGGLE_PREVIEW_HIDDEN:', message);
+        this.eventBus.emit('message:toggle-preview-hidden', {
+          enable: !!message.enable,
+          sendResponse
+        });
+        break;
         
       default:
         sendResponse(this.createResponse(false, `Unknown message type: ${message.type}`));
