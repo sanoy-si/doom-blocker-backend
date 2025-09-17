@@ -8,31 +8,22 @@
     <body>
         <div class="top-bar">
             <div class="version-number" id="versionNumber">v0.0.0</div>
-            <div class="top-bar-actions">
-                <button id="logoutButton" class="logout-button hidden" title="Logout">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                        <polyline points="16,17 21,12 16,7"></polyline>
-                        <line x1="21" y1="12" x2="9" y2="12"></line>
-                    </svg>
-                </button>
-                <button id="settingsButton" class="settings-button" title="Settings">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path d="M12 1v6"></path>
-                        <path d="M12 17v6"></path>
-                        <path d="M1 12h6"></path>
-                        <path d="M17 12h6"></path>
-                        <path d="M20.2 7.8l-4.2 4.2"></path>
-                        <path d="M8 8l-4.2-4.2"></path>
-                        <path d="M20.2 16.2l-4.2-4.2"></path>
-                        <path d="M8 16l-4.2 4.2"></path>
-                    </svg>
-                </button>
-            </div>
+            <button id="settingsButton" class="settings-button" title="Settings">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M12 1v6"></path>
+                    <path d="M12 17v6"></path>
+                    <path d="M1 12h6"></path>
+                    <path d="M17 12h6"></path>
+                    <path d="M20.2 7.8l-4.2 4.2"></path>
+                    <path d="M8 8l-4.2-4.2"></path>
+                    <path d="M20.2 16.2l-4.2-4.2"></path>
+                    <path d="M8 16l-4.2 4.2"></path>
+                </svg>
+            </button>
         </div>
-        <!-- Main Page - Hidden by default, only shown after authentication -->
-        <div class="container hidden" id="mainPage">
+        <!-- Main Page -->
+        <div class="container" id="mainPage">
 
             <!-- Main toggle button -->
             <div class="toggle-section">
@@ -228,20 +219,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- Premium Upgrade Section -->
-            <div class="premium-section hidden" id="premiumSection">
-                <div class="premium-card">
-                    <div class="premium-header">
-                        <span class="premium-icon">⭐</span>
-                        <span class="premium-title">Upgrade to Premium</span>
-                    </div>
-                    <p class="premium-description">Unlock customization features</p>
-                    <button id="upgradeToPremiumButton" class="upgrade-button">
-                        Upgrade
-                    </button>
-                </div>
-            </div>
             <!-- COMMENTED OUT: Auth functionality disabled
             <div id="profileOverlay" class="profile-overlay hidden">
                 <div class="profile-header">
@@ -303,22 +280,6 @@
                 </div>
             </div>
             -->
-        </div>
-
-        <!-- Welcome Page - Shown by default until user authenticates -->
-        <div class="container" id="welcomePage">
-            <div class="welcome-content">
-                <div class="welcome-header">
-                    <h2 class="welcome-title">Welcome to Topaz</h2>
-                    <p class="welcome-subtitle">Sign in to continue</p>
-                </div>
-                
-                <div class="welcome-actions">
-                    <button id="googleSignInButton" class="google-signin-button">
-                        <span>Sign in with Google</span>
-                    </button>
-                </div>
-            </div>
         </div>
 
         <!-- Profile Edit Page -->
@@ -429,9 +390,6 @@
         <script src="state.js"></script>
         <script src="background-api.js"></script>
         <script src="ui.js"></script>
-        <script src="google-auth.js"></script>
-        <script src="supabase-auth.js"></script>
-        <script src="signin-flow.js"></script>
         <script src="popup.js"></script>
     </body>
 </html>
