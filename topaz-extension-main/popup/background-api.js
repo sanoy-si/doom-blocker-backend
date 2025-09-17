@@ -410,6 +410,30 @@ const backgroundAPI = {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  },
+
+  // Storage methods for onboarding and authentication
+  async getStorageValue(key) {
+    try {
+      const result = await chrome.storage.local.get(key);
+      return {
+        success: true,
+        value: result[key]
+      };
+    } catch (error) {
+      console.error('Failed to get storage value:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  async setStorageValue(key, value) {
+    try {
+      await chrome.storage.local.set({ [key]: value });
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to set storage value:', error);
+      return { success: false, error: error.message };
+    }
   }
 };
 
