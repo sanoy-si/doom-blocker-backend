@@ -43,8 +43,16 @@
       "128": "icons/icon-128.png"
     }
   },
-  "permissions": ["storage", "tabs", "scripting"],
+  "permissions": ["storage", "tabs", "scripting", "identity"],
+  "oauth2": {
+    "client_id": "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": ["openid", "email", "profile"]
+  },
   "host_permissions": [
+    "https://YOUR_SUPABASE_PROJECT.supabase.co/*",
+    "https://accounts.google.com/*",
+    "https://oauth2.googleapis.com/*",
+    "https://www.googleapis.com/*",
     "https://www.youtube.com/*",
     "https://youtube.com/*",
     "https://m.youtube.com/*",
