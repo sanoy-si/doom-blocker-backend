@@ -43,6 +43,8 @@ async function initializePopup() {
     
     console.log('🎨 Rendering initial view...');
     window.ui.renderCurrentView();
+    // Sync preview button with current tab state
+    await syncPreviewButtonState();
     
     console.log('✅ Popup initialized successfully');
     
@@ -228,6 +230,8 @@ async function handleExtensionToggle() {
         message: `Extension ${result.enabled ? 'enabled' : 'disabled'}`,
         duration: 2000
       });
+      // Re-sync preview button availability when extension state changes
+      await syncPreviewButtonState();
     } else {
       throw new Error(result.error || 'Failed to toggle extension');
     }
@@ -599,23 +603,78 @@ function handleSimpleSaveButtonClick() {
 let previewEnabled = false;
 async function handlePreviewToggleClick() {
   try {
-    previewEnabled = !previewEnabled;
+    // Do nothing if extension is disabled
+    if (!window.appState?.state?.isExtensionEnabled) {
+      window.ui && window.ui.showNotification && window.ui.showNotification({
+        type: 'warning',
+        message: 'Enable Topaz to preview hidden content',
+        duration: 1800
+      });
+      return;
+    }
+    const desired = !previewEnabled;
     const btn = document.getElementById('previewToggleButton');
+    // Optimistic UI: show spinner state by toggling class, but finalize after response
+    if (btn) btn.classList.add('active');
+    const result = await window.backgroundAPI.togglePreviewHidden(desired);
+    console.log('Preview toggle result:', result);
+    if (!result?.success) {
+      console.warn('Preview toggle failed:', result?.error);
+      // Re-sync UI to actual state
+      await syncPreviewButtonState();
+      return;
+    }
+    // Derive final enabled state from content response when available
+    const enabledFromContentVal = result?.response?.data?.enabled;
+    const enabledFromContent = typeof enabledFromContentVal === 'boolean' ? enabledFromContentVal : undefined;
+    previewEnabled = (enabledFromContent === undefined) ? desired : enabledFromContent;
     if (btn) {
       btn.classList.toggle('active', previewEnabled);
       btn.textContent = previewEnabled ? 'Hide Hidden Content' : 'Show Hidden Content';
     }
-    const result = await window.backgroundAPI.togglePreviewHidden(previewEnabled);
-    console.log('Preview toggle result:', result);
-    if (!result?.success) {
-      console.warn('Preview toggle failed:', result?.error);
-    }
+    // Do not sync immediately on success; content is source of truth and we just set from its response
   } catch (e) {
     console.error('Failed to toggle preview:', e);
+    // Defer sync slightly to avoid racing with error cases
+    setTimeout(() => { syncPreviewButtonState().catch(() => {}); }, 150);
   }
 }
 
-
+// Query content script for current preview state and update button UI
+async function syncPreviewButtonState() {
+  try {
+    const btn = document.getElementById('previewToggleButton');
+    if (!btn) return;
+    // Get content preview state
+    const res = await window.backgroundAPI.getPreviewState();
+    const enabled = !!res?.response?.data?.enabled;
+    const hiddenCount = Number(res?.response?.data?.hiddenCount || 0);
+    // Always ask background for current extension state to avoid stale window.appState
+    let extEnabled = true;
+    try {
+      const ext = await window.backgroundAPI.getExtensionState();
+      extEnabled = !!ext?.enabled;
+    } catch (_) {
+      extEnabled = true; // default to enabled if we cannot determine
+    }
+    previewEnabled = enabled;
+    btn.classList.toggle('active', enabled);
+    // Button is disabled only when extension is disabled
+    if (!extEnabled) {
+      btn.disabled = true;
+      btn.textContent = 'Show Hidden Content';
+      btn.classList.remove('active');
+      previewEnabled = false;
+      return;
+    }
+    btn.disabled = false;
+    // Keep clickable even if there are 0 to show; show a count hint when available
+    btn.textContent = enabled ? 'Hide Hidden Content' : (hiddenCount > 0 ? `Show Hidden Content (${hiddenCount})` : 'Show Hidden Content');
+  } catch (e) {
+    // If we can't reach content script yet, leave default UI
+    console.log('Could not sync preview state:', e?.message || e);
+  }
+}
 
 // Add tag to current list
 function addTag(tag) {

@@ -14,8 +14,27 @@ class ExtensionController {
     this.elementsAnalyzedInCurrentCycle = new Map(); // Track elements sent for analysis
     // Track preview state and items for toggle preview feature
     this.previewState = { enabled: false, items: [] };
+    this.previewProcessing = false; // prevent overlapping preview toggles
     this.setupEventListeners();
     this.messageHandler.setupMessageListener();
+  }
+
+  // Return current preview state to popup
+  handleGetPreviewState(sendResponse) {
+    try {
+      const enabled = !this.isDisabled && !!(this.previewState && this.previewState.enabled);
+      let hiddenCount = 0;
+      try {
+        hiddenCount = (this.elementEffects.getHiddenElements() || []).length;
+      } catch (_) {}
+      if (sendResponse) {
+        sendResponse(this.messageHandler.createResponse(true, 'Preview state', { enabled, hiddenCount }));
+      }
+    } catch (e) {
+      if (sendResponse) {
+        sendResponse(this.messageHandler.createResponse(false, e.message));
+      }
+    }
   }
 
   // Reduce payload size to speed up API and align with backend cleaning rules
@@ -108,6 +127,10 @@ class ExtensionController {
     this.eventBus.on('message:toggle-preview-hidden', ({ enable, sendResponse }) => {
       this.handleTogglePreviewHidden(!!enable, sendResponse);
     });
+    // Preview state query from popup
+    this.eventBus.on('message:get-preview-state', ({ sendResponse }) => {
+      this.handleGetPreviewState(sendResponse);
+    });
 
     // 🚀 INSTANT FILTERING: Handle instant filter requests from popup
     this.eventBus.on("message:instant-filter", ({ sendResponse }) => {
@@ -193,6 +216,14 @@ class ExtensionController {
     this.isDisabled = true;
     this.domObserver.stopObserving();
     this.clearAnalysisTimeout();
+    // Ensure preview-related visuals/state are cleared
+    try {
+      this.elementEffects.removeAllPreviewGlow && this.elementEffects.removeAllPreviewGlow();
+      const marked = this.elementEffects.getPreviewMarkedElements ? this.elementEffects.getPreviewMarkedElements() : [];
+      this.elementEffects.removePreviewMarker && this.elementEffects.removePreviewMarker(marked);
+    } catch (_) {}
+    this.previewState = { enabled: false, items: [] };
+    this.elementEffects.setSuppressHiding(false);
     if (revive) {
       await this.elementEffects.restoreAllElements();
     }
@@ -916,6 +947,20 @@ class ExtensionController {
   async handleTogglePreviewHidden(enable, sendResponse) {
     try {
       console.log('[Preview] Toggle requested. enable =', enable);
+      if (this.previewProcessing) {
+        console.log('[Preview] Toggle ignored – already processing');
+        if (sendResponse) sendResponse(this.messageHandler.createResponse(false, 'Busy'));
+        return;
+      }
+      this.previewProcessing = true;
+      if (this.isDisabled) {
+        console.log('[Preview] Ignored toggle – extension is disabled');
+        // Make sure suppression is off when disabled
+        this.elementEffects.setSuppressHiding(false);
+        if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'Extension disabled', { enabled: false }));
+        this.previewProcessing = false;
+        return;
+      }
       if (enable) {
         // Suppress new hiding actions during preview mode
         this.elementEffects.setSuppressHiding(true);
@@ -923,7 +968,8 @@ class ExtensionController {
         console.log('[Preview] Hidden elements found:', hidden?.length || 0);
         if (!hidden || hidden.length === 0) {
           this.previewState = { enabled: true, items: [] };
-          if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'No hidden items to preview'));
+          if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'No hidden items to preview', { enabled: true, count: 0 }));
+          this.previewProcessing = false;
           return;
         }
 
@@ -935,17 +981,35 @@ class ExtensionController {
 
         // Restore elements so they become visible, then add a glow outline
         await this.elementEffects.restoreElements(items.map(i => i.element));
-        const glowCount = this.elementEffects.addPreviewGlow(items.map(i => i.element));
+        const els = items.map(i => i.element);
+        const glowCount = this.elementEffects.addPreviewGlow(els);
+        // Mark elements as previewed so we can recover if our list is lost
+        this.elementEffects.addPreviewMarker && this.elementEffects.addPreviewMarker(els);
         console.log('[Preview] Restored and applied glow to elements:', glowCount);
 
         this.previewState = { enabled: true, items };
-        if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'Preview enabled', { count: items.length }));
+        if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'Preview enabled', { enabled: true, count: items.length }));
       } else {
-        const items = this.previewState.items || [];
+        let items = this.previewState.items || [];
         console.log('[Preview] Disabling preview. Items to re-hide:', items.length);
+        // If our internal list is empty (e.g., DOM mutated), reconstruct from markers
+        if (items.length === 0 && this.elementEffects.getPreviewMarkedElements) {
+          const marked = this.elementEffects.getPreviewMarkedElements();
+          if (Array.isArray(marked) && marked.length > 0) {
+            items = marked.map(el => {
+              const st = this.elementEffects.getElementState(el) || {};
+              return { id: st.elementId, element: el, method: st.hidingMethod };
+            });
+            console.log('[Preview] Reconstructed items from markers:', items.length);
+          }
+        }
         if (items.length > 0) {
-          const removed = this.elementEffects.removePreviewGlow(items.map(i => i.element));
+          // Re-enable hiding BEFORE we attempt to hide elements again
+          this.elementEffects.setSuppressHiding(false);
+          const elementsOnly = items.map(i => i.element);
+          const removed = this.elementEffects.removePreviewGlow(elementsOnly);
           console.log('[Preview] Removed glow count:', removed);
+          this.elementEffects.removePreviewMarker && this.elementEffects.removePreviewMarker(elementsOnly);
           // Re-hide using original hiding methods; fallback to current config if missing
           const byMethod = new Map();
           for (const it of items) {
@@ -953,21 +1017,29 @@ class ExtensionController {
             if (!byMethod.has(method)) byMethod.set(method, []);
             byMethod.get(method).push({ id: it.id, element: it.element });
           }
+          let totalHidden = 0;
           for (const [method, list] of byMethod.entries()) {
             const hid = this.elementEffects.hideElements(list, method);
             console.log(`[Preview] Re-hidden ${hid} items with method:`, method);
+            totalHidden += hid;
+          }
+          // Strong fallback: if nothing was re-hidden (e.g., missing method), force DISPLAY hide
+          if (totalHidden === 0) {
+            const forced = this.elementEffects.hideElements(items.map(i => ({ id: i.id, element: i.element })), 'display');
+            console.log('[Preview] Forced re-hide with DISPLAY, count:', forced);
           }
         }
         this.previewState = { enabled: false, items: [] };
-        // Re-enable hiding now that preview is disabled
-        this.elementEffects.setSuppressHiding(false);
         // Re-run quick visible analysis to apply any new filters instantly
         await this.quickAnalyzeVisible();
-        if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'Preview disabled'));
+        if (sendResponse) sendResponse(this.messageHandler.createResponse(true, 'Preview disabled', { enabled: false }));
       }
     } catch (e) {
       console.error('Preview toggle failed:', e);
       if (sendResponse) sendResponse(this.messageHandler.createResponse(false, `Preview toggle failed: ${e.message}`));
+    }
+    finally {
+      this.previewProcessing = false;
     }
   }
 

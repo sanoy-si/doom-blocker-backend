@@ -66,6 +66,26 @@ class TabManager {
       const isContentScriptNotReady = error.message?.includes('Receiving end does not exist');
       
       if (isContentScriptNotReady && attempt < maxRetries) {
+        // Try to inject the full content script stack before retrying
+        try {
+          const files = [
+            'content/utils/constants.js',
+            'content/core/EventBus.js',
+            'content/core/ConfigManager.js',
+            'content/grid/GridDetector.js',
+            'content/grid/GridManager.js',
+            'content/grid/ContentFingerprint.js',
+            'content/ui/ElementEffects.js',
+            'content/ui/NotificationManager.js',
+            'content/observers/DOMObserver.js',
+            'content/messaging/MessageHandler.js',
+            'content/core/ExtensionController.js',
+            'content/index.js'
+          ];
+          await chrome.scripting.executeScript({ target: { tabId }, files });
+        } catch (e) {
+          // ignore; we'll retry either way
+        }
         setTimeout(() => {
           this.enableTab(tabId, url, maxRetries, delay, attempt + 1);
         }, delay);

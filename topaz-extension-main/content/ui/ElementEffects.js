@@ -42,6 +42,62 @@ class ElementEffects {
   }
 
   /**
+   * Remove glow from all elements across the document
+   * @returns {number} How many elements were cleared
+   */
+  removeAllPreviewGlow() {
+    const nodes = document.querySelectorAll('.topaz-preview-glow');
+    let count = 0;
+    nodes.forEach(el => {
+      el.classList.remove('topaz-preview-glow');
+      count++;
+    });
+    return count;
+  }
+
+  /**
+   * Add a marker class so we can find previewed elements later
+   * @param {HTMLElement[]} elements
+   * @returns {number}
+   */
+  addPreviewMarker(elements = []) {
+    if (!Array.isArray(elements)) return 0;
+    let count = 0;
+    elements.forEach(el => {
+      if (el && document.contains(el)) {
+        el.classList.add('topaz-preview-mark');
+        count++;
+      }
+    });
+    return count;
+  }
+
+  /**
+   * Remove preview marker class
+   * @param {HTMLElement[]} elements
+   * @returns {number}
+   */
+  removePreviewMarker(elements = []) {
+    if (!Array.isArray(elements)) return 0;
+    let count = 0;
+    elements.forEach(el => {
+      if (el && document.contains(el)) {
+        el.classList.remove('topaz-preview-mark');
+        count++;
+      }
+    });
+    return count;
+  }
+
+  /**
+   * Query all elements currently marked as previewed
+   * @returns {HTMLElement[]}
+   */
+  getPreviewMarkedElements() {
+    return Array.from(document.querySelectorAll('.topaz-preview-mark'));
+  }
+
+  /**
    * Re-hide elements by id/element pairs using current hiding method
    * @param {{id:string, element:HTMLElement}[]} items
    * @param {string} method

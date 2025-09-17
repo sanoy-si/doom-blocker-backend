@@ -32,12 +32,15 @@
                         <img src="../topaz.svg" alt="Topaz Logo" class="logo" />
                         <div class="button-text">
                             <span class="title">topaz</span>
-                            <span id="toggleStatus" class="status"
-                                >enabled</span
-                            >
+                            <span id="toggleStatus" class="status">enabled</span>
                         </div>
                     </div>
                 </button>
+
+                <!-- Preview bar visible regardless of customization toggle -->
+                <div class="preview-bar">
+                    <button id="previewToggleButton" class="tab-button" type="button" title="Show or hide previously blocked content">Show Hidden Content</button>
+                </div>
                 <!-- COMMENTED OUT: Auth functionality disabled
                 <div id="loginTip" class="login-tip hidden">
                     <div class="tip-content">
@@ -85,11 +88,6 @@
             <div class="simple-mode-section hidden" id="simpleModeSection">
                 <div class="simple-mode-container">
                     <div class="simple-chip-system">
-                        <!-- New mode bar above Enable Customization -->
-                        <div class="tab-buttons" style="margin-bottom: 8px;">
-                            <button id="previewToggleButton" class="tab-button" type="button" title="Show or hide previously blocked content">Show Hidden Content</button>
-                        </div>
-
                         <div class="customization-toggle-container">
                             <span class="customization-label">Enable Customization</span>
                             <div class="toggle-switch">

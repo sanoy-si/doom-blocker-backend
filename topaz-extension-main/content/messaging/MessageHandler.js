@@ -62,6 +62,9 @@ class MessageHandler {
           sendResponse
         });
         break;
+      case 'GET_PREVIEW_STATE':
+        this.eventBus.emit('message:get-preview-state', { sendResponse });
+        break;
         
       default:
         sendResponse(this.createResponse(false, `Unknown message type: ${message.type}`));
