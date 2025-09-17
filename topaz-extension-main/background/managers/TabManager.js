@@ -7,6 +7,8 @@ class TabManager {
   constructor(eventBus, stateManager) {
     this.eventBus = eventBus;
     this.stateManager = stateManager;
+    // Prevent concurrent enable/inject cycles per tab
+    this.enableInFlight = new Set();
     this.setupEventListeners();
   }
 
@@ -55,6 +57,10 @@ class TabManager {
       return;
     }
 
+    if (this.enableInFlight.has(tabId)) {
+      return; // single-flight guard
+    }
+    this.enableInFlight.add(tabId);
     try {
       await this.sendMessageToTab(tabId, {
         type: MESSAGE_TYPES.ENABLE,
@@ -69,6 +75,7 @@ class TabManager {
         // Try to inject the full content script stack before retrying
         try {
           const files = [
+            'content/core/Logger.js',
             'content/utils/constants.js',
             'content/core/EventBus.js',
             'content/core/ConfigManager.js',
@@ -90,6 +97,8 @@ class TabManager {
           this.enableTab(tabId, url, maxRetries, delay, attempt + 1);
         }, delay);
       }
+    } finally {
+      this.enableInFlight.delete(tabId);
     }
   }
 

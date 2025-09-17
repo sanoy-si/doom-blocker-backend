@@ -98,6 +98,33 @@ class ElementEffects {
   }
 
   /**
+   * Hard cleanup: remove all preview-related artifacts across the page
+   */
+  clearAllPreviewArtifacts() {
+    try {
+      // Remove preview glow and markers
+      this.removeAllPreviewGlow();
+      this.removePreviewMarker(this.getPreviewMarkedElements());
+    } catch (_) {}
+    try {
+      // Remove any video preview/hide classes
+      document.querySelectorAll('.topaz-video-rotating, .topaz-video-hidden').forEach(el => {
+        el.classList.remove('topaz-video-rotating', 'topaz-video-hidden');
+      });
+    } catch (_) {}
+    try {
+      // Clear data-state attributes left on elements in preview context
+      document.querySelectorAll('[data-topaz-state]')
+        .forEach(el => {
+          const st = this.getElementState(el);
+          if (!st.hidden && !st.flagged) {
+            el.removeAttribute('data-topaz-state');
+          }
+        });
+    } catch (_) {}
+  }
+
+  /**
    * Re-hide elements by id/element pairs using current hiding method
    * @param {{id:string, element:HTMLElement}[]} items
    * @param {string} method

@@ -45,6 +45,15 @@ async function initializePopup() {
     window.ui.renderCurrentView();
     // Sync preview button with current tab state
     await syncPreviewButtonState();
+
+    // Keyboard shortcut: Ctrl/Cmd + Shift + H toggles preview
+    window.addEventListener('keydown', (e) => {
+      const isModifier = (e.ctrlKey || e.metaKey) && e.shiftKey;
+      if (isModifier && (e.key === 'h' || e.key === 'H')) {
+        e.preventDefault();
+        handlePreviewToggleClick();
+      }
+    });
     
     console.log('✅ Popup initialized successfully');
     

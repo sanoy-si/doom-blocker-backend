@@ -15,8 +15,30 @@ class ExtensionController {
     // Track preview state and items for toggle preview feature
     this.previewState = { enabled: false, items: [] };
     this.previewProcessing = false; // prevent overlapping preview toggles
+    // Initialize logger if available
+    try {
+      this.logger = window.TopazLogger ? new window.TopazLogger('Topaz:Content') : null;
+    } catch (_) {
+      this.logger = null;
+    }
     this.setupEventListeners();
     this.messageHandler.setupMessageListener();
+
+    // Make preview independent per tab: when tab is hidden/backgrounded, turn preview off
+    try {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden && this.previewState?.enabled) {
+          // Best-effort disable without responding to popup
+          this.handleTogglePreviewHidden(false, null).catch(() => {});
+        }
+      });
+      // Also handle pagehide (BFCache or navigation away)
+      window.addEventListener('pagehide', () => {
+        if (this.previewState?.enabled) {
+          this.handleTogglePreviewHidden(false, null).catch(() => {});
+        }
+      });
+    } catch (_) {}
   }
 
   // Return current preview state to popup
@@ -218,9 +240,13 @@ class ExtensionController {
     this.clearAnalysisTimeout();
     // Ensure preview-related visuals/state are cleared
     try {
-      this.elementEffects.removeAllPreviewGlow && this.elementEffects.removeAllPreviewGlow();
-      const marked = this.elementEffects.getPreviewMarkedElements ? this.elementEffects.getPreviewMarkedElements() : [];
-      this.elementEffects.removePreviewMarker && this.elementEffects.removePreviewMarker(marked);
+      if (this.elementEffects.clearAllPreviewArtifacts) {
+        this.elementEffects.clearAllPreviewArtifacts();
+      } else {
+        this.elementEffects.removeAllPreviewGlow && this.elementEffects.removeAllPreviewGlow();
+        const marked = this.elementEffects.getPreviewMarkedElements ? this.elementEffects.getPreviewMarkedElements() : [];
+        this.elementEffects.removePreviewMarker && this.elementEffects.removePreviewMarker(marked);
+      }
     } catch (_) {}
     this.previewState = { enabled: false, items: [] };
     this.elementEffects.setSuppressHiding(false);
@@ -357,6 +383,18 @@ class ExtensionController {
     this.gridManager.reset();
     //this.contentFingerprint.clear();
     await this.configManager.setConfigFromUrl(url);
+    // Clear any preview artifacts when URL changes
+    try {
+      if (this.elementEffects.clearAllPreviewArtifacts) {
+        this.elementEffects.clearAllPreviewArtifacts();
+      } else {
+        this.elementEffects.removeAllPreviewGlow && this.elementEffects.removeAllPreviewGlow();
+        const marked = this.elementEffects.getPreviewMarkedElements ? this.elementEffects.getPreviewMarkedElements() : [];
+        this.elementEffects.removePreviewMarker && this.elementEffects.removePreviewMarker(marked);
+      }
+    } catch (_) {}
+    this.previewState = { enabled: false, items: [] };
+    this.elementEffects.setSuppressHiding(false);
   }
 
   
@@ -1007,9 +1045,13 @@ class ExtensionController {
           // Re-enable hiding BEFORE we attempt to hide elements again
           this.elementEffects.setSuppressHiding(false);
           const elementsOnly = items.map(i => i.element);
-          const removed = this.elementEffects.removePreviewGlow(elementsOnly);
-          console.log('[Preview] Removed glow count:', removed);
-          this.elementEffects.removePreviewMarker && this.elementEffects.removePreviewMarker(elementsOnly);
+          if (this.elementEffects.clearAllPreviewArtifacts) {
+            this.elementEffects.clearAllPreviewArtifacts();
+          } else {
+            const removed = this.elementEffects.removePreviewGlow(elementsOnly);
+            console.log('[Preview] Removed glow count:', removed);
+            this.elementEffects.removePreviewMarker && this.elementEffects.removePreviewMarker(elementsOnly);
+          }
           // Re-hide using original hiding methods; fallback to current config if missing
           const byMethod = new Map();
           for (const it of items) {
