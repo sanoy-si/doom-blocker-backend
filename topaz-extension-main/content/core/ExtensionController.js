@@ -812,9 +812,13 @@ class ExtensionController {
       
       // Restore all currently hidden elements first
       await this.elementEffects.restoreAllElements();
-      
-      // Re-run the initial extraction with updated settings
-      console.log('🔄 Re-running content analysis with updated filters...');
+
+      // FAST PATH: analyze visible content first to provide instant feedback
+      console.log('⚡ Performing quick analysis for visible content...');
+      await this.quickAnalyzeVisible();
+
+      // Then run the full extraction to catch everything else
+      console.log('🔄 Re-running full content analysis with updated filters...');
       await this.performInitialExtraction();
       
       console.log('✅ Instant filtering completed successfully');
@@ -823,6 +827,81 @@ class ExtensionController {
     } catch (error) {
       console.error('❌ Instant filtering failed:', error);
       sendResponse(this.messageHandler.createResponse(false, `Instant filtering failed: ${error.message}`));
+    }
+  }
+
+  // Determine if an element is within (or near) the current viewport
+  isInViewport(el) {
+    if (!el || !el.getBoundingClientRect) return false;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth || document.documentElement.clientWidth;
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    // Include a small margin to catch near-viewport items
+    const margin = 200;
+    const horizontallyVisible = rect.left < vw + margin && rect.right > -margin;
+    const verticallyVisible = rect.top < vh + margin && rect.bottom > -margin;
+    return horizontallyVisible && verticallyVisible;
+  }
+
+  // Quickly analyze only grids and children that are visible to user
+  async quickAnalyzeVisible() {
+    try {
+      // Build/refresh grid information
+      this.gridManager.findAllGridContainers();
+      const allGrids = this.gridManager.getAllGrids();
+
+      const visibleGrids = allGrids.filter(g => this.isInViewport(g.element));
+      if (!visibleGrids.length) {
+        console.log('⚡ No visible grids found for quick analysis');
+        return;
+      }
+
+      const gridStructure = {
+        timestamp: new Date().toISOString(),
+        totalGrids: 0,
+        grids: []
+      };
+
+      for (const grid of visibleGrids) {
+        const childrenToAnalyze = [];
+        for (const child of grid.children) {
+          const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element);
+          if (autoDeleteResult.shouldDelete) {
+            const hidingMethod = this.configManager.getHidingMethod();
+            const hiddenCount = this.elementEffects.hideElements([{ id: child.id, element: child.element }], hidingMethod);
+            if (hiddenCount > 0) {
+              const toastEnabled = await this.isToastEnabled();
+              if (toastEnabled) {
+                this.notificationManager.incrementBlockedCount(hiddenCount);
+              }
+              this.messageHandler.sendMessageToBackground({
+                type: MESSAGE_TYPES.CONTENT_BLOCKED,
+                blockedCount: hiddenCount,
+                currentUrl: window.location.href,
+              });
+            }
+          } else if (!this.contentFingerprint.checkFingerprintExists(child.element)) {
+            childrenToAnalyze.push(child);
+          }
+        }
+
+        if (childrenToAnalyze.length > 0) {
+          gridStructure.grids.push({
+            id: grid.id,
+            totalChildren: childrenToAnalyze.length,
+            gridText: grid.element.innerText,
+            children: childrenToAnalyze.map(child => ({ id: child.id, text: child.text }))
+          });
+        }
+      }
+
+      gridStructure.totalGrids = gridStructure.grids.length;
+      if (gridStructure.totalGrids > 0) {
+        const trimmed = this.trimGridForBackend(gridStructure);
+        await this.sendGridStructureForAnalysis(trimmed);
+      }
+    } catch (e) {
+      console.warn('Quick visible analysis failed:', e);
     }
   }
 

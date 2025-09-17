@@ -52,7 +52,11 @@ class NotificationManager {
     const counterElement = this.notificationElement.querySelector('.topaz-notification-counter');
     if (counterElement) {
       const currentDisplayValue = Math.max(0, parseInt(counterElement.textContent) || 0);
-      const targetValue = Math.max(0, this.blockedCount);
+      let targetValue = Math.max(0, this.blockedCount);
+      // Guard against reverse animations (e.g., if internal count was reset)
+      if (targetValue < currentDisplayValue) {
+        targetValue = currentDisplayValue;
+      }
       this.animateCounter(counterElement, currentDisplayValue, targetValue);
     }
 
@@ -197,8 +201,8 @@ class NotificationManager {
 
     this.notificationTimeout = setTimeout(() => {
       this.hide();
-      // Reset the counter after auto-hide so next notification starts fresh
-      this.blockedCount = 0;
+      // Do NOT reset blockedCount here; allow next update to continue upwards
+      // This prevents downward animation artifacts after popup/icon interactions
     }, TIMINGS.NOTIFICATION_DISPLAY);
 
     this.resetFadeTimeout();

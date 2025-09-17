@@ -127,7 +127,7 @@ const backgroundAPI = {
   },
   
   // Save profile data to background
-  async saveProfiles(profiles) {
+  async saveProfiles(profiles, options = {}) {
     console.log('💾 Saving profiles to background:', profiles);
     
     try {
@@ -139,13 +139,14 @@ const backgroundAPI = {
       console.log('📤 Sending message to background:', message);
       const response = await sendMessage(message);
       console.log('📥 Background response:', response);
-      
-      // 🚀 INSTANT FILTERING: Trigger immediate re-analysis of current page
-      if (response?.success) {
-        console.log('🔄 Triggering instant filtering on current page...');
-        const instantResult = await this.triggerInstantFiltering();
-        if (!instantResult.success) {
-          console.log('ℹ️ Instant filtering failed, but profile was saved successfully');
+      // Trigger instant filtering so changes apply immediately unless explicitly disabled.
+      // The content script will do a quick visible-first analysis for instant feedback.
+      const shouldTriggerInstant = options.triggerInstant !== false;
+      if (response?.success && shouldTriggerInstant) {
+        try {
+          await this.triggerInstantFiltering();
+        } catch (e) {
+          console.warn('Instant filtering failed after save, will still be applied later:', e?.message || e);
         }
       }
       

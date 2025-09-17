@@ -874,8 +874,8 @@ async function autoEnableProfileForCurrentSite(profiles) {
       // Enable the matching profile
       matchingProfile.isEnabled = true;
       
-      // Save changes to background
-      const saveResult = await window.backgroundAPI.saveProfiles(profiles);
+      // Save changes to background without triggering instant filtering while popup is opening
+      const saveResult = await window.backgroundAPI.saveProfiles(profiles, { triggerInstant: false });
       if (saveResult.success) {
         console.log('Auto-enabled profile for current site:', matchingProfile.profileName);
       } else {
