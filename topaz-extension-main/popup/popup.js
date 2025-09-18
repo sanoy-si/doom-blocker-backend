@@ -354,20 +354,22 @@ async function handleProfileOpen() {
     // Get user session ID for analytics
     const sessionId = await getUserSessionId();
 
-    if (!sessionId) {
-      console.warn('⚠️ No session ID found, using fallback');
-      // Still open analytics but without session-specific data
-    }
+    console.log('🔍 Retrieved session ID:', sessionId);
 
-    // Construct analytics URL with session parameter
-    const analyticsUrl = sessionId
-      ? `https://topaz-backend1.onrender.com/analytics?session=${sessionId}`
-      : `https://topaz-backend1.onrender.com/analytics`;
+    // Always construct URL with session ID (we always have one now)
+    const analyticsUrl = `https://topaz-backend1.onrender.com/analytics?session=${sessionId}`;
 
     // Open analytics in new tab
     chrome.tabs.create({ url: analyticsUrl });
 
     console.log('✅ Analytics tab opened:', analyticsUrl);
+
+    // Show success notification
+    window.ui?.showNotification?.({
+      type: 'success',
+      message: 'Analytics opened in new tab',
+      duration: 2000
+    });
 
   } catch (error) {
     console.error('❌ Error opening analytics:', error);
@@ -380,24 +382,72 @@ async function handleProfileOpen() {
   }
 }
 
-// Get user session ID from content script
+// Get user session ID from content script or chrome.storage
 async function getUserSessionId() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id) return null;
-
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      type: 'GET_SESSION_MANAGER'
-    });
-
-    if (response && response.success && response.sessionManager) {
-      return response.sessionManager.getSessionId();
+    // First try to get from chrome.storage (accessible from popup)
+    const result = await chrome.storage.local.get(['topaz_user_session']);
+    if (result.topaz_user_session) {
+      const sessionData = result.topaz_user_session;
+      if (sessionData && sessionData.sessionId) {
+        console.log('📦 Got session ID from chrome.storage:', sessionData.sessionId);
+        return sessionData.sessionId;
+      }
     }
 
-    return null;
+    // Fallback: try to get from content script
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab && tab.id) {
+      try {
+        const response = await chrome.tabs.sendMessage(tab.id, {
+          type: 'GET_SESSION_MANAGER'
+        });
+
+        if (response && response.success && response.sessionManager) {
+          const sessionId = response.sessionManager.getSessionId();
+          console.log('📡 Got session ID from content script:', sessionId);
+          return sessionId;
+        }
+      } catch (messageError) {
+        console.warn('⚠️ Could not communicate with content script:', messageError);
+      }
+    }
+
+    console.warn('⚠️ No session ID found, generating fallback');
+    return await generateFallbackSessionId();
   } catch (error) {
     console.warn('Could not get session ID:', error);
-    return null;
+    return await generateFallbackSessionId();
+  }
+}
+
+// Generate a fallback session ID if none exists
+async function generateFallbackSessionId() {
+  try {
+    // Check if we already have one in chrome.storage
+    const result = await chrome.storage.local.get(['topaz_fallback_session']);
+    let fallbackId = result.topaz_fallback_session;
+
+    if (!fallbackId) {
+      // Generate new UUID
+      fallbackId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+
+      // Store in chrome.storage
+      await chrome.storage.local.set({ topaz_fallback_session: fallbackId });
+      console.log('🆔 Generated fallback session ID:', fallbackId);
+    } else {
+      console.log('🔄 Using existing fallback session ID:', fallbackId);
+    }
+
+    return fallbackId;
+  } catch (error) {
+    console.error('Error with fallback session:', error);
+    // Last resort: generate a temporary ID
+    return 'temp-' + Date.now();
   }
 }
 

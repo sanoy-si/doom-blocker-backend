@@ -36,6 +36,13 @@ class SessionManager {
             // Store in localStorage
             localStorage.setItem(this.sessionKey, JSON.stringify(sessionData));
 
+            // Also store in chrome.storage for popup access
+            try {
+                await chrome.storage.local.set({ [this.sessionKey]: sessionData });
+            } catch (error) {
+                console.warn('Could not save to chrome.storage:', error);
+            }
+
             // Initialize metrics
             this.initializeMetrics();
 
@@ -45,6 +52,13 @@ class SessionManager {
             sessionData.firstInstall = false;
             sessionData.lastActive = Date.now();
             localStorage.setItem(this.sessionKey, JSON.stringify(sessionData));
+
+            // Also update chrome.storage
+            try {
+                await chrome.storage.local.set({ [this.sessionKey]: sessionData });
+            } catch (error) {
+                console.warn('Could not update chrome.storage:', error);
+            }
 
             console.log('🔄 Existing user session restored:', sessionData.sessionId);
         }
