@@ -359,6 +359,9 @@ async function handleProfileOpen() {
     // Always get fresh background stats and send to backend
     await sendCurrentStatsToBackend(sessionId);
 
+    // Small delay to ensure data is processed before opening analytics
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     // Always construct URL with session ID (we always have one now)
     const analyticsUrl = `https://topaz-backend1.onrender.com/analytics?session=${sessionId}`;
 
@@ -394,6 +397,9 @@ async function sendCurrentStatsToBackend(sessionId) {
     const currentStats = await getGlobalBlockedStats();
     console.log('📈 Current extension stats:', currentStats);
 
+    // Force the stats to be what's shown in the extension popup
+    console.log('🎯 Forcing real stats - Total:', currentStats.totalBlocked, 'Today:', currentStats.blockedCount);
+
     // Send current session data
     const sessionData = {
       session_id: sessionId,
@@ -420,6 +426,9 @@ async function sendCurrentStatsToBackend(sessionId) {
 
     console.log('📊 Sending metrics with current stats:', metricsData);
 
+    // Force overwrite any existing data with current real stats
+    console.log('🧹 Sending fresh real data to overwrite any test data');
+
     // Send session data
     const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
       method: 'POST',
@@ -427,12 +436,18 @@ async function sendCurrentStatsToBackend(sessionId) {
       body: JSON.stringify(sessionData)
     });
 
+    const sessionResult = await sessionResponse.json();
+    console.log('📝 Session data response:', sessionResult);
+
     // Send metrics with current stats
     const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(metricsData)
     });
+
+    const metricsResult = await metricsResponse.json();
+    console.log('📊 Metrics response:', metricsResult);
 
     console.log('✅ Current stats sent to backend successfully');
 
@@ -539,13 +554,12 @@ async function sendUserDataToBackend(sessionId) {
 
       console.log('✅ Background stats sent successfully');
     } else {
-      console.log('⚠️ No real data found, sending test data as fallback');
-      await sendTestDataToBackend(sessionId);
+      console.log('⚠️ No real data found, but not sending test data (this will show 0 counts)');
     }
 
   } catch (error) {
-    console.warn('⚠️ Failed to send real user data, falling back to test data:', error);
-    await sendTestDataToBackend(sessionId);
+    console.warn('⚠️ Failed to send real user data:', error);
+    // Don't send test data anymore - let analytics show real counts even if 0
   }
 }
 
