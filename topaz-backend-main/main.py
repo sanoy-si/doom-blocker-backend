@@ -953,8 +953,9 @@ async def analytics_frontend(request: Request):
                     </div>
 
                     <div class="activity-section">
-                        <h2 class="section-title">Recent Activity</h2>
-                        ${{blockedItems.slice(0, 10).map(item => `
+                        <h2 class="section-title">All Blocked Items (${{blockedItems.length}} total)</h2>
+                        <div style="max-height: 400px; overflow-y: auto; border: 1px solid #333; border-radius: 8px; padding: 10px;">
+                        ${{blockedItems.map(item => `
                             <div class="activity-item">
                                 <div class="activity-text">
                                     <div style="font-weight: 500; margin-bottom: 4px;">
@@ -973,6 +974,7 @@ async def analytics_frontend(request: Request):
                                 <span class="activity-count">${{item.count}} blocked</span>
                             </div>
                         `).join('')}}
+                        </div>
                     </div>
                 `;
             }}

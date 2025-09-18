@@ -356,8 +356,8 @@ async function handleProfileOpen() {
 
     console.log('🔍 Retrieved session ID:', sessionId);
 
-    // Send real user data to backend (and test data as fallback)
-    await sendUserDataToBackend(sessionId);
+    // Always get fresh background stats and send to backend
+    await sendCurrentStatsToBackend(sessionId);
 
     // Always construct URL with session ID (we always have one now)
     const analyticsUrl = `https://topaz-backend1.onrender.com/analytics?session=${sessionId}`;
@@ -382,6 +382,64 @@ async function handleProfileOpen() {
       message: 'Failed to open analytics',
       duration: 3000
     });
+  }
+}
+
+// Send current stats to backend before opening analytics
+async function sendCurrentStatsToBackend(sessionId) {
+  try {
+    console.log('📊 Sending current stats for session:', sessionId);
+
+    // Always get the most current background stats
+    const currentStats = await getGlobalBlockedStats();
+    console.log('📈 Current extension stats:', currentStats);
+
+    // Send current session data
+    const sessionData = {
+      session_id: sessionId,
+      device_info: {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        platform: navigator.platform,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      created_at: new Date().toISOString(),
+      extension_version: chrome.runtime.getManifest().version,
+      first_install: false
+    };
+
+    // Send current metrics with real counts
+    const metricsData = {
+      session_id: sessionId,
+      total_blocked: currentStats.totalBlocked || 0,
+      blocked_today: currentStats.blockedCount || 0,
+      sites_visited: [],
+      profiles_used: [],
+      last_updated: new Date().toISOString()
+    };
+
+    console.log('📊 Sending metrics with current stats:', metricsData);
+
+    // Send session data
+    const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionData)
+    });
+
+    // Send metrics with current stats
+    const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metricsData)
+    });
+
+    console.log('✅ Current stats sent to backend successfully');
+
+  } catch (error) {
+    console.warn('⚠️ Failed to send current stats:', error);
+    // Fall back to the other method
+    await sendUserDataToBackend(sessionId);
   }
 }
 

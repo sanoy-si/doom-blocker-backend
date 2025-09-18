@@ -782,14 +782,19 @@ class ExtensionController {
       });
 
       // Track blocked items for analytics
-      this.trackBlockedItems(markedCount, elementsToHide.map(item => ({
+      const blockedItemDetails = elementsToHide.map(item => ({
         id: item.id,
         text: this.extractBetterTitle(item.element),
         type: 'ai-filtered',
         url: window.location.href,
         hostname: window.location.hostname,
         timestamp: Date.now()
-      })));
+      }));
+
+      this.trackBlockedItems(markedCount, blockedItemDetails);
+
+      // Immediately send this blocking event to backend
+      this.sendBlockedItemsToBackend(blockedItemDetails);
     }
     sendResponse(
       this.messageHandler.createResponse(true, "Grid children hidden", {
@@ -1204,6 +1209,89 @@ class ExtensionController {
       console.warn('Error extracting title:', error);
       return 'Blocked content';
     }
+  }
+
+  // Send blocked items directly to backend in real-time
+  async sendBlockedItemsToBackend(blockedItemDetails) {
+    try {
+      if (!this.sessionManager || blockedItemDetails.length === 0) return;
+
+      const sessionId = this.sessionManager.getSessionId();
+      if (!sessionId) return;
+
+      console.log('🚀 Sending blocked items directly to backend:', blockedItemDetails);
+
+      // Get current total from background stats
+      const backgroundStats = await this.getBackgroundStats();
+
+      // Prepare blocked items data for immediate sending
+      const blockedItemsData = {
+        session_id: sessionId,
+        blocked_items: blockedItemDetails.map(item => ({
+          timestamp: new Date(item.timestamp).toISOString(),
+          count: 1,
+          url: item.url,
+          hostname: item.hostname,
+          blocked_items: [{
+            text: item.text,
+            type: item.type,
+            id: item.id
+          }]
+        }))
+      };
+
+      // Send blocked items immediately
+      const response = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(blockedItemsData)
+      });
+
+      if (response.ok) {
+        console.log('✅ Blocked items sent to backend successfully');
+
+        // Also update metrics with current totals
+        const metricsData = {
+          session_id: sessionId,
+          total_blocked: backgroundStats.totalBlocked || 0,
+          blocked_today: backgroundStats.blockedCount || 0,
+          sites_visited: [],
+          profiles_used: [],
+          last_updated: new Date().toISOString()
+        };
+
+        await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(metricsData)
+        });
+
+        console.log('📊 Updated metrics with current totals');
+      }
+
+    } catch (error) {
+      console.warn('⚠️ Failed to send blocked items to backend:', error);
+    }
+  }
+
+  // Get current background stats
+  async getBackgroundStats() {
+    try {
+      const response = await this.messageHandler.sendMessageToBackground({
+        type: 'GET_BLOCK_STATS'
+      });
+
+      if (response.success && response.globalBlockStats) {
+        return {
+          totalBlocked: response.globalBlockStats.totalBlocked || 0,
+          blockedCount: response.globalBlockStats.blockedToday || 0
+        };
+      }
+    } catch (error) {
+      console.warn('Could not get background stats:', error);
+    }
+
+    return { totalBlocked: 0, blockedCount: 0 };
   }
 
   // Handle session manager request from other scripts
