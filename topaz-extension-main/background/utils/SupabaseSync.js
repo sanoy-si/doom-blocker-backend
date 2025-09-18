@@ -122,7 +122,14 @@ class SupabaseSync {
                 return;
             }
 
-            const syncQueue = sessionManager.getSyncQueue();
+            let syncQueue = [];
+            try {
+                syncQueue = sessionManager.getSyncQueue() || [];
+            } catch (error) {
+                console.warn('Could not get sync queue:', error);
+                return;
+            }
+
             const unsynced = syncQueue.filter(item => !item.synced);
 
             if (unsynced.length === 0) {
@@ -157,8 +164,12 @@ class SupabaseSync {
 
             // Mark synced items
             if (syncedTimestamps.length > 0) {
-                sessionManager.markAsSynced(syncedTimestamps);
-                console.log(`✅ Successfully synced ${syncedTimestamps.length} items`);
+                try {
+                    sessionManager.markAsSynced(syncedTimestamps);
+                    console.log(`✅ Successfully synced ${syncedTimestamps.length} items`);
+                } catch (error) {
+                    console.warn('Could not mark items as synced:', error);
+                }
             }
 
         } catch (error) {

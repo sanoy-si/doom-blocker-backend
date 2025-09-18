@@ -342,6 +342,3 @@ class SessionManager {
 
 // Create global instance for content scripts
 window.TopazSessionManager = new SessionManager();
-
-// Also export for ES6 modules
-export default SessionManager;

@@ -1157,19 +1157,63 @@ class ExtensionController {
   // Handle session manager request from other scripts
   handleGetSessionManager(sendResponse) {
     try {
-      if (sendResponse) {
+      if (sendResponse && this.sessionManager) {
+        // Create bound functions to ensure 'this' context is preserved
+        const sessionManager = this.sessionManager;
+
         sendResponse({
           success: true,
           sessionManager: {
-            getSessionId: () => this.sessionManager?.getSessionId(),
-            getMetrics: () => this.sessionManager?.getMetrics(),
-            getSyncQueue: () => this.sessionManager?.getSyncQueue(),
-            getStoredSession: () => this.sessionManager?.getStoredSession(),
-            markAsSynced: (timestamps) => this.sessionManager?.markAsSynced(timestamps)
+            getSessionId: () => {
+              try {
+                return sessionManager.getSessionId();
+              } catch (e) {
+                console.warn('Error getting session ID:', e);
+                return null;
+              }
+            },
+            getMetrics: () => {
+              try {
+                return sessionManager.getMetrics();
+              } catch (e) {
+                console.warn('Error getting metrics:', e);
+                return {};
+              }
+            },
+            getSyncQueue: () => {
+              try {
+                return sessionManager.getSyncQueue();
+              } catch (e) {
+                console.warn('Error getting sync queue:', e);
+                return [];
+              }
+            },
+            getStoredSession: () => {
+              try {
+                return sessionManager.getStoredSession();
+              } catch (e) {
+                console.warn('Error getting stored session:', e);
+                return {};
+              }
+            },
+            markAsSynced: (timestamps) => {
+              try {
+                return sessionManager.markAsSynced(timestamps);
+              } catch (e) {
+                console.warn('Error marking as synced:', e);
+                return false;
+              }
+            }
           }
+        });
+      } else {
+        sendResponse({
+          success: false,
+          error: 'Session manager not available'
         });
       }
     } catch (error) {
+      console.error('Error in handleGetSessionManager:', error);
       if (sendResponse) {
         sendResponse({
           success: false,
