@@ -1,0 +1,190 @@
+/* Video Effects for Topaz Extension */
+
+/* Video Light Trace Effect - animated rotating border before hiding */
+.topaz-video-rotating {
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 8px !important;
+}
+
+.topaz-video-rotating::before {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: conic-gradient(
+        from 0deg,
+        transparent,
+        #ff6b6b,
+        #ffaa33,
+        #ff6b6b,
+        transparent
+    );
+    border-radius: 10px;
+    z-index: -1;
+    animation: topaz-video-rotate 0.5s linear;
+}
+
+@keyframes topaz-video-rotate {
+    0% {
+        transform: rotate(0deg);
+        opacity: 0;
+    }
+    20% {
+        opacity: 1;
+    }
+    80% {
+        opacity: 1;
+    }
+    100% {
+        transform: rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* Video Hidden State - instant hide after light trace */
+.topaz-video-hidden {
+    display: none !important;
+}
+
+/* Glassy Effect for Removed Items */
+.topaz-glassy-remove {
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 8px !important;
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) !important;
+}
+
+.topaz-glassy-remove::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.1) 0%,
+        rgba(255, 255, 255, 0.05) 25%,
+        rgba(255, 255, 255, 0.02) 50%,
+        rgba(255, 255, 255, 0.05) 75%,
+        rgba(255, 255, 255, 0.1) 100%
+    );
+    backdrop-filter: blur(10px) brightness(1.1);
+    -webkit-backdrop-filter: blur(10px) brightness(1.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    z-index: 2;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(1.02);
+    transition: all 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.topaz-glassy-remove::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    z-index: 3;
+    animation: topaz-glassy-shine 0.8s ease-out;
+}
+
+/* Active glassy state */
+.topaz-glassy-remove.topaz-glassy-active::before {
+    opacity: 1;
+    transform: scale(1);
+}
+
+/* Glassy shine animation */
+@keyframes topaz-glassy-shine {
+    0% {
+        left: -100%;
+    }
+    50% {
+        left: 100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* Fade out animation for glassy removed items */
+.topaz-glassy-remove.topaz-glassy-fadeout {
+    opacity: 0 !important;
+    transform: scale(0.95) !important;
+    filter: blur(1px) !important;
+}
+
+/* Glassy effect for non-video elements being removed */
+.topaz-glassy-element {
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: 6px !important;
+    transition: all 0.4s ease-out !important;
+}
+
+.topaz-glassy-element::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        45deg,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0.03) 50%,
+        rgba(255, 255, 255, 0.08) 100%
+    );
+    backdrop-filter: blur(5px) saturate(1.2);
+    -webkit-backdrop-filter: blur(5px) saturate(1.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s ease-out;
+}
+
+.topaz-glassy-element.topaz-glassy-active::before {
+    opacity: 1;
+}
+
+/* Subtle glassy effect for highlighting mode */
+.topaz-glassy-highlight {
+    position: relative !important;
+    backdrop-filter: blur(2px) brightness(1.05) !important;
+    -webkit-backdrop-filter: blur(2px) brightness(1.05) !important;
+    border-radius: 4px !important;
+}
+
+.topaz-glassy-highlight::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        135deg,
+        rgba(255, 107, 107, 0.05) 0%,
+        rgba(255, 107, 107, 0.02) 50%,
+        rgba(255, 107, 107, 0.05) 100%
+    );
+    border: 1px solid rgba(255, 107, 107, 0.2);
+    border-radius: 4px;
+    z-index: -1;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
