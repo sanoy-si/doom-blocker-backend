@@ -1,12 +1,20 @@
 import BackgroundController from './core/BackgroundController.js';
 
+// Import Supabase sync module
+if (typeof importScripts === 'function') {
+  importScripts('./utils/SupabaseSync.js');
+}
+
 // Create and initialize the background controller
 const controller = new BackgroundController();
 
-// Initialize the extension
+// Initialize the extension and Supabase sync
 controller.initialize().then(() => {
-  // All console.log statements removed
+  // Initialize Supabase sync system
+  if (typeof window !== 'undefined' && window.TopazSupabaseSync) {
+    window.TopazSupabaseSync.initialize();
+  }
 }).catch(error => {
-  // All console.log statements removed
+  console.error('Background initialization failed:', error);
 });
 

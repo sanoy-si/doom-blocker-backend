@@ -12,6 +12,7 @@
       "matches": ["http://*/*", "https://*/*"],
       "js": [
         "content/utils/constants.js",
+        "content/utils/SessionManager.js",
         "content/core/EventBus.js",
         "content/core/ConfigManager.js",
         "content/grid/GridDetector.js",
