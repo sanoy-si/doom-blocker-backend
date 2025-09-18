@@ -390,11 +390,21 @@ async function sendUserDataToBackend(sessionId) {
   try {
     console.log('📊 Sending real user data for session:', sessionId);
 
+    // Get actual blocked stats from background
+    const backgroundStats = await getGlobalBlockedStats();
+    console.log('📊 Background stats:', backgroundStats);
+
     // Try to get real data from content scripts first
     const realData = await getRealUserData(sessionId);
 
+    // Override metrics with actual background stats
+    if (realData && realData.metricsData) {
+      realData.metricsData.total_blocked = backgroundStats.totalBlocked || 0;
+      realData.metricsData.blocked_today = backgroundStats.blockedCount || 0;
+    }
+
     if (realData) {
-      console.log('📈 Found real user data:', realData);
+      console.log('📈 Found real user data with background stats:', realData);
 
       // Send real session data
       if (realData.sessionData) {
@@ -427,6 +437,49 @@ async function sendUserDataToBackend(sessionId) {
       }
 
       console.log('✅ Real user data sent successfully');
+    } else if (backgroundStats.totalBlocked > 0 || backgroundStats.blockedCount > 0) {
+      // No session data but we have background stats - create minimal data
+      console.log('📊 No session data but found background stats, creating basic metrics');
+
+      const basicMetricsData = {
+        session_id: sessionId,
+        total_blocked: backgroundStats.totalBlocked || 0,
+        blocked_today: backgroundStats.blockedCount || 0,
+        sites_visited: [],
+        profiles_used: [],
+        last_updated: new Date().toISOString()
+      };
+
+      // Send basic session data
+      const sessionData = {
+        session_id: sessionId,
+        device_info: {
+          userAgent: navigator.userAgent,
+          language: navigator.language,
+          platform: navigator.platform,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        },
+        created_at: new Date().toISOString(),
+        extension_version: chrome.runtime.getManifest().version,
+        first_install: false
+      };
+
+      const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sessionData)
+      });
+      console.log('📝 Basic session data response:', await sessionResponse.json());
+
+      // Send metrics with real background stats
+      const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(basicMetricsData)
+      });
+      console.log('📊 Real background metrics response:', await metricsResponse.json());
+
+      console.log('✅ Background stats sent successfully');
     } else {
       console.log('⚠️ No real data found, sending test data as fallback');
       await sendTestDataToBackend(sessionId);

@@ -784,8 +784,11 @@ class ExtensionController {
       // Track blocked items for analytics
       this.trackBlockedItems(markedCount, elementsToHide.map(item => ({
         id: item.id,
-        text: item.element?.innerText || item.element?.textContent || '',
-        type: 'ai-filtered'
+        text: this.extractBetterTitle(item.element),
+        type: 'ai-filtered',
+        url: window.location.href,
+        hostname: window.location.hostname,
+        timestamp: Date.now()
       })));
     }
     sendResponse(
@@ -1151,6 +1154,55 @@ class ExtensionController {
       }
     } catch (error) {
       console.warn('Failed to track profile usage:', error);
+    }
+  }
+
+  // Extract better title/description from blocked elements
+  extractBetterTitle(element) {
+    if (!element) return 'Unknown content';
+
+    try {
+      // Try various methods to get meaningful content
+      const strategies = [
+        // Look for specific selectors that often contain titles
+        () => element.querySelector('h1, h2, h3, h4, h5, h6')?.textContent?.trim(),
+        () => element.querySelector('[aria-label]')?.getAttribute('aria-label')?.trim(),
+        () => element.querySelector('a[title]')?.getAttribute('title')?.trim(),
+        () => element.querySelector('img[alt]')?.getAttribute('alt')?.trim(),
+        () => element.querySelector('[data-testid*="title"], [data-testid*="heading"]')?.textContent?.trim(),
+
+        // For video content
+        () => element.querySelector('#video-title, .video-title, .title')?.textContent?.trim(),
+
+        // For social media posts
+        () => element.querySelector('[data-testid="tweetText"], .tweet-text, .post-content')?.textContent?.trim(),
+
+        // For general content
+        () => element.textContent?.trim()
+      ];
+
+      for (const strategy of strategies) {
+        try {
+          const result = strategy();
+          if (result && result.length > 5 && result.length < 200) {
+            // Clean up the text
+            return result.replace(/\s+/g, ' ').substring(0, 150);
+          }
+        } catch (e) {
+          // Strategy failed, try next
+        }
+      }
+
+      // Fallback: get first meaningful text
+      const text = element.textContent?.trim() || element.innerText?.trim() || '';
+      if (text.length > 10) {
+        return text.replace(/\s+/g, ' ').substring(0, 100);
+      }
+
+      return 'Blocked content';
+    } catch (error) {
+      console.warn('Error extracting title:', error);
+      return 'Blocked content';
     }
   }
 

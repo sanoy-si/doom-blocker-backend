@@ -956,9 +956,20 @@ async def analytics_frontend(request: Request):
                         <h2 class="section-title">Recent Activity</h2>
                         ${{blockedItems.slice(0, 10).map(item => `
                             <div class="activity-item">
-                                <span class="activity-text">
-                                    ${{new Date(item.timestamp).toLocaleString()}} - ${{item.hostname || 'Unknown'}}
-                                </span>
+                                <div class="activity-text">
+                                    <div style="font-weight: 500; margin-bottom: 4px;">
+                                        ${{new Date(item.timestamp).toLocaleString()}} - ${{item.hostname || 'Unknown'}}
+                                    </div>
+                                    ${{item.blocked_items && item.blocked_items.length > 0 ? `
+                                        <div style="font-size: 0.9em; color: #999; margin-left: 20px;">
+                                            ${{'• ' + item.blocked_items.slice(0, 3).map(blockedItem =>
+                                                typeof blockedItem === 'string' ? blockedItem :
+                                                (blockedItem.text || blockedItem.title || 'Blocked content')
+                                            ).join('<br>• ')}}
+                                            ${{item.blocked_items.length > 3 ? `<br>• ...and ${{item.blocked_items.length - 3}} more` : ''}}
+                                        </div>
+                                    ` : ''}}
+                                </div>
                                 <span class="activity-count">${{item.count}} blocked</span>
                             </div>
                         `).join('')}}
