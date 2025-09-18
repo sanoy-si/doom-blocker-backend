@@ -356,6 +356,9 @@ async function handleProfileOpen() {
 
     console.log('🔍 Retrieved session ID:', sessionId);
 
+    // Send some test data to backend to ensure there's something to display
+    await sendTestDataToBackend(sessionId);
+
     // Always construct URL with session ID (we always have one now)
     const analyticsUrl = `https://topaz-backend1.onrender.com/analytics?session=${sessionId}`;
 
@@ -379,6 +382,95 @@ async function handleProfileOpen() {
       message: 'Failed to open analytics',
       duration: 3000
     });
+  }
+}
+
+// Send test data to backend to populate analytics
+async function sendTestDataToBackend(sessionId) {
+  try {
+    console.log('📊 Sending test data for session:', sessionId);
+
+    // Create test session data
+    const sessionData = {
+      session_id: sessionId,
+      device_info: {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        platform: navigator.platform,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      },
+      created_at: new Date().toISOString(),
+      extension_version: chrome.runtime.getManifest().version,
+      first_install: true
+    };
+
+    // Send session data
+    const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionData)
+    });
+
+    console.log('📝 Session data response:', await sessionResponse.json());
+
+    // Create test metrics data
+    const metricsData = {
+      session_id: sessionId,
+      total_blocked: 25,
+      blocked_today: 5,
+      sites_visited: [
+        { hostname: 'youtube.com', date: new Date().toDateString(), count: 3 },
+        { hostname: 'twitter.com', date: new Date().toDateString(), count: 2 }
+      ],
+      profiles_used: [
+        { profileName: 'Focus Mode', date: new Date().toDateString(), count: 1 }
+      ],
+      last_updated: new Date().toISOString()
+    };
+
+    // Send metrics data
+    const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metricsData)
+    });
+
+    console.log('📊 Metrics data response:', await metricsResponse.json());
+
+    // Create test blocked items data
+    const blockedItemsData = {
+      session_id: sessionId,
+      blocked_items: [
+        {
+          timestamp: new Date().toISOString(),
+          count: 3,
+          url: 'https://youtube.com/watch?v=example',
+          hostname: 'youtube.com',
+          items: ['distracting video', 'clickbait title', 'recommended content']
+        },
+        {
+          timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+          count: 2,
+          url: 'https://twitter.com/home',
+          hostname: 'twitter.com',
+          items: ['promoted tweet', 'trending topic']
+        }
+      ]
+    };
+
+    // Send blocked items data
+    const blockedResponse = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(blockedItemsData)
+    });
+
+    console.log('🚫 Blocked items response:', await blockedResponse.json());
+    console.log('✅ Test data sent successfully');
+
+  } catch (error) {
+    console.warn('⚠️ Failed to send test data:', error);
+    // Don't throw - analytics should still open even if test data fails
   }
 }
 
