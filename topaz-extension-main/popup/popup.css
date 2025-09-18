@@ -210,7 +210,14 @@ body {
     font-weight: var(--font-weight-normal);
 }
 
-.settings-button {
+.top-bar-buttons {
+    display: flex;
+    gap: var(--space-sm);
+    align-items: center;
+}
+
+.settings-button,
+.profile-button {
     background: none;
     border: none;
     color: var(--text-subtle);
@@ -224,12 +231,14 @@ body {
     justify-content: center;
 }
 
-.settings-button:hover {
+.settings-button:hover,
+.profile-button:hover {
     color: var(--color-primary);
     /*background: var(--color-primary-light);*/
 }
 
-.settings-button:active {
+.settings-button:active,
+.profile-button:active {
     transform: scale(0.95);
 }
 
