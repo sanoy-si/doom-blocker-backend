@@ -15,6 +15,8 @@ class ExtensionController {
     // Track preview state and items for toggle preview feature
     this.previewState = { enabled: false, items: [] };
     this.previewProcessing = false; // prevent overlapping preview toggles
+    // Initialize session manager for analytics
+    this.sessionManager = window.TopazSessionManager;
     // Initialize logger if available
     try {
       this.logger = window.TopazLogger ? new window.TopazLogger('Topaz:Content') : null;
@@ -23,6 +25,9 @@ class ExtensionController {
     }
     this.setupEventListeners();
     this.messageHandler.setupMessageListener();
+
+    // Initialize session on first load
+    this.initializeUserSession();
 
     // Make preview independent per tab: when tab is hidden/backgrounded, turn preview off
     try {
@@ -152,6 +157,11 @@ class ExtensionController {
     // Preview state query from popup
     this.eventBus.on('message:get-preview-state', ({ sendResponse }) => {
       this.handleGetPreviewState(sendResponse);
+    });
+
+    // Session manager request for Supabase sync
+    this.eventBus.on('message:get-session-manager', ({ sendResponse }) => {
+      this.handleGetSessionManager(sendResponse);
     });
 
     // 🚀 INSTANT FILTERING: Handle instant filter requests from popup
@@ -770,6 +780,13 @@ class ExtensionController {
         blockedCount: markedCount,
         currentUrl: window.location.href,
       });
+
+      // Track blocked items for analytics
+      this.trackBlockedItems(markedCount, elementsToHide.map(item => ({
+        id: item.id,
+        text: item.element?.innerText || item.element?.textContent || '',
+        type: 'ai-filtered'
+      })));
     }
     sendResponse(
       this.messageHandler.createResponse(true, "Grid children hidden", {
@@ -1082,6 +1099,82 @@ class ExtensionController {
     }
     finally {
       this.previewProcessing = false;
+    }
+  }
+
+  // Initialize user session for analytics tracking
+  async initializeUserSession() {
+    try {
+      if (this.sessionManager) {
+        const sessionId = await this.sessionManager.initializeSession();
+        console.log('🆔 User session initialized:', sessionId);
+
+        // Track site visit
+        this.sessionManager.trackSiteVisit(window.location.hostname);
+
+        // Handle first-time user flow
+        if (this.sessionManager.isFirstTimeUser()) {
+          console.log('👋 First-time user detected');
+          // Could show onboarding or special notification
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to initialize user session:', error);
+    }
+  }
+
+  // Track blocked items for analytics
+  trackBlockedItems(count, items = []) {
+    try {
+      if (this.sessionManager && count > 0) {
+        // Extract relevant item data for analytics
+        const itemData = items.map(item => ({
+          id: item.id,
+          text: item.text ? item.text.substring(0, 100) : '', // Limit text length
+          type: item.type || 'content'
+        }));
+
+        this.sessionManager.updateBlockedCount(count, itemData);
+        console.log(`📊 Tracked ${count} blocked items`);
+      }
+    } catch (error) {
+      console.warn('Failed to track blocked items:', error);
+    }
+  }
+
+  // Track profile usage for analytics
+  trackProfileUsage(profileName) {
+    try {
+      if (this.sessionManager && profileName) {
+        this.sessionManager.trackProfileUsage(profileName);
+        console.log(`📋 Tracked profile usage: ${profileName}`);
+      }
+    } catch (error) {
+      console.warn('Failed to track profile usage:', error);
+    }
+  }
+
+  // Handle session manager request from other scripts
+  handleGetSessionManager(sendResponse) {
+    try {
+      if (sendResponse) {
+        sendResponse({
+          success: true,
+          sessionManager: {
+            getSessionId: () => this.sessionManager?.getSessionId(),
+            getMetrics: () => this.sessionManager?.getMetrics(),
+            getSyncQueue: () => this.sessionManager?.getSyncQueue(),
+            markAsSynced: (timestamps) => this.sessionManager?.markAsSynced(timestamps)
+          }
+        });
+      }
+    } catch (error) {
+      if (sendResponse) {
+        sendResponse({
+          success: false,
+          error: error.message
+        });
+      }
     }
   }
 

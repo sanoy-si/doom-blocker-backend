@@ -65,7 +65,12 @@ class MessageHandler {
       case 'GET_PREVIEW_STATE':
         this.eventBus.emit('message:get-preview-state', { sendResponse });
         break;
-        
+
+      // Session manager request for Supabase sync
+      case 'GET_SESSION_MANAGER':
+        this.eventBus.emit('message:get-session-manager', { sendResponse });
+        break;
+
       default:
         sendResponse(this.createResponse(false, `Unknown message type: ${message.type}`));
     }
