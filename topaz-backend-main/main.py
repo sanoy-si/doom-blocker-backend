@@ -280,6 +280,26 @@ class AnalysisResult(BaseModel):
         example="g1c0\ng1c5\ng1c3\ng2c9"
     )
 
+# Pydantic models for user session and analytics endpoints
+class UserSessionRequest(BaseModel):
+    session_id: str
+    device_info: dict
+    created_at: str
+    extension_version: str
+    first_install: bool = False
+
+class BlockedItemsRequest(BaseModel):
+    session_id: str
+    blocked_items: List[dict]
+
+class UserMetricsRequest(BaseModel):
+    session_id: str
+    total_blocked: int = 0
+    blocked_today: int = 0
+    sites_visited: List[dict] = []
+    profiles_used: List[dict] = []
+    last_updated: str
+
 # Pydantic models for other API endpoints
 # class Username(BaseModel):
 #     username: str
@@ -479,6 +499,481 @@ async def get_blocked_count():
 #     return RedirectResponse(url=logout_url)
 
 
+
+# User Session and Analytics Endpoints
+
+@app.post("/api/user-session")
+async def create_user_session(session_request: UserSessionRequest, request: Request):
+    """Create or update user session in Supabase"""
+    try:
+        if not supabase:
+            logger.warning("Supabase not configured, session not saved")
+            return {"success": True, "message": "Session tracking disabled"}
+
+        # Prepare session data for Supabase
+        session_data = {
+            "session_id": session_request.session_id,
+            "device_info": session_request.device_info,
+            "created_at": session_request.created_at,
+            "extension_version": session_request.extension_version,
+            "first_install": session_request.first_install,
+            "ip_address": request.client.host if request.client else "unknown",
+            "last_active": datetime.now().isoformat()
+        }
+
+        # Upsert session data
+        result = supabase.table("user_sessions").upsert(
+            session_data,
+            on_conflict="session_id"
+        ).execute()
+
+        logger.info(f"✅ User session saved: {session_request.session_id}")
+
+        return {
+            "success": True,
+            "message": "Session saved successfully",
+            "session_id": session_request.session_id
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error saving user session: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.post("/api/blocked-items")
+async def save_blocked_items(blocked_request: BlockedItemsRequest, request: Request):
+    """Save blocked items data to Supabase"""
+    try:
+        if not supabase:
+            logger.warning("Supabase not configured, blocked items not saved")
+            return {"success": True, "message": "Blocked items tracking disabled"}
+
+        # Prepare blocked items data
+        blocked_records = []
+        for item in blocked_request.blocked_items:
+            record = {
+                "session_id": blocked_request.session_id,
+                "timestamp": item.get("timestamp"),
+                "count": item.get("count", 0),
+                "url": item.get("url", ""),
+                "hostname": item.get("hostname", ""),
+                "blocked_items": item.get("items", []),
+                "created_at": datetime.now().isoformat()
+            }
+            blocked_records.append(record)
+
+        # Insert blocked items data
+        if blocked_records:
+            result = supabase.table("blocked_items").insert(blocked_records).execute()
+            logger.info(f"✅ Saved {len(blocked_records)} blocked items for session {blocked_request.session_id}")
+
+        return {
+            "success": True,
+            "message": f"Saved {len(blocked_records)} blocked items",
+            "count": len(blocked_records)
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error saving blocked items: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.post("/api/user-metrics")
+async def save_user_metrics(metrics_request: UserMetricsRequest, request: Request):
+    """Save user metrics to Supabase"""
+    try:
+        if not supabase:
+            logger.warning("Supabase not configured, metrics not saved")
+            return {"success": True, "message": "Metrics tracking disabled"}
+
+        # Prepare metrics data
+        metrics_data = {
+            "session_id": metrics_request.session_id,
+            "total_blocked": metrics_request.total_blocked,
+            "blocked_today": metrics_request.blocked_today,
+            "sites_visited": metrics_request.sites_visited,
+            "profiles_used": metrics_request.profiles_used,
+            "last_updated": metrics_request.last_updated,
+            "updated_at": datetime.now().isoformat()
+        }
+
+        # Upsert metrics data
+        result = supabase.table("user_metrics").upsert(
+            metrics_data,
+            on_conflict="session_id"
+        ).execute()
+
+        logger.info(f"✅ User metrics saved for session {metrics_request.session_id}")
+
+        return {
+            "success": True,
+            "message": "Metrics saved successfully",
+            "session_id": metrics_request.session_id
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error saving user metrics: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.get("/api/analytics/{session_id}")
+async def get_user_analytics(session_id: str):
+    """Get analytics data for a specific user session"""
+    try:
+        if not supabase:
+            return JSONResponse(
+                status_code=503,
+                content={"success": False, "error": "Analytics service unavailable"}
+            )
+
+        # Get user metrics
+        metrics_result = supabase.table("user_metrics").select("*").eq("session_id", session_id).execute()
+
+        # Get blocked items data
+        blocked_result = supabase.table("blocked_items").select("*").eq("session_id", session_id).execute()
+
+        # Get session info
+        session_result = supabase.table("user_sessions").select("*").eq("session_id", session_id).execute()
+
+        analytics_data = {
+            "session_id": session_id,
+            "metrics": metrics_result.data[0] if metrics_result.data else None,
+            "blocked_items": blocked_result.data,
+            "session_info": session_result.data[0] if session_result.data else None,
+            "summary": {
+                "total_records": len(blocked_result.data),
+                "total_blocked": sum(item.get("count", 0) for item in blocked_result.data),
+                "unique_sites": len(set(item.get("hostname", "") for item in blocked_result.data if item.get("hostname")))
+            }
+        }
+
+        return {
+            "success": True,
+            "data": analytics_data
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error fetching analytics: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.get("/analytics")
+async def analytics_frontend(request: Request):
+    """Serve the analytics frontend page"""
+    from fastapi.responses import HTMLResponse
+
+    # Get session ID from query parameter
+    session_id = request.query_params.get("session")
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Topaz Analytics</title>
+        <style>
+            * {{
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }}
+
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: #1a1a1a;
+                color: #fff;
+                line-height: 1.6;
+            }}
+
+            .container {{
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 20px;
+            }}
+
+            .header {{
+                text-align: center;
+                margin-bottom: 40px;
+                padding: 20px 0;
+                border-bottom: 1px solid #333;
+            }}
+
+            .header h1 {{
+                color: #ff9823;
+                font-size: 2.5rem;
+                margin-bottom: 10px;
+            }}
+
+            .header p {{
+                color: #ccc;
+                font-size: 1.1rem;
+            }}
+
+            .stats-grid {{
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+                margin-bottom: 40px;
+            }}
+
+            .stat-card {{
+                background: #252525;
+                border-radius: 12px;
+                padding: 24px;
+                border: 1px solid #333;
+                transition: transform 0.2s ease;
+            }}
+
+            .stat-card:hover {{
+                transform: translateY(-2px);
+                border-color: #ff9823;
+            }}
+
+            .stat-number {{
+                font-size: 2.5rem;
+                font-weight: bold;
+                color: #ff9823;
+                margin-bottom: 8px;
+            }}
+
+            .stat-label {{
+                color: #ccc;
+                font-size: 1rem;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }}
+
+            .loading {{
+                text-align: center;
+                padding: 60px 20px;
+                color: #ccc;
+                font-size: 1.2rem;
+            }}
+
+            .error {{
+                text-align: center;
+                padding: 60px 20px;
+                color: #ff6b6b;
+                font-size: 1.2rem;
+            }}
+
+            .activity-section {{
+                background: #252525;
+                border-radius: 12px;
+                padding: 24px;
+                border: 1px solid #333;
+                margin-bottom: 20px;
+            }}
+
+            .section-title {{
+                color: #ff9823;
+                font-size: 1.5rem;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #333;
+            }}
+
+            .activity-item {{
+                padding: 12px 0;
+                border-bottom: 1px solid #333;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }}
+
+            .activity-item:last-child {{
+                border-bottom: none;
+            }}
+
+            .activity-text {{
+                color: #ccc;
+                flex: 1;
+            }}
+
+            .activity-count {{
+                color: #ff9823;
+                font-weight: bold;
+                margin-left: 10px;
+            }}
+
+            .session-info {{
+                background: #252525;
+                border-radius: 12px;
+                padding: 24px;
+                border: 1px solid #333;
+                margin-bottom: 20px;
+            }}
+
+            .info-row {{
+                display: flex;
+                justify-content: space-between;
+                padding: 8px 0;
+                border-bottom: 1px solid #333;
+            }}
+
+            .info-row:last-child {{
+                border-bottom: none;
+            }}
+
+            .info-label {{
+                color: #999;
+            }}
+
+            .info-value {{
+                color: #fff;
+                font-weight: 500;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>📊 Topaz Analytics</h1>
+                <p>Your content filtering insights and statistics</p>
+            </div>
+
+            <div id="content">
+                <div class="loading">
+                    Loading your analytics data...
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const sessionId = "{session_id or ''}";
+
+            async function loadAnalytics() {{
+                try {{
+                    if (!sessionId) {{
+                        document.getElementById('content').innerHTML = `
+                            <div class="error">
+                                No session ID provided. Please access analytics through the extension.
+                            </div>
+                        `;
+                        return;
+                    }}
+
+                    const response = await fetch(`/api/analytics/${{sessionId}}`);
+                    const result = await response.json();
+
+                    if (!result.success) {{
+                        throw new Error(result.error || 'Failed to load analytics');
+                    }}
+
+                    const data = result.data;
+                    renderAnalytics(data);
+
+                }} catch (error) {{
+                    console.error('Error loading analytics:', error);
+                    document.getElementById('content').innerHTML = `
+                        <div class="error">
+                            Failed to load analytics: ${{error.message}}
+                        </div>
+                    `;
+                }}
+            }}
+
+            function renderAnalytics(data) {{
+                const metrics = data.metrics || {{}};
+                const summary = data.summary || {{}};
+                const sessionInfo = data.session_info || {{}};
+                const blockedItems = data.blocked_items || [];
+
+                // Group blocked items by hostname
+                const siteStats = {{}};
+                blockedItems.forEach(item => {{
+                    const hostname = item.hostname || 'Unknown';
+                    if (!siteStats[hostname]) {{
+                        siteStats[hostname] = 0;
+                    }}
+                    siteStats[hostname] += item.count || 0;
+                }});
+
+                const sortedSites = Object.entries(siteStats)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 10);
+
+                document.getElementById('content').innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-number">${{metrics.total_blocked || 0}}</div>
+                            <div class="stat-label">Total Blocked</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${{metrics.blocked_today || 0}}</div>
+                            <div class="stat-label">Blocked Today</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${{summary.unique_sites || 0}}</div>
+                            <div class="stat-label">Sites Protected</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number">${{blockedItems.length}}</div>
+                            <div class="stat-label">Filter Events</div>
+                        </div>
+                    </div>
+
+                    <div class="session-info">
+                        <h2 class="section-title">Session Information</h2>
+                        <div class="info-row">
+                            <span class="info-label">Session ID:</span>
+                            <span class="info-value">${{data.session_id.substring(0, 8)}}...</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Extension Version:</span>
+                            <span class="info-value">${{sessionInfo.extension_version || 'Unknown'}}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Created:</span>
+                            <span class="info-value">${{new Date(sessionInfo.created_at || Date.now()).toLocaleDateString()}}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">First Install:</span>
+                            <span class="info-value">${{sessionInfo.first_install ? 'Yes' : 'No'}}</span>
+                        </div>
+                    </div>
+
+                    <div class="activity-section">
+                        <h2 class="section-title">Top Sites by Blocked Content</h2>
+                        ${{sortedSites.length > 0 ? sortedSites.map(([site, count]) => `
+                            <div class="activity-item">
+                                <span class="activity-text">${{site}}</span>
+                                <span class="activity-count">${{count}} items</span>
+                            </div>
+                        `).join('') : '<div class="activity-text">No data available</div>'}}
+                    </div>
+
+                    <div class="activity-section">
+                        <h2 class="section-title">Recent Activity</h2>
+                        ${{blockedItems.slice(0, 10).map(item => `
+                            <div class="activity-item">
+                                <span class="activity-text">
+                                    ${{new Date(item.timestamp).toLocaleString()}} - ${{item.hostname || 'Unknown'}}
+                                </span>
+                                <span class="activity-count">${{item.count}} blocked</span>
+                            </div>
+                        `).join('')}}
+                    </div>
+                `;
+            }}
+
+            // Load analytics on page load
+            loadAnalytics();
+        </script>
+    </body>
+    </html>
+    """
+
+    return HTMLResponse(content=html_content)
 
 @app.post("/fetch_distracting_chunks")
 async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, request: Request): # user: Dict = Depends(require_auth)):
