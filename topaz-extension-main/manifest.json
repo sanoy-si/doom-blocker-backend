@@ -53,7 +53,8 @@
     "https://x.com/*",
     "https://linkedin.com/*",
     "https://www.reddit.com/*",
-    "https://reddit.com/*"
+    "https://reddit.com/*",
+    "https://topaz-backend1.onrender.com/*"
   ],
   "web_accessible_resources": [
     {

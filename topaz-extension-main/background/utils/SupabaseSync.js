@@ -168,17 +168,31 @@ class SupabaseSync {
         }
     }
 
-    // Get session manager from active tab
+    // Get session manager from content scripts across all tabs
     async getSessionManager() {
         try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            if (!tab || !tab.id) return null;
-
-            const response = await chrome.tabs.sendMessage(tab.id, {
-                type: 'GET_SESSION_MANAGER'
+            // Query all tabs that might have the extension running
+            const tabs = await chrome.tabs.query({
+                url: ['https://www.youtube.com/*', 'https://youtube.com/*', 'https://twitter.com/*', 'https://x.com/*', 'https://linkedin.com/*', 'https://reddit.com/*']
             });
 
-            return response && response.success ? response.sessionManager : null;
+            // Try to get session manager from any active tab
+            for (const tab of tabs) {
+                try {
+                    const response = await chrome.tabs.sendMessage(tab.id, {
+                        type: 'GET_SESSION_MANAGER'
+                    });
+
+                    if (response && response.success && response.sessionManager) {
+                        return response.sessionManager;
+                    }
+                } catch (error) {
+                    // Tab might not have content script loaded, continue to next
+                    continue;
+                }
+            }
+
+            return null;
         } catch (error) {
             // Session manager might not be loaded yet
             return null;
@@ -255,10 +269,5 @@ class SupabaseSync {
     }
 }
 
-// Create global instance
-window.TopazSupabaseSync = new SupabaseSync();
-
-// Export for use in other modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = SupabaseSync;
-}
+// Export the class as default
+export default SupabaseSync;
