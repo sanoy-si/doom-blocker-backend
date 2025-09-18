@@ -140,6 +140,19 @@ function setupEventListeners() {
   } else {
     console.warn('⚠️ Settings button element not found');
   }
+
+  const profileButton = document.getElementById('profileButton');
+  console.log('👤 Profile button element:', profileButton);
+  if (profileButton) {
+    console.log('🎯 Adding click event listener to profile button');
+    profileButton.addEventListener('click', (e) => {
+      console.log('🖱️ Profile button click event triggered!', e);
+      handleProfileOpen();
+    });
+    console.log('✅ Profile button event listener added');
+  } else {
+    console.warn('⚠️ Profile button element not found');
+  }
   const editProfilesButton = document.getElementById('editProfilesButton');
   if (editProfilesButton) {
     editProfilesButton.addEventListener('click', handleEditProfilesClick);
@@ -331,6 +344,60 @@ function handleSettingsOpen() {
   } catch (error) {
     console.error('❌ Error in handleSettingsOpen:', error);
     console.error('Stack trace:', error.stack);
+  }
+}
+
+// Handle profile button click - opens analytics in new tab
+async function handleProfileOpen() {
+  console.log('👤 Profile button clicked - opening analytics');
+  try {
+    // Get user session ID for analytics
+    const sessionId = await getUserSessionId();
+
+    if (!sessionId) {
+      console.warn('⚠️ No session ID found, using fallback');
+      // Still open analytics but without session-specific data
+    }
+
+    // Construct analytics URL with session parameter
+    const analyticsUrl = sessionId
+      ? `https://topaz-backend1.onrender.com/analytics?session=${sessionId}`
+      : `https://topaz-backend1.onrender.com/analytics`;
+
+    // Open analytics in new tab
+    chrome.tabs.create({ url: analyticsUrl });
+
+    console.log('✅ Analytics tab opened:', analyticsUrl);
+
+  } catch (error) {
+    console.error('❌ Error opening analytics:', error);
+    // Show error notification
+    window.ui?.showNotification?.({
+      type: 'error',
+      message: 'Failed to open analytics',
+      duration: 3000
+    });
+  }
+}
+
+// Get user session ID from content script
+async function getUserSessionId() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id) return null;
+
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type: 'GET_SESSION_MANAGER'
+    });
+
+    if (response && response.success && response.sessionManager) {
+      return response.sessionManager.getSessionId();
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('Could not get session ID:', error);
+    return null;
   }
 }
 
