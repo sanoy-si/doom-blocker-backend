@@ -356,8 +356,8 @@ async function handleProfileOpen() {
 
     console.log('🔍 Retrieved session ID:', sessionId);
 
-    // Send some test data to backend to ensure there's something to display
-    await sendTestDataToBackend(sessionId);
+    // Send real user data to backend (and test data as fallback)
+    await sendUserDataToBackend(sessionId);
 
     // Always construct URL with session ID (we always have one now)
     const analyticsUrl = `https://topaz-backend1.onrender.com/analytics?session=${sessionId}`;
@@ -382,6 +382,138 @@ async function handleProfileOpen() {
       message: 'Failed to open analytics',
       duration: 3000
     });
+  }
+}
+
+// Send real user data to backend to populate analytics
+async function sendUserDataToBackend(sessionId) {
+  try {
+    console.log('📊 Sending real user data for session:', sessionId);
+
+    // Try to get real data from content scripts first
+    const realData = await getRealUserData(sessionId);
+
+    if (realData) {
+      console.log('📈 Found real user data:', realData);
+
+      // Send real session data
+      if (realData.sessionData) {
+        const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(realData.sessionData)
+        });
+        console.log('📝 Real session data response:', await sessionResponse.json());
+      }
+
+      // Send real metrics data
+      if (realData.metricsData) {
+        const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(realData.metricsData)
+        });
+        console.log('📊 Real metrics data response:', await metricsResponse.json());
+      }
+
+      // Send real blocked items data
+      if (realData.blockedItemsData && realData.blockedItemsData.blocked_items.length > 0) {
+        const blockedResponse = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(realData.blockedItemsData)
+        });
+        console.log('🚫 Real blocked items response:', await blockedResponse.json());
+      }
+
+      console.log('✅ Real user data sent successfully');
+    } else {
+      console.log('⚠️ No real data found, sending test data as fallback');
+      await sendTestDataToBackend(sessionId);
+    }
+
+  } catch (error) {
+    console.warn('⚠️ Failed to send real user data, falling back to test data:', error);
+    await sendTestDataToBackend(sessionId);
+  }
+}
+
+// Get real user data from content scripts
+async function getRealUserData(sessionId) {
+  try {
+    // Get all tabs that might have the extension
+    const tabs = await chrome.tabs.query({
+      url: ['https://www.youtube.com/*', 'https://youtube.com/*', 'https://twitter.com/*', 'https://x.com/*', 'https://linkedin.com/*', 'https://reddit.com/*']
+    });
+
+    for (const tab of tabs) {
+      try {
+        const response = await chrome.tabs.sendMessage(tab.id, {
+          type: 'GET_SESSION_MANAGER'
+        });
+
+        if (response && response.success && response.sessionManager) {
+          // Get session data
+          const sessionInfo = response.sessionManager.getStoredSession?.() || {};
+          const metrics = response.sessionManager.getMetrics?.() || {};
+          const syncQueue = response.sessionManager.getSyncQueue?.() || [];
+
+          if (sessionInfo.sessionId || metrics.totalBlocked > 0 || syncQueue.length > 0) {
+            console.log('📈 Found real session data from tab:', tab.url);
+
+            // Extract blocked items from sync queue
+            const blockedItems = [];
+            syncQueue.forEach(item => {
+              if (item.data && item.data.blockedItems) {
+                blockedItems.push(...item.data.blockedItems);
+              }
+            });
+
+            return {
+              sessionData: sessionInfo.sessionId ? {
+                session_id: sessionInfo.sessionId,
+                device_info: sessionInfo.deviceInfo || {
+                  userAgent: navigator.userAgent,
+                  language: navigator.language,
+                  platform: navigator.platform
+                },
+                created_at: sessionInfo.createdAt ? new Date(sessionInfo.createdAt).toISOString() : new Date().toISOString(),
+                extension_version: sessionInfo.version || chrome.runtime.getManifest().version,
+                first_install: sessionInfo.firstInstall || false
+              } : null,
+
+              metricsData: {
+                session_id: sessionId,
+                total_blocked: metrics.totalBlocked || 0,
+                blocked_today: metrics.blockedToday || 0,
+                sites_visited: metrics.sitesVisited || [],
+                profiles_used: metrics.profilesUsed || [],
+                last_updated: new Date().toISOString()
+              },
+
+              blockedItemsData: blockedItems.length > 0 ? {
+                session_id: sessionId,
+                blocked_items: blockedItems.map(item => ({
+                  timestamp: item.timestamp || new Date().toISOString(),
+                  count: item.count || 1,
+                  url: item.url || window.location.href,
+                  hostname: item.hostname || new URL(item.url || window.location.href).hostname,
+                  items: item.items || []
+                }))
+              } : null
+            };
+          }
+        }
+      } catch (error) {
+        console.warn('Could not get data from tab:', tab.url, error);
+        continue;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting real user data:', error);
+    return null;
   }
 }
 

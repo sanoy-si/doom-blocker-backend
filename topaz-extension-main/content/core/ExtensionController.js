@@ -1164,6 +1164,7 @@ class ExtensionController {
             getSessionId: () => this.sessionManager?.getSessionId(),
             getMetrics: () => this.sessionManager?.getMetrics(),
             getSyncQueue: () => this.sessionManager?.getSyncQueue(),
+            getStoredSession: () => this.sessionManager?.getStoredSession(),
             markAsSynced: (timestamps) => this.sessionManager?.markAsSynced(timestamps)
           }
         });
