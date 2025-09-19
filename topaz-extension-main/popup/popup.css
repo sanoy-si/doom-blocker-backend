@@ -222,19 +222,21 @@ body {
     border: none;
     color: var(--text-subtle);
     cursor: pointer;
-    padding: var(--space-lg);
+    padding: var(--space-xl);
     margin: calc(-1 * var(--space-sm));
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     transition: var(--transition-all);
     display: flex;
     align-items: center;
     justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
 }
 
 .settings-button:hover,
 .profile-button:hover {
     color: var(--color-primary);
-    /*background: var(--color-primary-light);*/
+    background: var(--color-primary-light);
 }
 
 .settings-button:active,

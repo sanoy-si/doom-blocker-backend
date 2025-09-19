@@ -782,14 +782,23 @@ class ExtensionController {
       });
 
       // Track blocked items for analytics
-      const blockedItemDetails = elementsToHide.map(item => ({
-        id: item.id,
-        text: this.extractBetterTitle(item.element),
-        type: 'ai-filtered',
-        url: window.location.href,
-        hostname: window.location.hostname,
-        timestamp: Date.now()
-      }));
+      const blockedItemDetails = elementsToHide.map(item => {
+        const extractedTitle = this.extractBetterTitle(item.element);
+        console.log('📊 [Analytics Debug] Sending blocked item:', {
+          id: item.id,
+          title: extractedTitle,
+          hostname: window.location.hostname
+        });
+        return {
+          id: item.id,
+          text: extractedTitle,
+          title: extractedTitle, // Add title field for backend compatibility
+          type: 'ai-filtered',
+          url: window.location.href,
+          hostname: window.location.hostname,
+          timestamp: Date.now()
+        };
+      });
 
       this.trackBlockedItems(markedCount, blockedItemDetails);
 
@@ -1169,29 +1178,58 @@ class ExtensionController {
     try {
       // Try various methods to get meaningful content
       const strategies = [
-        // Look for specific selectors that often contain titles
+        // YouTube video titles (most specific first)
+        () => element.querySelector('#video-title-link, #video-title yt-formatted-string, #video-title a')?.textContent?.trim(),
+        () => element.querySelector('h3.ytd-video-renderer a, h3.ytd-compact-video-renderer a')?.textContent?.trim(),
+        () => element.querySelector('a#video-title, a[aria-describedby*="video"]')?.textContent?.trim(),
+        () => element.querySelector('span#video-title, .ytd-video-meta-block h3')?.textContent?.trim(),
+        () => element.querySelector('[id*="video-title"], [class*="video-title"]')?.textContent?.trim(),
+
+        // YouTube Shorts titles
+        () => element.querySelector('#shorts-title, .shorts-video-title')?.textContent?.trim(),
+        () => element.querySelector('[aria-label*="Shorts"] h3, [data-testid*="shorts"] h3')?.textContent?.trim(),
+
+        // Other video platforms
+        () => element.querySelector('.video-title, .media-title, .content-title')?.textContent?.trim(),
+        () => element.querySelector('[data-testid*="video"] h1, [data-testid*="video"] h2, [data-testid*="video"] h3')?.textContent?.trim(),
+
+        // General title selectors
         () => element.querySelector('h1, h2, h3, h4, h5, h6')?.textContent?.trim(),
         () => element.querySelector('[aria-label]')?.getAttribute('aria-label')?.trim(),
         () => element.querySelector('a[title]')?.getAttribute('title')?.trim(),
         () => element.querySelector('img[alt]')?.getAttribute('alt')?.trim(),
         () => element.querySelector('[data-testid*="title"], [data-testid*="heading"]')?.textContent?.trim(),
 
-        // For video content
-        () => element.querySelector('#video-title, .video-title, .title')?.textContent?.trim(),
-
-        // For social media posts
+        // Social media posts
         () => element.querySelector('[data-testid="tweetText"], .tweet-text, .post-content')?.textContent?.trim(),
+        () => element.querySelector('[data-testid="User-Name"] ~ div, .post-text, .feed-shared-text')?.textContent?.trim(),
 
-        // For general content
+        // Fallback to general content
         () => element.textContent?.trim()
       ];
 
       for (const strategy of strategies) {
         try {
           const result = strategy();
-          if (result && result.length > 5 && result.length < 200) {
-            // Clean up the text
-            return result.replace(/\s+/g, ' ').substring(0, 150);
+          if (result && result.length > 3 && result.length < 300) {
+            // Clean up the text and remove common noise
+            let cleanTitle = result
+              .replace(/\s+/g, ' ')
+              .replace(/^\s*[-•·]\s*/, '') // Remove leading bullets/dashes
+              .replace(/\s*\|\s*YouTube\s*$/, '') // Remove "| YouTube" suffix
+              .replace(/\s*-\s*YouTube\s*$/, '') // Remove "- YouTube" suffix
+              .replace(/\s*•\s*YouTube\s*$/, '') // Remove "• YouTube" suffix
+              .replace(/^Watch\s*:\s*/i, '') // Remove "Watch:" prefix
+              .replace(/^Video\s*:\s*/i, '') // Remove "Video:" prefix
+              .trim();
+
+            if (cleanTitle.length > 3) {
+              // Log successful title extraction for debugging
+              if (window.location.hostname.includes('youtube')) {
+                console.log('🎬 [Title Debug] Extracted video title:', cleanTitle.substring(0, 50) + '...');
+              }
+              return cleanTitle.substring(0, 150);
+            }
           }
         } catch (e) {
           // Strategy failed, try next
