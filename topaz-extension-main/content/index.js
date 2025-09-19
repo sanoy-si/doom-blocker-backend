@@ -19,7 +19,8 @@ function initialize() {
     "x.com",
     "twitter.com",
     "linkedin.com",
-    "reddit.com"
+    "reddit.com",
+    "localhost"
   ];
 
   function isAllowedWebsite() {
