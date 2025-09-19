@@ -8,6 +8,18 @@ export default defineConfig(() => {
     base: './',
     build: {
       outDir: 'build',
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom'],
+            coreui: ['@coreui/react', '@coreui/coreui'],
+            icons: ['@coreui/icons', '@coreui/icons-react'],
+            charts: ['chart.js', '@coreui/react-chartjs'],
+            stripe: ['@stripe/stripe-js', '@stripe/react-stripe-js']
+          }
+        }
+      }
     },
     css: {
       postcss: {
