@@ -3,8 +3,8 @@
 
 class SessionManager {
     constructor() {
-        this.sessionKey = 'topaz_user_session';
-        this.metricsKey = 'topaz_user_metrics';
+        this.sessionKey = 'doom_blocker_user_session';
+        this.metricsKey = 'doom_blocker_user_metrics';
         this.initialized = false;
     }
 
@@ -341,4 +341,4 @@ class SessionManager {
 }
 
 // Create global instance for content scripts
-window.TopazSessionManager = new SessionManager();
+window.DoomBlockerSessionManager = new SessionManager();

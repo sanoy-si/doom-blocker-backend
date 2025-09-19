@@ -16,10 +16,10 @@ class ExtensionController {
     this.previewState = { enabled: false, items: [] };
     this.previewProcessing = false; // prevent overlapping preview toggles
     // Initialize session manager for analytics
-    this.sessionManager = window.TopazSessionManager;
+    this.sessionManager = window.DoomBlockerSessionManager;
     // Initialize logger if available
     try {
-      this.logger = window.TopazLogger ? new window.TopazLogger('Topaz:Content') : null;
+      this.logger = window.DoomBlockerLogger ? new window.DoomBlockerLogger('DoomBlocker:Content') : null;
     } catch (_) {
       this.logger = null;
     }

@@ -88,12 +88,12 @@ def track_ip_request(ip_address: str):
     #logger.info(f"📊 IP {ip_address} has made {request_count} requests this hour")
     return request_count
 
-app = FastAPI(title="Topaz Backend", version="1.0.0")
+app = FastAPI(title="Doom Blocker Backend", version="1.0.0")
 
 # Add startup event for debugging
 @app.on_event("startup")
 async def startup_event():
-    logger.info("🚀 Topaz Backend starting up...")
+    logger.info("🚀 Doom Blocker Backend starting up...")
     logger.info(f"📁 Current working directory: {os.getcwd()}")
     logger.info(f"📄 Prompts loaded: {len(prompts_data)} patterns")
     logger.info(f"🔑 OpenAI configured: {OPENAI_HEADERS is not None}")
@@ -431,7 +431,7 @@ async def websocket_endpoint(websocket: WebSocket):
 async def root():
     """Root endpoint"""
     return {
-        "message": "Topaz Backend API",
+        "message": "Doom Blocker Backend API",
         "status": "running",
         "timestamp": time.time(),
         "endpoints": {
@@ -679,7 +679,7 @@ async def analytics_frontend(request: Request):
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Topaz Analytics</title>
+        <title>Doom Blocker Analytics</title>
         <style>
             * {{
                 margin: 0;
@@ -837,7 +837,7 @@ async def analytics_frontend(request: Request):
     <body>
         <div class="container">
             <div class="header">
-                <h1>📊 Topaz Analytics</h1>
+                <h1>📊 Doom Blocker Analytics</h1>
                 <p>Your content filtering insights and statistics</p>
             </div>
 

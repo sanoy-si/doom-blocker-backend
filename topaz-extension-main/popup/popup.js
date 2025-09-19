@@ -1,5 +1,5 @@
 async function initializePopup() {
-  console.log('🚀 Initializing Topaz popup...');
+  console.log('🚀 Initializing Doom Blocker popup...');
   
   try {
     // Check if all required modules are available
@@ -1090,7 +1090,7 @@ async function handlePreviewToggleClick() {
     if (!window.appState?.state?.isExtensionEnabled) {
       window.ui && window.ui.showNotification && window.ui.showNotification({
         type: 'warning',
-        message: 'Enable Topaz to preview hidden content',
+        message: 'Enable Doom Blocker to preview hidden content',
         duration: 1800
       });
       return;

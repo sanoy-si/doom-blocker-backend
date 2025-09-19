@@ -1,5 +1,5 @@
 {
-  "name": "Topaz",
+  "name": "Doom Blocker",
   "description": "Social media AI filtering",
   "version": "0.1.1",
   "manifest_version": 3,
@@ -63,7 +63,7 @@
         "content/video-effects.css",
         "content/loading.html",
         "content/config.json",
-        "topaz.svg"
+        "logo.svg"
       ],
       "matches": ["http://*/*", "https://*/*"]
     }

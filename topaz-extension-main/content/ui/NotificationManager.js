@@ -274,7 +274,7 @@ class NotificationManager {
 
     const title = document.createElement('div');
     title.className = `topaz-notification-title ${CSS_CLASSES.NOTIFICATION_ERROR_TITLE}`;
-    title.textContent = 'Topaz Error';
+    title.textContent = 'Doom Blocker Error';
 
     const message = document.createElement('div');
     message.className = CSS_CLASSES.NOTIFICATION_ERROR_MESSAGE;

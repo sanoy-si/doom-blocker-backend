@@ -1,5 +1,5 @@
 /**
- * Shared constants for Topaz extension
+ * Shared constants for Doom Blocker extension
  * Used by both popup and background scripts
  */
 

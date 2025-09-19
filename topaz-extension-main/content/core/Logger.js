@@ -1,6 +1,6 @@
 (function() {
-  class TopazLogger {
-    constructor(scope = 'Topaz') {
+  class DoomBlockerLogger {
+    constructor(scope = 'DoomBlocker') {
       this.scope = scope;
       this.level = 'info'; // debug|info|warn|error
     }
@@ -18,5 +18,5 @@
     }
   }
   // expose globally in content context
-  window.TopazLogger = TopazLogger;
+  window.DoomBlockerLogger = DoomBlockerLogger;
 })();
