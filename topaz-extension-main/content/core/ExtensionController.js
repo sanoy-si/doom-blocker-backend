@@ -290,10 +290,10 @@ class ExtensionController {
     const elementsToBlur = this.gridManager.getElementsToBlur();
     console.log("🔍 [TOPAZ DEBUG] Elements to blur:", elementsToBlur.length);
     console.log("[blur timing debug] About to blur", elementsToBlur.length, "elements");
-    // DISABLED: Blur effects are annoying, just hide content instantly
-    // const blurredCount = this.elementEffects.blurElements(elementsToBlur);
-    console.log("🔍 [TOPAZ DEBUG] Skipping blur effects for better UX");
-    console.log("[blur timing debug] Skipped blur effects");
+    // ENABLED: Component-wise blur effects for better UX
+    const blurredCount = this.elementEffects.blurElements(elementsToBlur);
+    console.log("🔍 [TOPAZ DEBUG] Applied blur effects to", blurredCount, "elements");
+    console.log("[blur timing debug] Applied blur effects");
     console.timeEnd("[blur timing debug] DOM content loaded to blur completion");
 
     const allGrids = this.gridManager.getAllGrids();
@@ -473,8 +473,8 @@ class ExtensionController {
       }
 
       if (childrenToAnalyze.length > 0) {
-        // DISABLED: Blur effects are annoying, just hide content instantly
-        // this.elementEffects.blurElements(childrenToAnalyze);
+        // ENABLED: Component-wise blur effects for better UX
+        this.elementEffects.blurElements(childrenToAnalyze);
 
         gridStructure.push({
           id: grid.id,
@@ -556,8 +556,8 @@ class ExtensionController {
         }
       }
       if (childrenToAnalyze.length > 0) {
-        // DISABLED: Blur effects are annoying, just hide content instantly
-        // this.elementEffects.blurElements(childrenToAnalyze);
+        // ENABLED: Component-wise blur effects for better UX
+        this.elementEffects.blurElements(childrenToAnalyze);
         gridStructure.push({
           id: currentGrid.id,
           gridText: currentGrid.element.innerText,
@@ -627,13 +627,13 @@ class ExtensionController {
     console.log("🔍 [TOPAZ DEBUG] Proceeding with analysis, clearing timeout and auto-collapsing");
     this.clearAnalysisTimeout();
     await this.autoCollapseElements();
-    // DISABLED: No more blur effects, so no need to clear them
-    // this.analysisTimeout = setTimeout(() => {
-    //   if (!this.isDisabled) {
-    //     this.elementEffects.clearAllBlurs();
-    //   }
-    //   this.analysisTimeout = null;
-    // }, TIMINGS.ANALYSIS_TIMEOUT);
+    // ENABLED: Clear blur effects after analysis timeout
+    this.analysisTimeout = setTimeout(() => {
+      if (!this.isDisabled) {
+        this.elementEffects.clearAllBlurs();
+      }
+      this.analysisTimeout = null;
+    }, TIMINGS.ANALYSIS_TIMEOUT);
 
     console.log("🔍 [TOPAZ DEBUG] Sending ANALYZE_GRID_STRUCTURE message to background");
     this.messageHandler
@@ -727,8 +727,8 @@ class ExtensionController {
       );
       return;
     }
-    // DISABLED: No more blur effects
-    // const clearedCount = this.elementEffects.clearAllBlurs();
+    // ENABLED: Clear blur effects when disabling
+    const clearedCount = this.elementEffects.clearAllBlurs();
     
     const elementsToHide = this.gridManager.getElementsToHide(gridInstructions);
     console.log("🔍 [TOPAZ DEBUG] New elements to hide:", elementsToHide.length);
