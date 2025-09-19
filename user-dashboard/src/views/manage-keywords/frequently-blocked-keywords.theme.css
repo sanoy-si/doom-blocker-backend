@@ -1,0 +1,53 @@
+:root {
+  --fbk-card-bg: linear-gradient(135deg, rgba(108,99,255,0.13) 0%, rgba(168,237,234,0.10) 100%);
+  --fbk-card-border: rgba(108,99,255,0.13);
+  --fbk-title: #8f7cf7;
+  --fbk-list-bg: rgba(30,32,60,0.92);
+  --fbk-list-color: #e0e0e0;
+  --fbk-keyword: #8f7cf7;
+  --fbk-badge-bg: linear-gradient(90deg, #6C63FF 0%, #43cea2 100%);
+  --fbk-badge-color: #fff;
+:root {
+  --fbk-card-bg: linear-gradient(135deg, rgba(108,99,255,0.13) 0%, rgba(168,237,234,0.10) 100%);
+  --fbk-card-border: rgba(108,99,255,0.13);
+  --fbk-title: #8f7cf7;
+  --fbk-list-bg: rgba(30,32,60,0.92);
+  --fbk-list-color: #e0e0e0;
+  --fbk-keyword: #8f7cf7;
+  --fbk-badge-bg: linear-gradient(90deg, #6C63FF 0%, #43cea2 100%);
+  --fbk-badge-color: #fff;
+}
+
+body.light-theme, .light-theme {
+  --fbk-card-bg: linear-gradient(135deg, #f8f9fa 0%, #e3f6fd 100%);
+  --fbk-card-border: #e3e6f0;
+  --fbk-title: #5a4fcf;
+  --fbk-list-bg: #fff;
+  --fbk-list-color: #23243a;
+  --fbk-keyword: #5a4fcf;
+  --fbk-badge-bg: linear-gradient(90deg, #5a4fcf 0%, #43cea2 100%);
+  --fbk-badge-color: #fff;
+}
+  background: var(--fbk-list-bg) !important;
+  /* In light mode, this will be white. */
+}
+.frequently-blocked-list-item {
+  background: var(--fbk-list-bg) !important;
+  color: var(--fbk-list-color) !important;
+  border-radius: 10px !important;
+  font-size: 17px;
+  font-weight: 500;
+  box-shadow: 0 1px 4px 0 rgba(108,99,255,0.06);
+  padding: 10px 18px;
+}
+.frequently-blocked-keyword {
+  color: var(--fbk-keyword) !important;
+  font-weight: 600;
+}
+.frequently-blocked-badge {
+  background: var(--fbk-badge-bg) !important;
+  color: var(--fbk-badge-color) !important;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.2px;
+}
