@@ -393,12 +393,24 @@ async function sendCurrentStatsToBackend(sessionId) {
   try {
     console.log('📊 Sending current stats for session:', sessionId);
 
-    // Always get the most current background stats
-    const currentStats = await getGlobalBlockedStats();
-    console.log('📈 Current extension stats:', currentStats);
+    // Get the exact numbers displayed in the popup UI
+    const totalBlockedElement = document.getElementById('totalBlocked');
+    const blockedCountElement = document.getElementById('blockedCount');
 
-    // Force the stats to be what's shown in the extension popup
-    console.log('🎯 Forcing real stats - Total:', currentStats.totalBlocked, 'Today:', currentStats.blockedCount);
+    const totalFromUI = totalBlockedElement ? parseInt(totalBlockedElement.textContent) : 0;
+    const todayFromUI = blockedCountElement ? parseInt(blockedCountElement.textContent) : 0;
+
+    console.log('🎯 Numbers from popup UI - Total:', totalFromUI, 'Today:', todayFromUI);
+
+    // Also get background stats as backup
+    const backgroundStats = await getGlobalBlockedStats();
+    console.log('📈 Background stats - Total:', backgroundStats.totalBlocked, 'Today:', backgroundStats.blockedCount);
+
+    // Use the higher number (UI or background)
+    const finalTotal = Math.max(totalFromUI, backgroundStats.totalBlocked || 0);
+    const finalToday = Math.max(todayFromUI, backgroundStats.blockedCount || 0);
+
+    console.log('🏆 Final numbers to send - Total:', finalTotal, 'Today:', finalToday);
 
     // Send current session data
     const sessionData = {
@@ -417,17 +429,14 @@ async function sendCurrentStatsToBackend(sessionId) {
     // Send current metrics with real counts
     const metricsData = {
       session_id: sessionId,
-      total_blocked: currentStats.totalBlocked || 0,
-      blocked_today: currentStats.blockedCount || 0,
+      total_blocked: finalTotal,
+      blocked_today: finalToday,
       sites_visited: [],
       profiles_used: [],
       last_updated: new Date().toISOString()
     };
 
-    console.log('📊 Sending metrics with current stats:', metricsData);
-
-    // Force overwrite any existing data with current real stats
-    console.log('🧹 Sending fresh real data to overwrite any test data');
+    console.log('📊 Sending metrics data:', metricsData);
 
     // Send session data
     const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
@@ -449,12 +458,11 @@ async function sendCurrentStatsToBackend(sessionId) {
     const metricsResult = await metricsResponse.json();
     console.log('📊 Metrics response:', metricsResult);
 
-    console.log('✅ Current stats sent to backend successfully');
+    console.log('✅ Sent real UI stats to backend:', {total: finalTotal, today: finalToday});
 
   } catch (error) {
     console.warn('⚠️ Failed to send current stats:', error);
-    // Fall back to the other method
-    await sendUserDataToBackend(sessionId);
+    // Don't fall back to test data anymore
   }
 }
 
