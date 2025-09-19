@@ -648,6 +648,54 @@ class ElementEffects {
   setSuppressHiding(flag) {
     this.suppressHiding = !!flag;
   }
+  
+
+  /**
+ * Applies a "blur-then-remove" animation to an element and removes it from the DOM
+ * after the animation completes.
+ * @param {HTMLElement} element The element to remove.
+ */
+removeElementWithAnimation(element) {
+  if (!element || !document.body.contains(element)) {
+      return; // Don't do anything if the element doesn't exist
+  }
+
+  // This is the function that will be called when the animation is over
+  const handleAnimationEnd = () => {
+      // Actually remove the element from the page
+      element.remove();
+  };
+
+  // Add the CSS class that starts the animation
+  element.classList.add("topaz-element-is-removing");
+
+  // Listen for the 'animationend' event. The { once: true } option is important
+  // as it automatically removes the event listener after it has fired once.
+  element.addEventListener('animationend', handleAnimationEnd, { once: true });
+}
+  /**
+   * Applies a "blur-then-remove" animation to an element and removes it from the DOM
+   * after the animation completes.
+   * @param {HTMLElement} element The element to remove.
+   */
+  removeElementWithAnimation(element) {
+    if (!element || !document.body.contains(element)) {
+      return; // Don't do anything if the element doesn't exist
+    }
+
+    // This is the function that will be called when the animation is over
+    const handleAnimationEnd = () => {
+      // Actually remove the element from the page
+      element.remove();
+    };
+
+    // Add the CSS class that starts the animation
+    element.classList.add("topaz-element-is-removing");
+
+    // Listen for the 'animationend' event. The { once: true } option is important
+    // as it automatically removes the event listener after it has fired once.
+    element.addEventListener('animationend', handleAnimationEnd, { once: true });
+  }
 
   /**
    * Destroy effects manager
@@ -657,3 +705,4 @@ class ElementEffects {
     this.elementStates = new WeakMap();
   }
 }
+

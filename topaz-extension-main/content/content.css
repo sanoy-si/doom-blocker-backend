@@ -223,11 +223,81 @@
     pointer-events: none !important;
 }
 
+
+/* Add these new rules to your content.css file */
+
+/* This is the class your JavaScript will add to trigger the removal animation */
+.topaz-element-is-removing {
+    /* The 'forwards' keyword is crucial. It makes the element keep the 100% keyframe styles after the animation ends. */
+    animation: topaz-blur-then-remove 1.2s forwards ease-in-out;
+}
+
+@keyframes topaz-blur-then-remove {
+    /* Start: The element is fully visible */
+    0% {
+        filter: blur(0);
+        opacity: 1;
+        /* Use max-height for a smooth collapse animation */
+        max-height: 100vh; /* A large value that is bigger than any target element */
+    }
+
+    /* Middle: The element is blurred and holds this state for a moment */
+    60% {
+        filter: blur(var(--topaz-element-blur)); /* Using your existing blur variable */
+        opacity: var(--topaz-blur-opacity);      /* Using your existing opacity variable */
+    }
+
+    /* End: The element fades out and collapses */
+    100% {
+        filter: blur(calc(var(--topaz-element-blur) * 1.5)); /* Slightly increase blur for a nice effect */
+        opacity: 0;
+
+        /* These styles are borrowed from your .topaz-collapsed-element class to ensure a smooth collapse */
+        height: 0;
+        min-height: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        border-width: 0;
+        overflow: hidden;
+        pointer-events: none;
+    }
+}
 /* Prevent browser from blurring background when extension popup is open */
 html, body {
     filter: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
+}
+
+/* Blur-then-remove animation */
+.topaz-element-is-removing {
+    animation: topaz-blur-remove-animation 0.8s ease-in-out forwards;
+    pointer-events: none !important;
+}
+
+@keyframes topaz-blur-remove-animation {
+    0% {
+        filter: blur(0px);
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        filter: blur(8px);
+        opacity: 0.7;
+        transform: scale(0.98);
+    }
+    100% {
+        filter: blur(15px);
+        opacity: 0;
+        transform: scale(0.95);
+        height: 0;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+    }
 }
 
 /* Import video effects */
