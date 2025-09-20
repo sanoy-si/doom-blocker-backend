@@ -176,6 +176,20 @@ class ExtensionController {
     this.eventBus.on(EVENTS.CONFIG_UPDATED, (config) => {
       this.handleConfigUpdate(config);
     });
+
+    // YouTube feature blocking
+    this.eventBus.on('youtube:block-shorts', ({ enabled, sendResponse }) => {
+      this.handleYouTubeBlockShorts(enabled, sendResponse);
+    });
+    this.eventBus.on('youtube:block-home-feed', ({ enabled, sendResponse }) => {
+      this.handleYouTubeBlockHomeFeed(enabled, sendResponse);
+    });
+    this.eventBus.on('youtube:block-comments', ({ enabled, sendResponse }) => {
+      this.handleYouTubeBlockComments(enabled, sendResponse);
+    });
+    this.eventBus.on('youtube:get-settings', ({ sendResponse }) => {
+      this.handleYouTubeGetSettings(sendResponse);
+    });
   }
 
   handleConfigUpdate(config) {
@@ -1399,6 +1413,157 @@ class ExtensionController {
         });
       }
     }
+  }
+
+  /**
+   * Handle YouTube Shorts blocking
+   */
+  handleYouTubeBlockShorts(enabled, sendResponse) {
+    try {
+      if (window.location.hostname.includes('youtube.com')) {
+        this.blockYouTubeShorts(enabled);
+        sendResponse(this.messageHandler.createResponse(true, `YouTube Shorts ${enabled ? 'blocked' : 'unblocked'}`));
+      } else {
+        sendResponse(this.messageHandler.createResponse(false, 'Not on YouTube'));
+      }
+    } catch (error) {
+      sendResponse(this.messageHandler.createResponse(false, `Error blocking YouTube Shorts: ${error.message}`));
+    }
+  }
+
+  /**
+   * Handle YouTube Home Feed blocking
+   */
+  handleYouTubeBlockHomeFeed(enabled, sendResponse) {
+    try {
+      if (window.location.hostname.includes('youtube.com')) {
+        this.blockYouTubeHomeFeed(enabled);
+        sendResponse(this.messageHandler.createResponse(true, `YouTube Home Feed ${enabled ? 'blocked' : 'unblocked'}`));
+      } else {
+        sendResponse(this.messageHandler.createResponse(false, 'Not on YouTube'));
+      }
+    } catch (error) {
+      sendResponse(this.messageHandler.createResponse(false, `Error blocking YouTube Home Feed: ${error.message}`));
+    }
+  }
+
+  /**
+   * Handle YouTube Comments blocking
+   */
+  handleYouTubeBlockComments(enabled, sendResponse) {
+    try {
+      if (window.location.hostname.includes('youtube.com')) {
+        this.blockYouTubeComments(enabled);
+        sendResponse(this.messageHandler.createResponse(true, `YouTube Comments ${enabled ? 'blocked' : 'unblocked'}`));
+      } else {
+        sendResponse(this.messageHandler.createResponse(false, 'Not on YouTube'));
+      }
+    } catch (error) {
+      sendResponse(this.messageHandler.createResponse(false, `Error blocking YouTube Comments: ${error.message}`));
+    }
+  }
+
+  /**
+   * Handle getting YouTube settings
+   */
+  handleYouTubeGetSettings(sendResponse) {
+    try {
+      const settings = {
+        blockShorts: document.body.classList.contains(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN),
+        blockHomeFeed: document.body.classList.contains(CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN),
+        blockComments: document.body.classList.contains(CSS_CLASSES.YOUTUBE_COMMENTS_HIDDEN)
+      };
+      sendResponse(this.messageHandler.createResponse(true, 'YouTube settings retrieved', { settings }));
+    } catch (error) {
+      sendResponse(this.messageHandler.createResponse(false, `Error getting YouTube settings: ${error.message}`));
+    }
+  }
+
+  /**
+   * Block/unblock YouTube Shorts
+   */
+  blockYouTubeShorts(enabled) {
+    const shortsSelectors = [
+      '#shorts-player',
+      '[data-testid="shorts-player"]',
+      'ytd-reel-shelf-renderer',
+      'ytd-shorts',
+      '#shorts-container',
+      '[is="ytd-reel-shelf-renderer"]'
+    ];
+
+    shortsSelectors.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(element => {
+        if (enabled) {
+          element.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+        } else {
+          element.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+        }
+      });
+    });
+
+    // Also hide Shorts navigation items
+    const shortsNavItems = document.querySelectorAll('a[href*="/shorts"]');
+    shortsNavItems.forEach(item => {
+      if (enabled) {
+        item.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+      } else {
+        item.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+      }
+    });
+  }
+
+  /**
+   * Block/unblock YouTube Home Feed
+   */
+  blockYouTubeHomeFeed(enabled) {
+    const homeFeedSelectors = [
+      '#contents',
+      '#primary',
+      '#secondary',
+      'ytd-rich-grid-renderer',
+      'ytd-video-renderer',
+      'ytd-grid-video-renderer',
+      '#page-manager',
+      '#primary-inner'
+    ];
+
+    homeFeedSelectors.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(element => {
+        if (enabled) {
+          element.classList.add(CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN);
+        } else {
+          element.classList.remove(CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN);
+        }
+      });
+    });
+  }
+
+  /**
+   * Block/unblock YouTube Comments
+   */
+  blockYouTubeComments(enabled) {
+    const commentsSelectors = [
+      '#comments',
+      'ytd-comments',
+      '#comment-thread-renderer',
+      'ytd-comment-thread-renderer',
+      '#comment-section',
+      'ytd-comment-section-renderer'
+    ];
+
+    commentsSelectors.forEach(selector => {
+      const elements = document.querySelectorAll(selector);
+      elements.forEach(element => {
+        if (enabled) {
+          element.classList.add(CSS_CLASSES.YOUTUBE_COMMENTS_HIDDEN);
+        } else {
+          element.classList.remove(CSS_CLASSES.YOUTUBE_COMMENTS_HIDDEN);
+        }
+      });
+    });
   }
 
   destroy() {
