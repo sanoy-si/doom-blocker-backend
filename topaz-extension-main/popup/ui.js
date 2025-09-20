@@ -23,6 +23,7 @@ const elements = {
   simpleAddItemInput: null,
   simpleSendButton: null,
   simpleResetButton: null,
+  quickAddSection: null,
   blockedCount: null,
   totalBlocked: null,
   blockedTodayLabel: null,
@@ -68,6 +69,7 @@ function cacheElements() {
   elements.simpleSendButton = document.getElementById('simpleSendButton');
   elements.simpleSaveButton = document.getElementById('simpleSaveButton');
   elements.simpleResetButton = document.getElementById('simpleResetButton');
+  elements.quickAddSection = document.querySelector('.quick-add-section');
   elements.blockedCount = document.getElementById('blockedCount');
   elements.totalBlocked = document.getElementById('totalBlocked');
   elements.blockedTodayLabel = document.getElementById('blockedTodayLabel');
@@ -131,10 +133,20 @@ function renderExtensionToggle() {
     elements.enableToggle.classList.add('enabled');
     elements.enableToggle.classList.remove('disabled');
     elements.toggleStatus.textContent = 'enabled';
+    
+    // Enable suggestion section
+    if (elements.quickAddSection) {
+      elements.quickAddSection.classList.remove('disabled');
+    }
   } else {
     elements.enableToggle.classList.remove('enabled');
     elements.enableToggle.classList.add('disabled');
     elements.toggleStatus.textContent = 'disabled';
+    
+    // Disable suggestion section
+    if (elements.quickAddSection) {
+      elements.quickAddSection.classList.add('disabled');
+    }
   }
 }
 

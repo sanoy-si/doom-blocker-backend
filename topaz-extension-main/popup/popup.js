@@ -79,6 +79,9 @@ async function loadInitialData() {
       // Fetch block stats for the current site
       const stats = await loadBlockStats();
       
+      // Load YouTube feature settings
+      await loadYouTubeFeatureSettings();
+      
       window.appState.updateState({
         isExtensionEnabled: settings.extensionEnabled ?? true,
         isPowerUserMode: settings.isPowerUserMode ?? false,
@@ -235,6 +238,129 @@ function setupEventListeners() {
   websitePills.forEach(pill => {
     pill.addEventListener('click', () => toggleWebsite(pill.dataset.website));
   });
+
+  // Suggestion tags
+  const suggestionTags = document.querySelectorAll('.suggestion-tag');
+  suggestionTags.forEach(tag => {
+    tag.addEventListener('click', () => handleSuggestionTagClick(tag.dataset.tag));
+  });
+
+  // YouTube feature toggles - use event delegation for more reliability
+  console.log('Setting up YouTube toggle event listeners...');
+  
+  // Use event delegation on the document to catch clicks on toggle inputs
+  document.addEventListener('change', (event) => {
+    if (event.target.id === 'blockShortsToggle') {
+      console.log('Block Shorts toggle changed:', event.target.checked);
+      handleYouTubeFeatureToggle('blockShorts', event.target.checked);
+    } else if (event.target.id === 'blockHomeFeedToggle') {
+      console.log('Block Home Feed toggle changed:', event.target.checked);
+      handleYouTubeFeatureToggle('blockHomeFeed', event.target.checked);
+    } else if (event.target.id === 'blockCommentsToggle') {
+      console.log('Block Comments toggle changed:', event.target.checked);
+      handleYouTubeFeatureToggle('blockComments', event.target.checked);
+    }
+  });
+
+  // Also listen for clicks on toggle switches (in case change event doesn't fire)
+  document.addEventListener('click', (event) => {
+    if (event.target.id === 'blockShortsToggle' || event.target.closest('#blockShortsToggle')) {
+      console.log('Block Shorts toggle clicked');
+      setTimeout(() => {
+        const toggle = document.getElementById('blockShortsToggle');
+        if (toggle) {
+          console.log('Block Shorts toggle state after click:', toggle.checked);
+          handleYouTubeFeatureToggle('blockShorts', toggle.checked);
+        }
+      }, 10);
+    } else if (event.target.id === 'blockHomeFeedToggle' || event.target.closest('#blockHomeFeedToggle')) {
+      console.log('Block Home Feed toggle clicked');
+      setTimeout(() => {
+        const toggle = document.getElementById('blockHomeFeedToggle');
+        if (toggle) {
+          console.log('Block Home Feed toggle state after click:', toggle.checked);
+          handleYouTubeFeatureToggle('blockHomeFeed', toggle.checked);
+        }
+      }, 10);
+    } else if (event.target.id === 'blockCommentsToggle' || event.target.closest('#blockCommentsToggle')) {
+      console.log('Block Comments toggle clicked');
+      setTimeout(() => {
+        const toggle = document.getElementById('blockCommentsToggle');
+        if (toggle) {
+          console.log('Block Comments toggle state after click:', toggle.checked);
+          handleYouTubeFeatureToggle('blockComments', toggle.checked);
+        }
+      }, 10);
+    }
+  });
+
+  // Also try direct event listeners as backup
+  setTimeout(() => {
+    const blockShortsToggle = document.getElementById('blockShortsToggle');
+    const blockHomeFeedToggle = document.getElementById('blockHomeFeedToggle');
+    const blockCommentsToggle = document.getElementById('blockCommentsToggle');
+
+    console.log('YouTube toggle elements found (delayed):', {
+      blockShortsToggle: !!blockShortsToggle,
+      blockHomeFeedToggle: !!blockHomeFeedToggle,
+      blockCommentsToggle: !!blockCommentsToggle
+    });
+
+    if (blockShortsToggle) {
+      console.log('Adding direct event listener to blockShortsToggle');
+      blockShortsToggle.addEventListener('change', () => {
+        console.log('Direct Block Shorts toggle changed:', blockShortsToggle.checked);
+        handleYouTubeFeatureToggle('blockShorts', blockShortsToggle.checked);
+      });
+    }
+    
+    if (blockHomeFeedToggle) {
+      console.log('Adding direct event listener to blockHomeFeedToggle');
+      blockHomeFeedToggle.addEventListener('change', () => {
+        console.log('Direct Block Home Feed toggle changed:', blockHomeFeedToggle.checked);
+        handleYouTubeFeatureToggle('blockHomeFeed', blockHomeFeedToggle.checked);
+      });
+    }
+    
+    if (blockCommentsToggle) {
+      console.log('Adding direct event listener to blockCommentsToggle');
+      blockCommentsToggle.addEventListener('change', () => {
+        console.log('Direct Block Comments toggle changed:', blockCommentsToggle.checked);
+        handleYouTubeFeatureToggle('blockComments', blockCommentsToggle.checked);
+      });
+    }
+  }, 100);
+
+  // Add a test function to the global scope for debugging
+  window.testYouTubeToggles = function() {
+    console.log('Testing YouTube toggles...');
+    const toggles = ['blockShortsToggle', 'blockHomeFeedToggle', 'blockCommentsToggle'];
+    toggles.forEach(toggleId => {
+      const toggle = document.getElementById(toggleId);
+      console.log(`${toggleId}:`, {
+        exists: !!toggle,
+        checked: toggle?.checked,
+        disabled: toggle?.disabled,
+        style: toggle ? {
+          display: toggle.style.display,
+          visibility: toggle.style.visibility,
+          pointerEvents: toggle.style.pointerEvents,
+          zIndex: toggle.style.zIndex
+        } : null
+      });
+    });
+  };
+
+  // Test clicking the toggles programmatically
+  window.testToggleClick = function(toggleId) {
+    const toggle = document.getElementById(toggleId);
+    if (toggle) {
+      console.log(`Manually clicking ${toggleId}`);
+      toggle.click();
+    } else {
+      console.log(`${toggleId} not found`);
+    }
+  };
 }
 
 // Event handlers
@@ -1071,7 +1197,10 @@ function handleSimpleSendButtonClick() {
   if (simpleAddItemInput && !simpleAddItemInput.disabled) {
     const value = simpleAddItemInput.value.trim();
     if (value) {
-      addItemToSimpleMode();
+      // Call the UI function directly
+      if (window.ui && window.ui.addItemToSimpleMode) {
+        window.ui.addItemToSimpleMode();
+      }
     }
   }
 }
@@ -1455,6 +1584,199 @@ async function autoEnableProfileForCurrentSite(profiles) {
     
   } catch (error) {
     console.error('Failed to auto-enable profile for current site:', error);
+  }
+}
+
+// Handle suggestion tag click
+async function handleSuggestionTagClick(tag) {
+  console.log('Suggestion tag clicked:', tag);
+  
+  const { state } = window.appState;
+  
+  // Check if extension is disabled
+  if (!state.isExtensionEnabled) {
+    window.ui?.showNotification?.({
+      type: 'warning',
+      message: 'Enable Doom Blocker to add content filters',
+      duration: 2000
+    });
+    return;
+  }
+  
+  // Check if we're in edit mode
+  if (state.currentView === 'edit') {
+    // In edit mode, add the tag directly to the current active list
+    addTag(tag);
+  } else {
+    // In simple mode, add the tag directly to the blocking area
+    if (state.isCustomizationEnabled) {
+      // Determine which tab is active (blacklist or whitelist)
+      const isWhitelistActive = document.getElementById('simpleWhitelistTab')?.classList.contains('active');
+      const listType = isWhitelistActive ? 'whitelist' : 'blacklist';
+      
+      // Add directly to the blocking area
+      if (window.addTagToSimpleMode) {
+        await window.addTagToSimpleMode(tag, listType);
+        
+        // Show success notification
+        window.ui?.showNotification?.({
+          type: 'success',
+          message: `Added "${tag}" to ${listType}`,
+          duration: 1500
+        });
+      }
+    } else if (state.isPowerUserMode) {
+      // In power user mode, show a message
+      window.ui?.showNotification?.({
+        type: 'info',
+        message: `Enter edit mode to add "${tag}" to a profile`,
+        duration: 2000
+      });
+    } else {
+      // Show message to enable customization
+      window.ui?.showNotification?.({
+        type: 'warning',
+        message: 'Enable customization to add content filters',
+        duration: 2000
+      });
+    }
+  }
+}
+
+// Handle YouTube feature toggle
+async function handleYouTubeFeatureToggle(feature, enabled) {
+  console.log(`🎬 YouTube feature ${feature} toggled:`, enabled);
+  
+  try {
+    // Send message to content script to block/unblock YouTube features
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    console.log('Current tab:', tab);
+    
+    if (!tab || !tab.id) {
+      throw new Error('No active tab found');
+    }
+
+    // First, test if content script is responding
+    try {
+      const testResponse = await chrome.tabs.sendMessage(tab.id, {
+        type: 'GET_PREVIEW_STATE'
+      });
+      console.log('Content script test response:', testResponse);
+    } catch (testError) {
+      console.error('Content script not responding:', testError);
+      throw new Error('Content script not loaded or not responding');
+    }
+
+    let messageType;
+    switch (feature) {
+      case 'blockShorts':
+        messageType = 'YOUTUBE_BLOCK_SHORTS';
+        break;
+      case 'blockHomeFeed':
+        messageType = 'YOUTUBE_BLOCK_HOME_FEED';
+        break;
+      case 'blockComments':
+        messageType = 'YOUTUBE_BLOCK_COMMENTS';
+        break;
+      default:
+        throw new Error(`Unknown YouTube feature: ${feature}`);
+    }
+
+    console.log(`Sending message to content script:`, { type: messageType, enabled });
+
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type: messageType,
+      enabled: enabled
+    });
+
+    console.log('Content script response:', response);
+
+    if (response && response.success) {
+      window.ui?.showNotification?.({
+        type: 'success',
+        message: response.message,
+        duration: 2000
+      });
+    } else {
+      throw new Error(response?.message || 'Failed to toggle YouTube feature');
+    }
+  } catch (error) {
+    console.error('Failed to toggle YouTube feature:', error);
+    showError('Failed to toggle YouTube feature: ' + error.message);
+    
+    // Revert the toggle state
+    const toggleElement = document.getElementById(`${feature}Toggle`);
+    if (toggleElement) {
+      toggleElement.checked = !enabled;
+    }
+  }
+}
+
+// Add suggestion tag to simple mode (helper function for suggestion tags)
+function addSuggestionTagToSimpleMode(item) {
+  const { state } = window.appState;
+  
+  if (!state.isCustomizationEnabled) {
+    window.ui?.showNotification?.({
+      type: 'warning',
+      message: 'Enable customization to add items',
+      duration: 2000
+    });
+    return;
+  }
+  
+  // Add to the current active list in simple mode
+  const activeTab = state.activeTab || 'blacklist';
+  const listType = activeTab === 'whitelist' ? 'whitelistTags' : 'blacklistTags';
+  
+  // Call the UI function to add the tag
+  if (window.addTagToSimpleMode) {
+    window.addTagToSimpleMode(item, listType);
+  } else {
+    // Fallback notification
+    window.ui?.showNotification?.({
+      type: 'info',
+      message: `Added "${item}" to ${activeTab}`,
+      duration: 2000
+    });
+  }
+}
+
+// Load YouTube feature settings
+async function loadYouTubeFeatureSettings() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    
+    if (!tab || !tab.id) {
+      console.warn('No active tab found for YouTube settings');
+      return;
+    }
+
+    const response = await chrome.tabs.sendMessage(tab.id, {
+      type: 'YOUTUBE_GET_SETTINGS'
+    });
+
+    if (response && response.success && response.settings) {
+      const settings = response.settings;
+      
+      // Update toggle states
+      const blockShortsToggle = document.getElementById('blockShortsToggle');
+      const blockHomeFeedToggle = document.getElementById('blockHomeFeedToggle');
+      const blockCommentsToggle = document.getElementById('blockCommentsToggle');
+      
+      if (blockShortsToggle) {
+        blockShortsToggle.checked = settings.blockShorts || false;
+      }
+      if (blockHomeFeedToggle) {
+        blockHomeFeedToggle.checked = settings.blockHomeFeed || false;
+      }
+      if (blockCommentsToggle) {
+        blockCommentsToggle.checked = settings.blockComments || false;
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load YouTube feature settings:', error);
   }
 }
 

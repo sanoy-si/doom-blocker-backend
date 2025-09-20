@@ -14,7 +14,12 @@ const MESSAGE_TYPES = {
   UNHIDE_ELEMENT: "UNHIDE_ELEMENT",
   RESTORE_ALL_ELEMENTS: "RESTORE_ALL_ELEMENTS",
   GET_HIDDEN_ELEMENTS: "GET_HIDDEN_ELEMENTS",
-  URL_CHANGED: "URL_CHANGED"
+  URL_CHANGED: "URL_CHANGED",
+  // YouTube feature blocking
+  YOUTUBE_BLOCK_SHORTS: "YOUTUBE_BLOCK_SHORTS",
+  YOUTUBE_BLOCK_HOME_FEED: "YOUTUBE_BLOCK_HOME_FEED",
+  YOUTUBE_BLOCK_COMMENTS: "YOUTUBE_BLOCK_COMMENTS",
+  YOUTUBE_GET_SETTINGS: "YOUTUBE_GET_SETTINGS"
   // COMMENTED OUT: Auth functionality disabled
   // GET_AUTH_STATE: "GET_AUTH_STATE"
 };
@@ -37,7 +42,11 @@ const CSS_CLASSES = {
   NOTIFICATION_COUNTER_POP: "topaz-notification-counter-pop",
   NOTIFICATION_ERROR: "topaz-notification-error",
   NOTIFICATION_ERROR_TITLE: "topaz-notification-error-title",
-  NOTIFICATION_ERROR_MESSAGE: "topaz-notification-error-message"
+  NOTIFICATION_ERROR_MESSAGE: "topaz-notification-error-message",
+  // YouTube feature blocking
+  YOUTUBE_SHORTS_HIDDEN: "topaz-youtube-shorts-hidden",
+  YOUTUBE_HOME_FEED_HIDDEN: "topaz-youtube-home-feed-hidden",
+  YOUTUBE_COMMENTS_HIDDEN: "topaz-youtube-comments-hidden"
 };
 
 const DATA_ATTRIBUTES = {

@@ -71,6 +71,20 @@ class MessageHandler {
         this.eventBus.emit('message:get-session-manager', { sendResponse });
         break;
 
+      // YouTube feature blocking
+      case MESSAGE_TYPES.YOUTUBE_BLOCK_SHORTS:
+        this.handleYouTubeBlockShorts(message, sendResponse);
+        break;
+      case MESSAGE_TYPES.YOUTUBE_BLOCK_HOME_FEED:
+        this.handleYouTubeBlockHomeFeed(message, sendResponse);
+        break;
+      case MESSAGE_TYPES.YOUTUBE_BLOCK_COMMENTS:
+        this.handleYouTubeBlockComments(message, sendResponse);
+        break;
+      case MESSAGE_TYPES.YOUTUBE_GET_SETTINGS:
+        this.handleYouTubeGetSettings(message, sendResponse);
+        break;
+
       default:
         sendResponse(this.createResponse(false, `Unknown message type: ${message.type}`));
     }
@@ -210,5 +224,52 @@ class MessageHandler {
   destroy() {
     this.removeMessageListener();
     this.eventBus = null;
+  }
+
+  /**
+   * Handle YouTube Shorts blocking
+   */
+  handleYouTubeBlockShorts(message, sendResponse) {
+    try {
+      const enabled = message.enabled;
+      this.eventBus.emit('youtube:block-shorts', { enabled, sendResponse });
+    } catch (error) {
+      sendResponse(this.createResponse(false, `Error blocking YouTube Shorts: ${error.message}`));
+    }
+  }
+
+  /**
+   * Handle YouTube Home Feed blocking
+   */
+  handleYouTubeBlockHomeFeed(message, sendResponse) {
+    try {
+      const enabled = message.enabled;
+      this.eventBus.emit('youtube:block-home-feed', { enabled, sendResponse });
+    } catch (error) {
+      sendResponse(this.createResponse(false, `Error blocking YouTube Home Feed: ${error.message}`));
+    }
+  }
+
+  /**
+   * Handle YouTube Comments blocking
+   */
+  handleYouTubeBlockComments(message, sendResponse) {
+    try {
+      const enabled = message.enabled;
+      this.eventBus.emit('youtube:block-comments', { enabled, sendResponse });
+    } catch (error) {
+      sendResponse(this.createResponse(false, `Error blocking YouTube Comments: ${error.message}`));
+    }
+  }
+
+  /**
+   * Handle getting YouTube settings
+   */
+  handleYouTubeGetSettings(message, sendResponse) {
+    try {
+      this.eventBus.emit('youtube:get-settings', { sendResponse });
+    } catch (error) {
+      sendResponse(this.createResponse(false, `Error getting YouTube settings: ${error.message}`));
+    }
   }
 } 
