@@ -296,39 +296,30 @@ function setupEventListeners() {
 
   // Also try direct event listeners as backup
   setTimeout(() => {
+    function addYouTubeToggleListener(toggleId, featureName) {
+      const toggle = document.getElementById(toggleId);
+      if (toggle) {
+        console.log(`Adding direct event listener to ${toggleId}`);
+        toggle.addEventListener('change', () => {
+          console.log(`Direct ${featureName} toggle changed:`, toggle.checked);
+          handleYouTubeFeatureToggle(featureName, toggle.checked);
+        });
+      }
+    }
+
+    addYouTubeToggleListener('blockShortsToggle', 'blockShorts');
+    addYouTubeToggleListener('blockHomeFeedToggle', 'blockHomeFeed');
+    addYouTubeToggleListener('blockCommentsToggle', 'blockComments');
+
+    // For debugging, log which toggles were found
     const blockShortsToggle = document.getElementById('blockShortsToggle');
     const blockHomeFeedToggle = document.getElementById('blockHomeFeedToggle');
     const blockCommentsToggle = document.getElementById('blockCommentsToggle');
-
     console.log('YouTube toggle elements found (delayed):', {
       blockShortsToggle: !!blockShortsToggle,
       blockHomeFeedToggle: !!blockHomeFeedToggle,
       blockCommentsToggle: !!blockCommentsToggle
     });
-
-    if (blockShortsToggle) {
-      console.log('Adding direct event listener to blockShortsToggle');
-      blockShortsToggle.addEventListener('change', () => {
-        console.log('Direct Block Shorts toggle changed:', blockShortsToggle.checked);
-        handleYouTubeFeatureToggle('blockShorts', blockShortsToggle.checked);
-      });
-    }
-    
-    if (blockHomeFeedToggle) {
-      console.log('Adding direct event listener to blockHomeFeedToggle');
-      blockHomeFeedToggle.addEventListener('change', () => {
-        console.log('Direct Block Home Feed toggle changed:', blockHomeFeedToggle.checked);
-        handleYouTubeFeatureToggle('blockHomeFeed', blockHomeFeedToggle.checked);
-      });
-    }
-    
-    if (blockCommentsToggle) {
-      console.log('Adding direct event listener to blockCommentsToggle');
-      blockCommentsToggle.addEventListener('change', () => {
-        console.log('Direct Block Comments toggle changed:', blockCommentsToggle.checked);
-        handleYouTubeFeatureToggle('blockComments', blockCommentsToggle.checked);
-      });
-    }
   }, 100);
 
   // Add a test function to the global scope for debugging
