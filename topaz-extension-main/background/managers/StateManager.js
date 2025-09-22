@@ -108,15 +108,21 @@ class StateManager {
         );
         
         if (missingDefaultProfiles.length > 0) {
-          // Add missing default profiles
+          // Add missing default profiles (disabled by default)
           missingDefaultProfiles.forEach(missingProfile => {
-            this.state.profiles.push(JSON.parse(JSON.stringify(missingProfile)));
+            const profileCopy = JSON.parse(JSON.stringify(missingProfile));
+            profileCopy.isEnabled = false; // Disable by default
+            this.state.profiles.push(profileCopy);
           });
           needsSave = true;
         }
       } else {
-        // No profiles exist - create all default profiles
-        this.state.profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+        // No profiles exist - create all default profiles (disabled by default)
+        const defaultProfilesCopy = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+        defaultProfilesCopy.forEach(profile => {
+          profile.isEnabled = false; // Disable by default
+        });
+        this.state.profiles = defaultProfilesCopy;
         needsSave = true;
       }
       

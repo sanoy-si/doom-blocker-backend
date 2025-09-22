@@ -301,13 +301,8 @@ class ExtensionController {
     console.time("[blur timing debug] DOM content loaded to blur completion");
     this.gridManager.findAllGridContainers();
 
-    const elementsToBlur = this.gridManager.getElementsToBlur();
-    console.log("🔍 [TOPAZ DEBUG] Elements to blur:", elementsToBlur.length);
-    console.log("[blur timing debug] About to blur", elementsToBlur.length, "elements");
-    // ENABLED: Component-wise blur effects for better UX
-    const blurredCount = this.elementEffects.blurElements(elementsToBlur);
-    console.log("🔍 [TOPAZ DEBUG] Applied blur effects to", blurredCount, "elements");
-    console.log("[blur timing debug] Applied blur effects");
+    // REMOVED: Initial blurring of all content - now only blur elements about to be removed
+    console.log("🔍 [TOPAZ DEBUG] Skipping initial blur - will blur only elements about to be removed");
     console.timeEnd("[blur timing debug] DOM content loaded to blur completion");
 
     const allGrids = this.gridManager.getAllGrids();
@@ -487,9 +482,7 @@ class ExtensionController {
       }
 
       if (childrenToAnalyze.length > 0) {
-        // ENABLED: Component-wise blur effects for better UX
-        this.elementEffects.blurElements(childrenToAnalyze);
-
+        // REMOVED: Blurring during DOM mutation - only blur elements about to be removed
         gridStructure.push({
           id: grid.id,
           gridText: grid.element.innerText,
@@ -570,8 +563,7 @@ class ExtensionController {
         }
       }
       if (childrenToAnalyze.length > 0) {
-        // ENABLED: Component-wise blur effects for better UX
-        this.elementEffects.blurElements(childrenToAnalyze);
+        // REMOVED: Blurring during DOM mutation - only blur elements about to be removed
         gridStructure.push({
           id: currentGrid.id,
           gridText: currentGrid.element.innerText,
@@ -771,7 +763,15 @@ class ExtensionController {
       const deletionResults = this.contentFingerprint.markFingerprintsAsDeleted(
         elementsToHide.map(el => el.element)
       );
+      
+      // NEW: Blur elements that are about to be removed for better UX
+      console.log("🔍 [TOPAZ DEBUG] Blurring elements about to be removed:", elementsToHide.length);
+      this.elementEffects.blurElements(elementsToHide);
+      
+      // Wait a moment for user to see the blur effect before hiding
+      await new Promise(resolve => setTimeout(resolve, 300));
     }
+    
     const hidingMethod = this.configManager.getHidingMethod();
     const markedCount = this.elementEffects.hideElements(
       elementsToHide,

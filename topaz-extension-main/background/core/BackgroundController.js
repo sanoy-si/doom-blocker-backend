@@ -498,18 +498,6 @@ class BackgroundController {
   async handleCheckAnalysisRequired(message, sender) {
     console.log("🔍 [TOPAZ DEBUG] Background handleCheckAnalysisRequired called");
     
-    // Auto-enable default profiles for non-power users
-    const isPowerUserMode = this.stateManager.isPowerUserModeEnabled();
-    console.log("🔍 [TOPAZ DEBUG] Power user mode:", isPowerUserMode);
-    
-    if (!isPowerUserMode) {
-      console.log("🔍 [TOPAZ DEBUG] Not in power user mode, checking for auto-enable");
-      const url = message.currentUrl || sender.tab?.url;
-      if (url) {
-        await this.autoEnableDefaultProfileForSite(url);
-      }
-    }
-    
     const allProfiles = this.stateManager.getProfiles();
     const enabledProfiles = allProfiles.filter(profile => profile.isEnabled);
     console.log("🔍 [TOPAZ DEBUG] All profiles:", allProfiles.length, "Enabled profiles:", enabledProfiles.length);
@@ -684,6 +672,23 @@ class BackgroundController {
       // Remove duplicates
       const whitelistToSend = [...new Set(allWhitelistTags)];
       const blacklistToSend = [...new Set(allBlacklistTags)];
+
+      // If no blacklist entries, no content should be blocked - skip API call
+      if (blacklistToSend.length === 0) {
+        console.log('🔍 [TOPAZ DEBUG] No blacklist entries found, skipping API call - no content will be blocked');
+        await this.tabManager.sendMessageToTab(tabId, {
+          type: MESSAGE_TYPES.HIDE_GRID_CHILDREN,
+          gridInstructions: [] // Empty instructions = no content blocked
+        });
+
+        this.eventBus.emit(EVENTS.GRID_ANALYSIS_COMPLETE, {
+          tabId,
+          url,
+          instructionCount: 0,
+          success: true
+        });
+        return;
+      }
 
       // Calculate total children count across all grids
       const totalChildrenCount = gridStructure?.grids && Array.isArray(gridStructure.grids)
@@ -1045,55 +1050,7 @@ class BackgroundController {
     return { success: true, globalBlockStats: this.stateManager.getGlobalBlockStats() };
   }
 
-  /**
-   * Auto-enable appropriate default profile for current site (for non-power users)
-   */
-  async autoEnableDefaultProfileForSite(url) {
-    try {
-      console.log("🔍 [TOPAZ DEBUG] autoEnableDefaultProfileForSite called with URL:", url);
-      
-      const profiles = this.stateManager.getProfiles();
-      const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
-      console.log("🔍 [TOPAZ DEBUG] Looking for default profile for hostname:", hostname);
-      
-      // Find matching default profile for this site
-      const matchingProfile = profiles.find(profile => {
-        const isMatch = profile.isDefault && 
-               profile.allowedWebsites && 
-               profile.allowedWebsites.some(website => {
-                 const cleanWebsite = website.toLowerCase().replace(/^www\./, '');
-                 return hostname === cleanWebsite || hostname.endsWith('.' + cleanWebsite);
-               });
-        console.log("🔍 [TOPAZ DEBUG] Profile", profile.profileName, "isDefault:", profile.isDefault, "allowedWebsites:", profile.allowedWebsites, "matches:", isMatch);
-        return isMatch;
-      });
-      
-      if (matchingProfile && !matchingProfile.isEnabled) {
-        console.log("🔍 [TOPAZ DEBUG] Found matching default profile, enabling:", matchingProfile.profileName);
-        
-        // Disable other default profiles
-        profiles.forEach(profile => {
-          if (profile.isDefault && profile !== matchingProfile) {
-            profile.isEnabled = false;
-          }
-        });
-        
-        // Enable the matching profile
-        matchingProfile.isEnabled = true;
-        
-        // Save changes
-        await this.stateManager.saveExtensionState();
-        console.log("🔍 [TOPAZ DEBUG] Auto-enabled default profile:", matchingProfile.profileName);
-      } else if (matchingProfile && matchingProfile.isEnabled) {
-        console.log("🔍 [TOPAZ DEBUG] Matching default profile already enabled:", matchingProfile.profileName);
-      } else {
-        console.log("🔍 [TOPAZ DEBUG] No matching default profile found for hostname:", hostname);
-      }
-      
-    } catch (error) {
-      console.error("🔍 [TOPAZ DEBUG] Error in autoEnableDefaultProfileForSite:", error);
-    }
-  }
+  // Auto-enable functionality removed - users must manually enable profiles
 
   /**
    * Debug storage state
