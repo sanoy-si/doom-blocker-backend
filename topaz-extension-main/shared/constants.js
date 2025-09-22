@@ -190,27 +190,27 @@ export const CONFIG = {
 export const DEFAULT_TAGS = {
   'youtube.com': {
     defaultWhitelist: [],
-    defaultBlacklist: ['anything with very little long term value to a user', 'clickbait/exaggerated titles', 'TV/movie clips', 'brainrot', 'youtube shorts', 'youtube playables', 'shorts', 'playables']
+    defaultBlacklist: []
   },
   'twitter.com': {
     defaultWhitelist: [],
-    defaultBlacklist: ['drama', 'controversy', 'spam', 'nsfw', 'politics', 'hate speech', 'racism', 'low quality content']
+    defaultBlacklist: []
   },
   'x.com': {
-    defaultWhitelist: ['educational'],
-    defaultBlacklist: ['spam', 'nsfw', 'politics', 'hate speech', 'racism', 'low quality content']
+    defaultWhitelist: [],
+    defaultBlacklist: []
   },
   'linkedin.com': {
-    defaultWhitelist: ['professional', 'career', 'networking', 'industry'],
-    defaultBlacklist: ['personal', 'political', 'controversial', 'word soup', 'anything with little long term value to a user']
+    defaultWhitelist: [],
+    defaultBlacklist: []
   },
   'reddit.com': {
-    defaultWhitelist: ['educational', 'informative', 'discussion'],
-    defaultBlacklist: ['memes', 'drama', 'toxic', 'nsfw', 'shitposts']
+    defaultWhitelist: [],
+    defaultBlacklist: []
   }
 };
 
-// Default profiles for new installations
+// Default profiles for new installations (disabled by default)
 export const DEFAULT_PROFILES = [
   {
     profileName: "YouTube",
@@ -219,7 +219,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['youtube.com'],
-    isEnabled: true,
+    isEnabled: false,
     colour: "#ff0000",
     isDefault: true
   },
@@ -230,7 +230,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['twitter.com', 'x.com'],
-    isEnabled: true,
+    isEnabled: false,
     colour: "#1da1f2",
     isDefault: true
   },
@@ -241,7 +241,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['linkedin.com'],
-    isEnabled: true,
+    isEnabled: false,
     colour: "#0077b5",
     isDefault: true
   },
@@ -252,7 +252,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['reddit.com'],
-    isEnabled: true,
+    isEnabled: false,
     colour: "#ff4500",
     isDefault: true
   }

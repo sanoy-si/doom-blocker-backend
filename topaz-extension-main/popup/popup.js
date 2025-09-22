@@ -71,10 +71,7 @@ async function loadInitialData() {
     if (result.success && result.settings) {
       const settings = result.settings;
       
-      // If not in power mode, auto-enable the appropriate default profile
-      if (!settings.isPowerUserMode && settings.profiles) {
-        await autoEnableProfileForCurrentSite(settings.profiles);
-      }
+      // No auto-enable functionality - users must manually enable profiles
       
       // Fetch block stats for the current site
       const stats = await loadBlockStats();
@@ -1535,59 +1532,7 @@ function showProfileContextMenu(event, profileName) {
   }, 0);
 }
 
-// Auto-enable appropriate default profile for current site
-async function autoEnableProfileForCurrentSite(profiles) {
-  try {
-    // Get current tab URL
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url) {
-      console.log('No active tab or URL found');
-      return;
-    }
-    
-    const url = new URL(tab.url);
-    const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
-    
-    console.log('Current site hostname:', hostname);
-    
-    // Find matching default profile for this site
-    const matchingProfile = profiles.find(profile => {
-      return profile.isDefault && 
-             profile.allowedWebsites && 
-             profile.allowedWebsites.some(website => {
-               const cleanWebsite = website.toLowerCase().replace(/^www\./, '');
-               return hostname === cleanWebsite || hostname.endsWith('.' + cleanWebsite);
-             });
-    });
-    
-    if (matchingProfile) {
-      console.log('Found matching default profile for site:', matchingProfile.profileName);
-      
-      // Disable only other default profiles, leave non-default profiles alone
-      profiles.forEach(profile => {
-        if (profile.isDefault && profile !== matchingProfile) {
-          profile.isEnabled = false;
-        }
-      });
-      
-      // Enable the matching profile
-      matchingProfile.isEnabled = true;
-      
-      // Save changes to background without triggering instant filtering while popup is opening
-      const saveResult = await window.backgroundAPI.saveProfiles(profiles, { triggerInstant: false });
-      if (saveResult.success) {
-        console.log('Auto-enabled profile for current site:', matchingProfile.profileName);
-      } else {
-        console.error('Failed to save auto-enabled profile:', saveResult.error);
-      }
-    } else {
-      console.log('No matching default profile found for site:', hostname);
-    }
-    
-  } catch (error) {
-    console.error('Failed to auto-enable profile for current site:', error);
-  }
-}
+// Auto-enable functionality removed - users must manually enable profiles
 
 // Handle suggestion tag click
 async function handleSuggestionTagClick(tag) {
