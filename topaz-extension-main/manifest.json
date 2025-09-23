@@ -43,16 +43,6 @@
       "matches": ["https://doom-landing.vercel.app/auth/callback*"],
       "js": ["content/auth-callback.js"],
       "run_at": "document_start"
-    },
-    {
-      "matches": [
-        "https://www.youtube.com/*",
-        "https://youtube.com/*",
-        "https://m.youtube.com/*"
-      ],
-      "js": ["onboarding/contentScript.js"],
-      "run_at": "document_idle",
-      "all_frames": false
     }
   ],
   "icons": {
