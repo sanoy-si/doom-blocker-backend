@@ -2882,6 +2882,12 @@ body {
     transition: opacity 0.3s ease;
 }
 
+.simple-chip-system .tab-buttons.disabled {
+    opacity: 0.3;
+    filter: blur(1px);
+    pointer-events: none;
+}
+
 .simple-chip-system .tab-button {
     flex: 1;
     background: transparent;
@@ -2918,6 +2924,12 @@ body {
     flex-direction: column;
     min-height: 0;
     transition: opacity 0.3s ease;
+}
+
+.simple-chip-system .tab-content.disabled {
+    opacity: 0.3;
+    filter: blur(1px);
+    pointer-events: none;
 }
 
 .simple-chip-system .tab-panel {
@@ -2994,6 +3006,18 @@ body {
     gap: 6px;
     align-items: center;
     transition: opacity 0.3s ease;
+}
+
+.simple-chip-system .add-item-container.disabled {
+    opacity: 0.3;
+    filter: blur(1px);
+    pointer-events: none;
+}
+
+.quick-add-section.disabled {
+    opacity: 0.3;
+    filter: blur(1px);
+    pointer-events: none;
 }
 
 .simple-chip-system .input-with-button {

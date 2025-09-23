@@ -75,6 +75,9 @@ class MessageHandler {
       case MESSAGE_TYPES.YOUTUBE_BLOCK_SHORTS:
         this.handleYouTubeBlockShorts(message, sendResponse);
         break;
+      case 'GET_TRUTHFUL_COUNTS':
+        this.handleGetTruthfulCounts(message, sendResponse);
+        break;
       case MESSAGE_TYPES.YOUTUBE_BLOCK_HOME_FEED:
         this.handleYouTubeBlockHomeFeed(message, sendResponse);
         break;
@@ -236,6 +239,10 @@ class MessageHandler {
     } catch (error) {
       sendResponse(this.createResponse(false, `Error blocking YouTube Shorts: ${error.message}`));
     }
+  }
+
+  handleGetTruthfulCounts(message, sendResponse) {
+    this.eventBus.emit('message:get-truthful-counts', { sendResponse });
   }
 
   /**

@@ -116,6 +116,7 @@ class BackgroundController {
   registerMessageHandlers() {
     const handlers = {
       [MESSAGE_TYPES.EXTENSION_TOGGLED]: this.handleExtensionToggled.bind(this),
+      'TOGGLE_PREVIEW': this.handlePreviewToggled.bind(this), // FIXED: Add preview toggle handler
       [MESSAGE_TYPES.GET_EXTENSION_STATE]: this.handleGetExtensionState.bind(this),
       [MESSAGE_TYPES.ANALYZE_GRID_STRUCTURE]: this.handleAnalyzeGridStructure.bind(this),
       [MESSAGE_TYPES.CHECK_ANALYSIS_REQUIRED]: this.handleCheckAnalysisRequired.bind(this),
@@ -129,6 +130,7 @@ class BackgroundController {
       [MESSAGE_TYPES.GRID_CHILDREN_BLOCKED]: this.handleGridChildrenBlocked.bind(this),
       [MESSAGE_TYPES.CONTENT_BLOCKED]: this.handleContentBlocked.bind(this),
       [MESSAGE_TYPES.GET_BLOCK_STATS]: this.handleGetBlockStats.bind(this),
+      [MESSAGE_TYPES.REPORT_BLOCKED_ITEMS]: this.handleReportBlockedItems.bind(this),
       // Authentication handlers
       [MESSAGE_TYPES.AUTO_LOGIN]: this.handleAutoLogin.bind(this),
       [MESSAGE_TYPES.GET_AUTH_STATE]: this.handleGetAuthState.bind(this),
@@ -162,6 +164,26 @@ class BackgroundController {
       if (!count) return;
       await this.stateManager.incrementGlobalBlockStats(count);
     } catch (e) {}
+  }
+
+  /**
+   * Handler for reporting actually blocked items to backend
+   */
+  async handleReportBlockedItems(message, sender) {
+    try {
+      const count = message.count || 0;
+      if (!count) return;
+      
+      // Report to backend API
+      const result = await this.api.reportBlockedItems(count);
+      if (result.success) {
+        console.log(`📊 Successfully reported ${count} blocked items to backend`);
+      } else {
+        console.warn(`⚠️ Failed to report blocked items to backend:`, result.error);
+      }
+    } catch (e) {
+      console.error('❌ Error reporting blocked items:', e);
+    }
   }
 
   async handleGetProfileData(message, sender) {
@@ -507,6 +529,24 @@ class BackgroundController {
     return {
       success: true,
       message: `Extension ${message.enabled ? 'enabled' : 'disabled'}`,
+      enabled: message.enabled
+    };
+  }
+
+  /**
+   * FIXED: Handle preview toggled message
+   */
+  async handlePreviewToggled(message, sender) {
+    if (message.enabled === undefined) {
+      throw new Error('Missing enabled state');
+    }
+
+    // Update state
+    await this.stateManager.setPreviewEnabled(message.enabled);
+
+    return {
+      success: true,
+      message: `Preview ${message.enabled ? 'enabled' : 'disabled'}`,
       enabled: message.enabled
     };
   }
@@ -1059,6 +1099,81 @@ class BackgroundController {
     } catch (error) {
       this.logger.error('Logout error', error);
       throw error;
+    }
+  }
+
+  /**
+   * Handle report blocked items message
+   * Allows users to report incorrectly blocked content for feedback
+   */
+  async handleReportBlockedItems(message, sender) {
+    this.logger.debug('Report blocked items requested', {
+      url: message.url,
+      itemCount: message.items?.length || 0
+    });
+
+    try {
+      // Validate message data
+      if (!message.items || !Array.isArray(message.items)) {
+        throw new Error('Invalid items data');
+      }
+
+      if (!message.url) {
+        throw new Error('Missing URL');
+      }
+
+      // Prepare report data
+      const reportData = {
+        url: message.url,
+        items: message.items,
+        timestamp: new Date().toISOString(),
+        userAgent: message.userAgent || 'unknown',
+        sessionId: message.sessionId || 'unknown'
+      };
+
+      // Send to backend for analysis (optional - could be stored locally)
+      try {
+        const response = await fetch(`${CONFIG.STAGING_WEBSITE}/api/report-blocked-items`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(reportData)
+        });
+
+        if (response.ok) {
+          this.logger.info('Blocked items report sent successfully');
+        } else {
+          this.logger.warn('Failed to send blocked items report to backend');
+        }
+      } catch (apiError) {
+        // Don't fail the whole operation if backend is unavailable
+        this.logger.warn('Backend unavailable for blocked items report', apiError);
+      }
+
+      // Store locally for analytics
+      const reports = await chrome.storage.local.get(['blockedItemReports']) || { blockedItemReports: [] };
+      reports.blockedItemReports = reports.blockedItemReports || [];
+      reports.blockedItemReports.push(reportData);
+      
+      // Keep only last 100 reports to prevent storage bloat
+      if (reports.blockedItemReports.length > 100) {
+        reports.blockedItemReports = reports.blockedItemReports.slice(-100);
+      }
+      
+      await chrome.storage.local.set({ blockedItemReports: reports.blockedItemReports });
+
+      return {
+        success: true,
+        message: 'Report submitted successfully'
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to handle blocked items report', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 

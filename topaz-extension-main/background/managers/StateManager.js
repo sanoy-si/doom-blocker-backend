@@ -8,13 +8,14 @@ class StateManager {
     this.eventBus = eventBus;
     this.state = {
       extensionEnabled: true,
+      previewEnabled: false, // FIXED: Add preview state to StateManager
       // COMMENTED OUT: Auth functionality disabled
       // isAuthenticated: false,
       tabUrls: new Map(),
       tabCooldownMap: new Map(),
       profiles: [],
       isPowerUserMode: false,
-      customizationToggle: false,
+      customizationToggle: true,
       showBlockCounter: true,
       globalBlockStats: { totalBlocked: 0, blockedToday: 0, lastBlockedDate: new Date().toISOString().slice(0, 10) } // Global stats instead of per-hostname
     };
@@ -38,6 +39,7 @@ class StateManager {
       const result = await chrome.storage.local.get([
         STORAGE_KEYS.EXTENSION_ENABLED,
         STORAGE_KEYS.PROFILES,
+        STORAGE_KEYS.PREVIEW_ENABLED, // FIXED: Load preview state
         'userSettings', // Load power user mode and customization 
         'globalBlockStats', // Load global block stats
         'blockStats' // For migration from old per-hostname stats
@@ -54,6 +56,14 @@ class StateManager {
         needsSave = true;
       }
       
+      // FIXED: Handle preview enabled state
+      if (result[STORAGE_KEYS.PREVIEW_ENABLED] !== undefined) {
+        this.state.previewEnabled = result[STORAGE_KEYS.PREVIEW_ENABLED];
+      } else {
+        this.state.previewEnabled = false; // Default value
+        needsSave = true;
+      }
+      
       // Handle power user mode
       if (result.userSettings?.isPowerUserMode !== undefined) {
         this.state.isPowerUserMode = result.userSettings.isPowerUserMode;
@@ -66,7 +76,7 @@ class StateManager {
       if (result.userSettings?.customizationToggle !== undefined) {
         this.state.customizationToggle = result.userSettings.customizationToggle;
       } else {
-        this.state.customizationToggle = false; // Default value
+        this.state.customizationToggle = true; // Default value
         needsSave = true;
       }
 
@@ -177,7 +187,7 @@ class StateManager {
     } catch (error) {
       this.state.extensionEnabled = true;
       this.state.isPowerUserMode = false;
-      this.state.customizationToggle = false;
+      this.state.customizationToggle = true;
       this.state.showBlockCounter = true;
       this.state.profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
       this.state.globalBlockStats = { totalBlocked: 0, blockedToday: 0, lastBlockedDate: new Date().toISOString().slice(0, 10) };
@@ -195,6 +205,7 @@ class StateManager {
     try {
       const dataToSave = {
         [STORAGE_KEYS.EXTENSION_ENABLED]: this.state.extensionEnabled,
+        [STORAGE_KEYS.PREVIEW_ENABLED]: this.state.previewEnabled, // FIXED: Save preview state
         [STORAGE_KEYS.PROFILES]: this.state.profiles,
         userSettings: {
           isPowerUserMode: this.state.isPowerUserMode,
@@ -237,6 +248,14 @@ class StateManager {
         { enabled }
       );
     }
+  }
+
+  /**
+   * FIXED: Set preview enabled state
+   */
+  async setPreviewEnabled(enabled) {
+    this.state.previewEnabled = enabled;
+    await this.saveExtensionState();
   }
 
   /**
@@ -661,6 +680,7 @@ class StateManager {
       
       const settings = {
         extensionEnabled: this.state.extensionEnabled,
+        previewEnabled: this.state.previewEnabled, // FIXED: Add preview state to settings
         profiles: [...this.state.profiles], // Return a copy
         isPowerUserMode: this.state.isPowerUserMode,
         customizationToggle: this.state.customizationToggle,

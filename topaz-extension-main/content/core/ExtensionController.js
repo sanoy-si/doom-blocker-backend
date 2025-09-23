@@ -12,6 +12,9 @@ class ExtensionController {
     this.elementEffects = new ElementEffects();
     this.contentFingerprint = new ContentFingerprint();
     this.elementsAnalyzedInCurrentCycle = new Map(); // Track elements sent for analysis
+    
+    // Initialize bulletproof counting system
+    this.truthfulCounter = new TruthfulCounter();
     // Track preview state and items for toggle preview feature
     this.previewState = { enabled: false, items: [] };
     this.previewProcessing = false; // prevent overlapping preview toggles
@@ -29,21 +32,27 @@ class ExtensionController {
     // Initialize session on first load
     this.initializeUserSession();
 
-    // Make preview independent per tab: when tab is hidden/backgrounded, turn preview off
+    // FIXED: Removed automatic preview disabling on visibility changes
+    // This was causing the preview state to reset when opening the extension popup
+    // Now preview state will persist until manually toggled by the user
     try {
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden && this.previewState?.enabled) {
-          // Best-effort disable without responding to popup
-          this.handleTogglePreviewHidden(false, null).catch(() => {});
-        }
-      });
-      // Also handle pagehide (BFCache or navigation away)
+      // Only disable preview when navigating away from the page (not when tab becomes hidden)
       window.addEventListener('pagehide', () => {
         if (this.previewState?.enabled) {
           this.handleTogglePreviewHidden(false, null).catch(() => {});
         }
       });
     } catch (_) {}
+  }
+
+  // Get truthful counts for popup
+  handleGetTruthfulCounts(sendResponse) {
+    try {
+      const counts = this.truthfulCounter.getCounts();
+      sendResponse(this.messageHandler.createResponse(true, "Truthful counts retrieved", counts));
+    } catch (error) {
+      sendResponse(this.messageHandler.createResponse(false, "Failed to get truthful counts", { error: error.message }));
+    }
   }
 
   // Return current preview state to popup
@@ -164,6 +173,11 @@ class ExtensionController {
       this.handleGetSessionManager(sendResponse);
     });
 
+    // Truthful counts request
+    this.eventBus.on('message:get-truthful-counts', ({ sendResponse }) => {
+      this.handleGetTruthfulCounts(sendResponse);
+    });
+
     // 🚀 INSTANT FILTERING: Handle instant filter requests from popup
     this.eventBus.on("message:instant-filter", ({ sendResponse }) => {
       this.handleInstantFilter(sendResponse);
@@ -226,34 +240,26 @@ class ExtensionController {
     }
   }
   async enable() {
-    console.log("🔍 [TOPAZ DEBUG] ExtensionController.enable() called");
     try {
       const result = await chrome.storage.local.get(['extensionEnabled']);
       const isExtensionEnabled = result.extensionEnabled !== undefined ? result.extensionEnabled : true;
-      console.log("🔍 [TOPAZ DEBUG] Extension enabled check:", { result, isExtensionEnabled });
 
       if (!isExtensionEnabled) {
-        console.log("🔍 [TOPAZ DEBUG] Extension is disabled globally, exiting");
         this.isDisabled = true;
         return;
       }
     } catch (error) {
-      console.log("🔍 [TOPAZ DEBUG] Error checking extension enabled state:", error);
     }
     console.time("[blur timing debug] enable duration");
     this.isDisabled = false;
     
-    console.log("🔍 [TOPAZ DEBUG] About to call configManager.setConfigFromUrl with:", window.location.href);
     await this.configManager.setConfigFromUrl(window.location.href);
     
     const shouldSkip = this.configManager.shouldSkipExtraction();
-    console.log("🔍 [TOPAZ DEBUG] shouldSkipExtraction result:", shouldSkip);
     
     if (!shouldSkip) {
-      console.log("🔍 [TOPAZ DEBUG] Proceeding with performInitialExtraction");
       await this.performInitialExtraction();
     } else {
-      console.log("🔍 [TOPAZ DEBUG] Skipping extraction due to config");
     }
     this.eventBus.emit(EVENTS.EXTENSION_ENABLED);
   }
@@ -326,15 +332,23 @@ class ExtensionController {
             element: child.element
           }], hidingMethod);
           if (hiddenCount > 0) {
-            const toastEnabled = await this.isToastEnabled();
-            if (toastEnabled) {
-              this.notificationManager.incrementBlockedCount(hiddenCount);
+            // Use truthful counter for auto-delete
+            const actuallyBlockedCount = this.truthfulCounter.countBlockedElements(
+              [{ id: child.id, element: child.element }], 
+              'autoDelete'
+            );
+            
+            if (actuallyBlockedCount > 0) {
+              const toastEnabled = await this.isToastEnabled();
+              if (toastEnabled) {
+                this.notificationManager.incrementBlockedCount(actuallyBlockedCount);
+              }
+              this.messageHandler.sendMessageToBackground({
+                type: MESSAGE_TYPES.CONTENT_BLOCKED,
+                blockedCount: actuallyBlockedCount,
+                currentUrl: window.location.href,
+              });
             }
-            this.messageHandler.sendMessageToBackground({
-              type: MESSAGE_TYPES.CONTENT_BLOCKED,
-              blockedCount: hiddenCount,
-              currentUrl: window.location.href,
-            });
           }
         } else {
           // Include ALL grid children regardless of fingerprint status for re-analysis
@@ -742,12 +756,34 @@ class ExtensionController {
     // Create a set of element IDs that should be hidden based on new instructions
     const elementsToHideIds = new Set(elementsToHide.map(el => el.id));
     
-    // Find elements that were analyzed in this cycle, were previously hidden, 
-    // but are NOT in the new hide instructions (should be unhidden)
+    // FIXED: Only unhide elements that were explicitly analyzed in the current cycle
+    // and are confirmed to no longer match the filter criteria
+    // This prevents the bug where adding multiple blacklist items would cause
+    // previously hidden content (especially auto-deleted content) to reappear
     const elementsToUnhide = [];
     for (const [elementId, analyzedElement] of this.elementsAnalyzedInCurrentCycle) {
-      if (analyzedElement.wasHidden && !elementsToHideIds.has(elementId)) {
-        elementsToUnhide.push(analyzedElement.element);
+      // Only unhide if:
+      // 1. Element was previously hidden in this cycle
+      // 2. Element is NOT in the new hide instructions
+      // 3. Element is still in the DOM and visible (not auto-deleted by fingerprinting)
+      // 4. Element was NOT hidden by auto-delete (content fingerprinting)
+      if (analyzedElement.wasHidden && 
+          !elementsToHideIds.has(elementId) &&
+          analyzedElement.element &&
+          document.contains(analyzedElement.element)) {
+        
+        // Additional safety check: verify the element is actually hidden by our extension
+        const elementState = this.elementEffects.getElementState(analyzedElement.element);
+        if (elementState && elementState.hidden === true) {
+          // CRITICAL: Don't unhide elements that were auto-deleted by content fingerprinting
+          // These should remain hidden even if they're not in the new hide instructions
+          const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(analyzedElement.element);
+          if (!autoDeleteResult.shouldDelete) {
+            elementsToUnhide.push(analyzedElement.element);
+          } else {
+            console.log("🔍 [TOPAZ DEBUG] Skipping unhide for auto-deleted element:", elementId);
+          }
+        }
       }
     }
     
@@ -779,21 +815,35 @@ class ExtensionController {
     );
 
     if (markedCount > 0) {
-      const toastEnabled = await this.isToastEnabled();
-      if (toastEnabled) {
-        console.log(`🎯 Showing toast notification: ${markedCount} items blocked`);
-        this.notificationManager.incrementBlockedCount(markedCount);
+      // Use truthful counter to count only actually blocked elements
+      const actuallyBlockedCount = this.truthfulCounter.countBlockedElements(
+        elementsToHide, 
+        'aiAnalysis'
+      );
+      
+      if (actuallyBlockedCount > 0) {
+        const toastEnabled = await this.isToastEnabled();
+        if (toastEnabled) {
+          console.log(`🎯 Showing toast notification: ${actuallyBlockedCount} items blocked`);
+          this.notificationManager.incrementBlockedCount(actuallyBlockedCount);
+        }
+        this.messageHandler.sendMessageToBackground({
+          type: MESSAGE_TYPES.GRID_CHILDREN_BLOCKED,
+          count: actuallyBlockedCount,
+          url: window.location.href
+        });
+        this.messageHandler.sendMessageToBackground({
+          type: MESSAGE_TYPES.CONTENT_BLOCKED,
+          blockedCount: actuallyBlockedCount,
+          currentUrl: window.location.href,
+        });
+        
+        // Report actually blocked items to backend
+        this.messageHandler.sendMessageToBackground({
+          type: 'REPORT_BLOCKED_ITEMS',
+          count: actuallyBlockedCount
+        });
       }
-      this.messageHandler.sendMessageToBackground({
-        type: MESSAGE_TYPES.GRID_CHILDREN_BLOCKED,
-        count: markedCount,
-        url: window.location.href
-      });
-      this.messageHandler.sendMessageToBackground({
-        type: MESSAGE_TYPES.CONTENT_BLOCKED,
-        blockedCount: markedCount,
-        currentUrl: window.location.href,
-      });
 
       // Track blocked items for analytics
       const blockedItemDetails = elementsToHide.map(item => {

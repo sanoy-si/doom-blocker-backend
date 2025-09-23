@@ -1,6 +1,6 @@
 {
   "name": "Doom Blocker",
-  "description": "Social media AI filtering",
+  "description": "AI-powered social media content filtering",
   "version": "0.1.1",
   "manifest_version": 3,
   "background": {
@@ -13,6 +13,7 @@
       "js": [
         "content/utils/constants.js",
         "content/utils/SessionManager.js",
+        "content/utils/TruthfulCounter.js",
         "content/core/EventBus.js",
         "content/core/ConfigManager.js",
         "content/grid/GridDetector.js",

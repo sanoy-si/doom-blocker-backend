@@ -107,6 +107,25 @@ const backgroundAPI = {
       return { success: false, error: error.message };
     }
   },
+
+  // FIXED: Toggle preview enabled/disabled
+  async togglePreview(enabled) {
+    try {
+      const response = await sendMessage({
+        type: 'TOGGLE_PREVIEW',
+        enabled
+      });
+      
+      return {
+        success: response?.success || false,
+        enabled: response?.enabled || false,
+        error: response?.error
+      };
+    } catch (error) {
+      console.error('Failed to toggle preview:', error);
+      return { success: false, error: error.message };
+    }
+  },
   
   // Get current extension state
   async getExtensionState() {

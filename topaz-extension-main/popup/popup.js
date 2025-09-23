@@ -18,31 +18,33 @@ async function initializePopup() {
       throw new Error('BackgroundAPI module not loaded');
     }
     
-    console.log('✅ All modules are available');
     
-    console.log('📦 Caching DOM elements...');
     window.ui.cacheElements();
     
-    console.log('🔖 Setting version number from manifest...');
     setVersionNumber();
     
-    console.log('🔧 Setting up event listeners...');
     setupEventListeners();
     
-    console.log('📡 Setting up message listeners...');
     setupMessageListeners();
     
-    console.log('📊 Loading initial data...');
     await loadInitialData();
     
-    console.log('📞 Notifying background popup opened...');
     await notifyPopupOpened();
     
-    console.log('💓 Starting heartbeat system...');
     startHeartbeatSystem();
     
-    console.log('🎨 Rendering initial view...');
+    // Load preview state from storage FIRST
+    try {
+      const result = await chrome.storage.local.get(['previewEnabled']);
+      if (result.previewEnabled !== undefined) {
+        window.appState.updateState({ isPreviewEnabled: result.previewEnabled });
+      }
+    } catch (error) {
+      console.error('Failed to load preview state:', error);
+    }
+    
     window.ui.renderCurrentView();
+    
     // Sync preview button with current tab state
     await syncPreviewButtonState();
 
@@ -82,8 +84,9 @@ async function loadInitialData() {
       window.appState.updateState({
         isExtensionEnabled: settings.extensionEnabled ?? true,
         isPowerUserMode: settings.isPowerUserMode ?? false,
-        isCustomizationEnabled: settings.customizationToggle ?? false,
+        isCustomizationEnabled: settings.customizationToggle ?? true,
         showBlockCounter: settings.showBlockCounter ?? true,
+        isPreviewEnabled: settings.previewEnabled ?? false, // FIXED: Load preview state from storage
         profiles: settings.profiles || [],
         blockedCount: stats.blockedCount,
         totalBlocked: stats.totalBlocked
@@ -1210,8 +1213,7 @@ function handleSimpleSaveButtonClick() {
   window.close();
 }
 
-// Preview toggle click handler
-let previewEnabled = false;
+// Preview toggle click handler - FIXED: Use appState instead of local variable
 async function handlePreviewToggleClick() {
   try {
     // Do nothing if extension is disabled
@@ -1223,26 +1225,55 @@ async function handlePreviewToggleClick() {
       });
       return;
     }
-    const desired = !previewEnabled;
+    
+    const { state } = window.appState;
+    const desired = !state.isPreviewEnabled;
     const btn = document.getElementById('previewToggleButton');
-    // Optimistic UI: show spinner state by toggling class, but finalize after response
-    if (btn) btn.classList.add('active');
+    
+    console.log('🔍 [PREVIEW TOGGLE] Starting toggle:', { currentState: state.isPreviewEnabled, desired });
+    
+    // Optimistic UI: update button state based on desired state
+    if (btn) {
+      btn.classList.toggle('active', desired);
+      btn.textContent = desired ? 'Hide Hidden Content' : 'Show Hidden Content';
+    }
+    
     const result = await window.backgroundAPI.togglePreviewHidden(desired);
-    console.log('Preview toggle result:', result);
+    console.log('🔍 [PREVIEW TOGGLE] Toggle result:', result);
+    
     if (!result?.success) {
       console.warn('Preview toggle failed:', result?.error);
       // Re-sync UI to actual state
       await syncPreviewButtonState();
       return;
     }
+    
     // Derive final enabled state from content response when available
     const enabledFromContentVal = result?.response?.data?.enabled;
     const enabledFromContent = typeof enabledFromContentVal === 'boolean' ? enabledFromContentVal : undefined;
-    previewEnabled = (enabledFromContent === undefined) ? desired : enabledFromContent;
-    if (btn) {
-      btn.classList.toggle('active', previewEnabled);
-      btn.textContent = previewEnabled ? 'Hide Hidden Content' : 'Show Hidden Content';
+    const finalPreviewEnabled = (enabledFromContent === undefined) ? desired : enabledFromContent;
+    
+    // FIXED: Update appState and save to storage
+    window.appState.updateState({ isPreviewEnabled: finalPreviewEnabled });
+    
+    // Save preview state to storage
+    try {
+      await chrome.storage.local.set({ previewEnabled: finalPreviewEnabled });
+    } catch (error) {
+      console.error('Failed to save preview state:', error);
     }
+    
+    console.log('🔍 [PREVIEW TOGGLE] Final state:', { 
+      enabledFromContent, 
+      desired, 
+      finalPreviewEnabled 
+    });
+    
+    if (btn) {
+      btn.classList.toggle('active', finalPreviewEnabled);
+      btn.textContent = finalPreviewEnabled ? 'Hide Hidden Content' : 'Show Hidden Content';
+    }
+    
     // Do not sync immediately on success; content is source of truth and we just set from its response
   } catch (e) {
     console.error('Failed to toggle preview:', e);
@@ -1251,15 +1282,21 @@ async function handlePreviewToggleClick() {
   }
 }
 
-// Query content script for current preview state and update button UI
+// Query content script for current preview state and update button UI - FIXED: Use appState
 async function syncPreviewButtonState() {
   try {
     const btn = document.getElementById('previewToggleButton');
     if (!btn) return;
+    
     // Get content preview state
     const res = await window.backgroundAPI.getPreviewState();
+    console.log('🔍 [PREVIEW SYNC] Raw response from content script:', res);
+    
     const enabled = !!res?.response?.data?.enabled;
     const hiddenCount = Number(res?.response?.data?.hiddenCount || 0);
+    
+    console.log('🔍 [PREVIEW SYNC] Parsed state:', { enabled, hiddenCount });
+    
     // Always ask background for current extension state to avoid stale window.appState
     let extEnabled = true;
     try {
@@ -1268,19 +1305,41 @@ async function syncPreviewButtonState() {
     } catch (_) {
       extEnabled = true; // default to enabled if we cannot determine
     }
-    previewEnabled = enabled;
-    btn.classList.toggle('active', enabled);
+    
+    // FIXED: Use saved state as the source of truth for user preference
+    // Only override if extension is disabled
+    const savedState = window.appState.state.isPreviewEnabled;
+    const finalEnabled = extEnabled ? savedState : false;
+    
+    console.log('🔍 [PREVIEW SYNC] State decision:', { 
+      contentScriptEnabled: enabled, 
+      savedState, 
+      finalEnabled 
+    });
+    
+    // Update appState with final decision
+    window.appState.updateState({ isPreviewEnabled: finalEnabled });
+    btn.classList.toggle('active', finalEnabled);
+    
     // Button is disabled only when extension is disabled
     if (!extEnabled) {
       btn.disabled = true;
       btn.textContent = 'Show Hidden Content';
       btn.classList.remove('active');
-      previewEnabled = false;
+      window.appState.updateState({ isPreviewEnabled: false });
       return;
     }
+    
     btn.disabled = false;
     // Keep clickable even if there are 0 to show; show a count hint when available
     btn.textContent = enabled ? 'Hide Hidden Content' : (hiddenCount > 0 ? `Show Hidden Content (${hiddenCount})` : 'Show Hidden Content');
+    
+    console.log('🔍 [PREVIEW SYNC] Button state updated:', { 
+      enabled, 
+      buttonText: btn.textContent, 
+      hasActiveClass: btn.classList.contains('active'),
+      appStatePreviewEnabled: window.appState.state.isPreviewEnabled
+    });
   } catch (e) {
     // If we can't reach content script yet, leave default UI
     console.log('Could not sync preview state:', e?.message || e);
@@ -1736,7 +1795,6 @@ function setVersionNumber() {
     const versionElement = document.getElementById('versionNumber');
     if (versionElement && manifestData.version) {
       versionElement.textContent = `v${manifestData.version}`;
-      console.log('✅ Version number set to:', manifestData.version);
     }
   } catch (error) {
     console.error('❌ Failed to get version from manifest:', error);
