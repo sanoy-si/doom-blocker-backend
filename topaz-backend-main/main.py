@@ -461,6 +461,22 @@ async def get_blocked_count():
         "last_updated": blocked_items_counter['last_updated']
     }
 
+@app.post("/api/report-blocked-items")
+async def report_blocked_items(request: Request):
+    """Report actually blocked items from the extension"""
+    try:
+        data = await request.json()
+        count = data.get('count', 0)
+        
+        if count > 0:
+            increment_blocked_counter(count)
+            logger.info(f"📊 Extension reported {count} actually blocked items")
+        
+        return {"success": True, "count": count}
+    except Exception as e:
+        logger.error(f"❌ Error reporting blocked items: {e}")
+        return {"success": False, "error": str(e)}
+
 # Auth routes
 # @app.get("/login")
 # async def login(request: Request):
@@ -1154,8 +1170,8 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
         logger.info(f"✅ Request completed successfully - Total time: {total_duration:.3f}s")
         logger.info(f"⏱️  Breakdown: API={api_duration:.3f}s, Other={total_duration-api_duration:.3f}s")
 
-        # Update blocked items counter
-        increment_blocked_counter(total_children_to_remove)
+        # REMOVED: Don't count as blocked until extension confirms they were actually hidden
+        # increment_blocked_counter(total_children_to_remove)
 
         # Cache the response for future requests
         cache_response(cache_key, result)

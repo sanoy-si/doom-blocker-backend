@@ -7,7 +7,7 @@ const state = {
   isPowerUserMode: false,
   
   // User settings
-  isCustomizationEnabled: false, // Default to disabled (matches StateManager default)
+  isCustomizationEnabled: true, // Default to enabled (matches StateManager default)
   showBlockCounter: true, // Default to enabled
   
   // UI state

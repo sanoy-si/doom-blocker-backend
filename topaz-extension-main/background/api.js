@@ -313,6 +313,32 @@ class API {
     }
   }
 
+  async reportBlockedItems(count) {
+    console.log(`🌐 API: Reporting ${count} actually blocked items`);
+    
+    try {
+      const response = await this.makeAuthenticatedRequest('/api/report-blocked-items', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ count }),
+      }, API_ENDPOINTS.BASE_URL);
+
+      if (!response.ok) {
+        console.error(`🌐 API: Report blocked items failed - HTTP ${response.status}: ${response.statusText}`);
+        return { success: false, error: `HTTP ${response.status}` };
+      }
+
+      const data = await response.json();
+      console.log(`🌐 API: Blocked items reported successfully`);
+      return { success: true, data };
+    } catch (error) {
+      console.error(`🌐 API: Report blocked items error: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
   // COMMENTED OUT: Auth functionality disabled
   // Get current auth state
   // getAuthState() {

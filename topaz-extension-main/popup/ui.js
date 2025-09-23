@@ -138,14 +138,34 @@ function renderExtensionToggle() {
     if (elements.quickAddSection) {
       elements.quickAddSection.classList.remove('disabled');
     }
+    
+    // Re-apply customization state when extension is enabled
+    // This will respect the current customization toggle setting
+    if (state.isCustomizationEnabled) {
+      updateCustomizationState(true);
+    } else {
+      updateCustomizationState(false);
+    }
   } else {
     elements.enableToggle.classList.remove('enabled');
     elements.enableToggle.classList.add('disabled');
     elements.toggleStatus.textContent = 'disabled';
     
-    // Disable suggestion section
+    // Keep customization sections enabled even when extension is disabled
+    // Users can add words/tags that will apply when extension is enabled
     if (elements.quickAddSection) {
-      elements.quickAddSection.classList.add('disabled');
+      elements.quickAddSection.classList.remove('disabled');
+    }
+    
+    // Apply customization state based on the customization toggle, not extension state
+    try {
+      if (state.isCustomizationEnabled) {
+        updateCustomizationState(true);
+      } else {
+        updateCustomizationState(false);
+      }
+    } catch (error) {
+      console.log('updateCustomizationState failed (elements not ready):', error);
     }
   }
 }
@@ -340,6 +360,9 @@ async function renderSimpleModeContent() {
       }
     }
   }
+  
+  // Apply customization state based on the customization toggle, not extension state
+  // Users can customize even when extension is disabled
   if (!elements.simpleWhitelistTab._isSetup) {
     setupSimpleModeTabs();
     if (elements.simpleWhitelistTab) elements.simpleWhitelistTab._isSetup = true;
@@ -540,7 +563,10 @@ async function setupCustomizationToggle() {
 // Update UI based on customization state
 function updateCustomizationState(isEnabled) {
   const chipSystem = elements.simpleModeSection?.querySelector('.simple-chip-system');
-  if (!chipSystem) return;
+  if (!chipSystem) {
+    console.log('updateCustomizationState: chipSystem not found, skipping');
+    return;
+  }
   
   // Get references to the UI elements
   const tabButtons = chipSystem.querySelector('.tab-buttons');
@@ -550,22 +576,37 @@ function updateCustomizationState(isEnabled) {
   const saveButton = chipSystem.querySelector('.save-button');
   const resetButton = chipSystem.querySelector('.reset-button');
   
+  // Get the quick-add-section (suggestion tags)
+  const quickAddSection = elements.quickAddSection || document.querySelector('.quick-add-section');
+  
   if (isEnabled) {
-    // Enable customization UI
+    // Enable customization UI - remove disabled class and reset styles
     if (tabButtons) {
+      tabButtons.classList.remove('disabled');
       tabButtons.style.display = '';
       tabButtons.style.opacity = '1';
       tabButtons.style.pointerEvents = 'auto';
+      tabButtons.style.filter = 'none';
     }
     if (tabContent) {
+      tabContent.classList.remove('disabled');
       tabContent.style.display = '';
       tabContent.style.opacity = '1';
       tabContent.style.pointerEvents = 'auto';
+      tabContent.style.filter = 'none';
     }
     if (addItemContainer) {
+      addItemContainer.classList.remove('disabled');
       addItemContainer.style.display = '';
       addItemContainer.style.opacity = '1';
       addItemContainer.style.pointerEvents = 'auto';
+      addItemContainer.style.filter = 'none';
+    }
+    if (quickAddSection) {
+      quickAddSection.classList.remove('disabled');
+      quickAddSection.style.opacity = '1';
+      quickAddSection.style.pointerEvents = 'auto';
+      quickAddSection.style.filter = 'none';
     }
     if (addItemInput) {
       addItemInput.disabled = false;
@@ -613,21 +654,21 @@ function updateCustomizationState(isEnabled) {
     });
     
   } else {
-    // Disable customization UI but keep it visible and greyed out
+    // Disable customization UI - add disabled class for blur effect
     if (tabButtons) {
+      tabButtons.classList.add('disabled');
       tabButtons.style.display = '';
-      tabButtons.style.opacity = '0.4';
-      tabButtons.style.pointerEvents = 'none';
     }
     if (tabContent) {
+      tabContent.classList.add('disabled');
       tabContent.style.display = '';
-      tabContent.style.opacity = '0.4';
-      tabContent.style.pointerEvents = 'none';
     }
     if (addItemContainer) {
+      addItemContainer.classList.add('disabled');
       addItemContainer.style.display = '';
-      addItemContainer.style.opacity = '0.4';
-      addItemContainer.style.pointerEvents = 'none';
+    }
+    if (quickAddSection) {
+      quickAddSection.classList.add('disabled');
     }
     if (addItemInput) {
       addItemInput.disabled = true;

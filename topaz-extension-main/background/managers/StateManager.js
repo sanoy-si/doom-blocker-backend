@@ -14,7 +14,7 @@ class StateManager {
       tabCooldownMap: new Map(),
       profiles: [],
       isPowerUserMode: false,
-      customizationToggle: false,
+      customizationToggle: true,
       showBlockCounter: true,
       globalBlockStats: { totalBlocked: 0, blockedToday: 0, lastBlockedDate: new Date().toISOString().slice(0, 10) } // Global stats instead of per-hostname
     };
@@ -66,7 +66,7 @@ class StateManager {
       if (result.userSettings?.customizationToggle !== undefined) {
         this.state.customizationToggle = result.userSettings.customizationToggle;
       } else {
-        this.state.customizationToggle = false; // Default value
+        this.state.customizationToggle = true; // Default value
         needsSave = true;
       }
 
@@ -177,7 +177,7 @@ class StateManager {
     } catch (error) {
       this.state.extensionEnabled = true;
       this.state.isPowerUserMode = false;
-      this.state.customizationToggle = false;
+      this.state.customizationToggle = true;
       this.state.showBlockCounter = true;
       this.state.profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
       this.state.globalBlockStats = { totalBlocked: 0, blockedToday: 0, lastBlockedDate: new Date().toISOString().slice(0, 10) };

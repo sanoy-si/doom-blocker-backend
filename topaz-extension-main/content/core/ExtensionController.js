@@ -12,6 +12,9 @@ class ExtensionController {
     this.elementEffects = new ElementEffects();
     this.contentFingerprint = new ContentFingerprint();
     this.elementsAnalyzedInCurrentCycle = new Map(); // Track elements sent for analysis
+    
+    // Initialize bulletproof counting system
+    this.truthfulCounter = new TruthfulCounter();
     // Track preview state and items for toggle preview feature
     this.previewState = { enabled: false, items: [] };
     this.previewProcessing = false; // prevent overlapping preview toggles
@@ -44,6 +47,16 @@ class ExtensionController {
         }
       });
     } catch (_) {}
+  }
+
+  // Get truthful counts for popup
+  handleGetTruthfulCounts(sendResponse) {
+    try {
+      const counts = this.truthfulCounter.getCounts();
+      sendResponse(this.messageHandler.createResponse(true, "Truthful counts retrieved", counts));
+    } catch (error) {
+      sendResponse(this.messageHandler.createResponse(false, "Failed to get truthful counts", { error: error.message }));
+    }
   }
 
   // Return current preview state to popup
@@ -164,6 +177,11 @@ class ExtensionController {
       this.handleGetSessionManager(sendResponse);
     });
 
+    // Truthful counts request
+    this.eventBus.on('message:get-truthful-counts', ({ sendResponse }) => {
+      this.handleGetTruthfulCounts(sendResponse);
+    });
+
     // 🚀 INSTANT FILTERING: Handle instant filter requests from popup
     this.eventBus.on("message:instant-filter", ({ sendResponse }) => {
       this.handleInstantFilter(sendResponse);
@@ -251,7 +269,7 @@ class ExtensionController {
     
     if (!shouldSkip) {
       console.log("🔍 [TOPAZ DEBUG] Proceeding with performInitialExtraction");
-      await this.performInitialExtraction();
+      await this.performInitialEsxtraction();
     } else {
       console.log("🔍 [TOPAZ DEBUG] Skipping extraction due to config");
     }
@@ -326,15 +344,23 @@ class ExtensionController {
             element: child.element
           }], hidingMethod);
           if (hiddenCount > 0) {
-            const toastEnabled = await this.isToastEnabled();
-            if (toastEnabled) {
-              this.notificationManager.incrementBlockedCount(hiddenCount);
+            // Use truthful counter for auto-delete
+            const actuallyBlockedCount = this.truthfulCounter.countBlockedElements(
+              [{ id: child.id, element: child.element }], 
+              'autoDelete'
+            );
+            
+            if (actuallyBlockedCount > 0) {
+              const toastEnabled = await this.isToastEnabled();
+              if (toastEnabled) {
+                this.notificationManager.incrementBlockedCount(actuallyBlockedCount);
+              }
+              this.messageHandler.sendMessageToBackground({
+                type: MESSAGE_TYPES.CONTENT_BLOCKED,
+                blockedCount: actuallyBlockedCount,
+                currentUrl: window.location.href,
+              });
             }
-            this.messageHandler.sendMessageToBackground({
-              type: MESSAGE_TYPES.CONTENT_BLOCKED,
-              blockedCount: hiddenCount,
-              currentUrl: window.location.href,
-            });
           }
         } else {
           // Include ALL grid children regardless of fingerprint status for re-analysis
@@ -779,21 +805,35 @@ class ExtensionController {
     );
 
     if (markedCount > 0) {
-      const toastEnabled = await this.isToastEnabled();
-      if (toastEnabled) {
-        console.log(`🎯 Showing toast notification: ${markedCount} items blocked`);
-        this.notificationManager.incrementBlockedCount(markedCount);
+      // Use truthful counter to count only actually blocked elements
+      const actuallyBlockedCount = this.truthfulCounter.countBlockedElements(
+        elementsToHide, 
+        'aiAnalysis'
+      );
+      
+      if (actuallyBlockedCount > 0) {
+        const toastEnabled = await this.isToastEnabled();
+        if (toastEnabled) {
+          console.log(`🎯 Showing toast notification: ${actuallyBlockedCount} items blocked`);
+          this.notificationManager.incrementBlockedCount(actuallyBlockedCount);
+        }
+        this.messageHandler.sendMessageToBackground({
+          type: MESSAGE_TYPES.GRID_CHILDREN_BLOCKED,
+          count: actuallyBlockedCount,
+          url: window.location.href
+        });
+        this.messageHandler.sendMessageToBackground({
+          type: MESSAGE_TYPES.CONTENT_BLOCKED,
+          blockedCount: actuallyBlockedCount,
+          currentUrl: window.location.href,
+        });
+        
+        // Report actually blocked items to backend
+        this.messageHandler.sendMessageToBackground({
+          type: 'REPORT_BLOCKED_ITEMS',
+          count: actuallyBlockedCount
+        });
       }
-      this.messageHandler.sendMessageToBackground({
-        type: MESSAGE_TYPES.GRID_CHILDREN_BLOCKED,
-        count: markedCount,
-        url: window.location.href
-      });
-      this.messageHandler.sendMessageToBackground({
-        type: MESSAGE_TYPES.CONTENT_BLOCKED,
-        blockedCount: markedCount,
-        currentUrl: window.location.href,
-      });
 
       // Track blocked items for analytics
       const blockedItemDetails = elementsToHide.map(item => {

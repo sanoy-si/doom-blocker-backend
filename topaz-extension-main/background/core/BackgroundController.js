@@ -92,6 +92,7 @@ class BackgroundController {
       [MESSAGE_TYPES.GRID_CHILDREN_BLOCKED]: this.handleGridChildrenBlocked.bind(this),
       [MESSAGE_TYPES.CONTENT_BLOCKED]: this.handleContentBlocked.bind(this),
       [MESSAGE_TYPES.GET_BLOCK_STATS]: this.handleGetBlockStats.bind(this),
+      'REPORT_BLOCKED_ITEMS': this.handleReportBlockedItems.bind(this),
       // COMMENTED OUT: Auth functionality disabled
       // [MESSAGE_TYPES.GET_AUTH_STATE]: this.handleGetAuthState.bind(this),
       // [MESSAGE_TYPES.LOGIN]: this.handleLogin.bind(this),
@@ -125,6 +126,26 @@ class BackgroundController {
       if (!count) return;
       await this.stateManager.incrementGlobalBlockStats(count);
     } catch (e) {}
+  }
+
+  /**
+   * Handler for reporting actually blocked items to backend
+   */
+  async handleReportBlockedItems(message, sender) {
+    try {
+      const count = message.count || 0;
+      if (!count) return;
+      
+      // Report to backend API
+      const result = await this.api.reportBlockedItems(count);
+      if (result.success) {
+        console.log(`📊 Successfully reported ${count} blocked items to backend`);
+      } else {
+        console.warn(`⚠️ Failed to report blocked items to backend:`, result.error);
+      }
+    } catch (e) {
+      console.error('❌ Error reporting blocked items:', e);
+    }
   }
 
   async handleGetProfileData(message, sender) {
