@@ -8,6 +8,7 @@ const elements = {
   editPage: null,
   enableToggle: null,
   toggleStatus: null,
+  previewToggleButton: null, // FIXED: Add preview button element
   settingsButton: null,
   editProfilesButton: null,
   profilesSection: null,
@@ -53,6 +54,7 @@ function cacheElements() {
   elements.editPage = document.getElementById('editPage');
   elements.enableToggle = document.getElementById('enableToggle');
   elements.toggleStatus = document.getElementById('toggleStatus');
+  elements.previewToggleButton = document.getElementById('previewToggleButton'); // FIXED: Cache preview button
   elements.settingsButton = document.getElementById('settingsButton');
   elements.editProfilesButton = document.getElementById('editProfilesButton');
   elements.profilesSection = document.getElementById('profilesSection');
@@ -99,6 +101,9 @@ function renderCurrentView() {
   
   // Update extension toggle
   renderExtensionToggle();
+  
+  // FIXED: Update preview button
+  renderPreviewButton();
   
   // Update stats
   renderStats();
@@ -167,6 +172,21 @@ function renderExtensionToggle() {
     } catch (error) {
       console.log('updateCustomizationState failed (elements not ready):', error);
     }
+  }
+}
+
+// FIXED: Add preview button rendering function
+function renderPreviewButton() {
+  const { state } = window.appState;
+  
+  if (!elements.previewToggleButton) return;
+  
+  if (state.isPreviewEnabled) {
+    elements.previewToggleButton.classList.add('active');
+    elements.previewToggleButton.textContent = 'Hide Hidden Content';
+  } else {
+    elements.previewToggleButton.classList.remove('active');
+    elements.previewToggleButton.textContent = 'Show Hidden Content';
   }
 }
 
@@ -1194,6 +1214,7 @@ window.ui = {
   cacheElements,
   renderCurrentView,
   renderExtensionToggle,
+  renderPreviewButton, // FIXED: Export renderPreviewButton
   renderStats,
   showMainView,
   showEditView,

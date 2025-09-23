@@ -32,15 +32,11 @@ class ExtensionController {
     // Initialize session on first load
     this.initializeUserSession();
 
-    // Make preview independent per tab: when tab is hidden/backgrounded, turn preview off
+    // FIXED: Removed automatic preview disabling on visibility changes
+    // This was causing the preview state to reset when opening the extension popup
+    // Now preview state will persist until manually toggled by the user
     try {
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden && this.previewState?.enabled) {
-          // Best-effort disable without responding to popup
-          this.handleTogglePreviewHidden(false, null).catch(() => {});
-        }
-      });
-      // Also handle pagehide (BFCache or navigation away)
+      // Only disable preview when navigating away from the page (not when tab becomes hidden)
       window.addEventListener('pagehide', () => {
         if (this.previewState?.enabled) {
           this.handleTogglePreviewHidden(false, null).catch(() => {});

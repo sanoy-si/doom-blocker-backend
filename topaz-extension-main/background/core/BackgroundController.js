@@ -79,6 +79,7 @@ class BackgroundController {
   registerMessageHandlers() {
     const handlers = {
       [MESSAGE_TYPES.EXTENSION_TOGGLED]: this.handleExtensionToggled.bind(this),
+      'TOGGLE_PREVIEW': this.handlePreviewToggled.bind(this), // FIXED: Add preview toggle handler
       [MESSAGE_TYPES.GET_EXTENSION_STATE]: this.handleGetExtensionState.bind(this),
       [MESSAGE_TYPES.ANALYZE_GRID_STRUCTURE]: this.handleAnalyzeGridStructure.bind(this),
       [MESSAGE_TYPES.CHECK_ANALYSIS_REQUIRED]: this.handleCheckAnalysisRequired.bind(this),
@@ -491,6 +492,24 @@ class BackgroundController {
     return {
       success: true,
       message: `Extension ${message.enabled ? 'enabled' : 'disabled'}`,
+      enabled: message.enabled
+    };
+  }
+
+  /**
+   * FIXED: Handle preview toggled message
+   */
+  async handlePreviewToggled(message, sender) {
+    if (message.enabled === undefined) {
+      throw new Error('Missing enabled state');
+    }
+
+    // Update state
+    await this.stateManager.setPreviewEnabled(message.enabled);
+
+    return {
+      success: true,
+      message: `Preview ${message.enabled ? 'enabled' : 'disabled'}`,
       enabled: message.enabled
     };
   }

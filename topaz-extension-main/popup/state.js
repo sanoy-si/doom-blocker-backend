@@ -10,6 +10,9 @@ const state = {
   isCustomizationEnabled: true, // Default to enabled (matches StateManager default)
   showBlockCounter: true, // Default to enabled
   
+  // Preview state - FIXED: Store preview state in appState like extension state
+  isPreviewEnabled: false,
+  
   // UI state
   currentView: 'main', // 'main' | 'edit'
   isEditMode: false,

@@ -8,6 +8,7 @@ class StateManager {
     this.eventBus = eventBus;
     this.state = {
       extensionEnabled: true,
+      previewEnabled: false, // FIXED: Add preview state to StateManager
       // COMMENTED OUT: Auth functionality disabled
       // isAuthenticated: false,
       tabUrls: new Map(),
@@ -38,6 +39,7 @@ class StateManager {
       const result = await chrome.storage.local.get([
         STORAGE_KEYS.EXTENSION_ENABLED,
         STORAGE_KEYS.PROFILES,
+        STORAGE_KEYS.PREVIEW_ENABLED, // FIXED: Load preview state
         'userSettings', // Load power user mode and customization 
         'globalBlockStats', // Load global block stats
         'blockStats' // For migration from old per-hostname stats
@@ -51,6 +53,14 @@ class StateManager {
         this.state.extensionEnabled = result[STORAGE_KEYS.EXTENSION_ENABLED];
       } else {
         this.state.extensionEnabled = true; // Default value
+        needsSave = true;
+      }
+      
+      // FIXED: Handle preview enabled state
+      if (result[STORAGE_KEYS.PREVIEW_ENABLED] !== undefined) {
+        this.state.previewEnabled = result[STORAGE_KEYS.PREVIEW_ENABLED];
+      } else {
+        this.state.previewEnabled = false; // Default value
         needsSave = true;
       }
       
@@ -195,6 +205,7 @@ class StateManager {
     try {
       const dataToSave = {
         [STORAGE_KEYS.EXTENSION_ENABLED]: this.state.extensionEnabled,
+        [STORAGE_KEYS.PREVIEW_ENABLED]: this.state.previewEnabled, // FIXED: Save preview state
         [STORAGE_KEYS.PROFILES]: this.state.profiles,
         userSettings: {
           isPowerUserMode: this.state.isPowerUserMode,
@@ -237,6 +248,14 @@ class StateManager {
         { enabled }
       );
     }
+  }
+
+  /**
+   * FIXED: Set preview enabled state
+   */
+  async setPreviewEnabled(enabled) {
+    this.state.previewEnabled = enabled;
+    await this.saveExtensionState();
   }
 
   /**
@@ -661,6 +680,7 @@ class StateManager {
       
       const settings = {
         extensionEnabled: this.state.extensionEnabled,
+        previewEnabled: this.state.previewEnabled, // FIXED: Add preview state to settings
         profiles: [...this.state.profiles], // Return a copy
         isPowerUserMode: this.state.isPowerUserMode,
         customizationToggle: this.state.customizationToggle,
