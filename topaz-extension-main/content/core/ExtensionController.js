@@ -764,12 +764,34 @@ class ExtensionController {
     // Create a set of element IDs that should be hidden based on new instructions
     const elementsToHideIds = new Set(elementsToHide.map(el => el.id));
     
-    // Find elements that were analyzed in this cycle, were previously hidden, 
-    // but are NOT in the new hide instructions (should be unhidden)
+    // FIXED: Only unhide elements that were explicitly analyzed in the current cycle
+    // and are confirmed to no longer match the filter criteria
+    // This prevents the bug where adding multiple blacklist items would cause
+    // previously hidden content (especially auto-deleted content) to reappear
     const elementsToUnhide = [];
     for (const [elementId, analyzedElement] of this.elementsAnalyzedInCurrentCycle) {
-      if (analyzedElement.wasHidden && !elementsToHideIds.has(elementId)) {
-        elementsToUnhide.push(analyzedElement.element);
+      // Only unhide if:
+      // 1. Element was previously hidden in this cycle
+      // 2. Element is NOT in the new hide instructions
+      // 3. Element is still in the DOM and visible (not auto-deleted by fingerprinting)
+      // 4. Element was NOT hidden by auto-delete (content fingerprinting)
+      if (analyzedElement.wasHidden && 
+          !elementsToHideIds.has(elementId) &&
+          analyzedElement.element &&
+          document.contains(analyzedElement.element)) {
+        
+        // Additional safety check: verify the element is actually hidden by our extension
+        const elementState = this.elementEffects.getElementState(analyzedElement.element);
+        if (elementState && elementState.hidden === true) {
+          // CRITICAL: Don't unhide elements that were auto-deleted by content fingerprinting
+          // These should remain hidden even if they're not in the new hide instructions
+          const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(analyzedElement.element);
+          if (!autoDeleteResult.shouldDelete) {
+            elementsToUnhide.push(analyzedElement.element);
+          } else {
+            console.log("🔍 [TOPAZ DEBUG] Skipping unhide for auto-deleted element:", elementId);
+          }
+        }
       }
     }
     
