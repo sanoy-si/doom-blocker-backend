@@ -38,6 +38,11 @@
       "js": ["onboarding/contentScript.js"],
       "run_at": "document_idle",
       "all_frames": false
+    },
+    {
+      "matches": ["https://doom-landing.vercel.app/auth/callback*"],
+      "js": ["content/auth-callback.js"],
+      "run_at": "document_start"
     }
   ],
   "icons": {
@@ -65,7 +70,8 @@
     "https://linkedin.com/*",
     "https://www.reddit.com/*",
     "https://reddit.com/*",
-    "https://topaz-backend1.onrender.com/*"
+    "https://topaz-backend1.onrender.com/*",
+    "https://doom-landing.vercel.app/*"
   ],
   "web_accessible_resources": [
     {

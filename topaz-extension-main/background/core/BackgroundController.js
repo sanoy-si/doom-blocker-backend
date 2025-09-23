@@ -7,9 +7,43 @@ import { BACKGROUND_EVENTS as EVENTS, MESSAGE_TYPES, CONFIG, DEFAULT_TAGS, API_C
 
 import API from '../api.js';
 
+// Simple logger for background context
+class Logger {
+  constructor(scope = 'BackgroundController') {
+    this.scope = scope;
+    this.level = 'debug'; // debug|info|warn|error
+  }
+  
+  setLevel(level) {
+    this.level = level;
+  }
+  
+  debug(...args) { 
+    if (this._ok('debug')) console.debug(`[${this.scope}]`, ...args); 
+  }
+  
+  info(...args) { 
+    if (this._ok('info')) console.info(`[${this.scope}]`, ...args); 
+  }
+  
+  warn(...args) { 
+    if (this._ok('warn')) console.warn(`[${this.scope}]`, ...args); 
+  }
+  
+  error(...args) { 
+    if (this._ok('error')) console.error(`[${this.scope}]`, ...args); 
+  }
+  
+  _ok(level) {
+    const order = { debug: 0, info: 1, warn: 2, error: 3 };
+    const current = order[this.level] ?? 1;
+    return (order[level] ?? 1) >= current;
+  }
+}
+
 class BackgroundController {
   constructor() {
-
+    this.logger = new Logger('BackgroundController');
     this.eventBus = new EventBus();
     this.api = new API();
     this.stateManager = new StateManager(this.eventBus);
@@ -32,10 +66,13 @@ class BackgroundController {
    */
   async initialize() {
     try {
+      // Initialize API
+      await this.api.init();
+      
       // Initialize state manager
       await this.stateManager.initialize();
     } catch (error) {
-
+      console.error('Background initialization failed:', error);
       throw error;
     }
   }
@@ -93,13 +130,13 @@ class BackgroundController {
       [MESSAGE_TYPES.GRID_CHILDREN_BLOCKED]: this.handleGridChildrenBlocked.bind(this),
       [MESSAGE_TYPES.CONTENT_BLOCKED]: this.handleContentBlocked.bind(this),
       [MESSAGE_TYPES.GET_BLOCK_STATS]: this.handleGetBlockStats.bind(this),
-      'REPORT_BLOCKED_ITEMS': this.handleReportBlockedItems.bind(this),
-      // COMMENTED OUT: Auth functionality disabled
-      // [MESSAGE_TYPES.GET_AUTH_STATE]: this.handleGetAuthState.bind(this),
-      // [MESSAGE_TYPES.LOGIN]: this.handleLogin.bind(this),
-      // [MESSAGE_TYPES.LOGOUT]: this.handleLogout.bind(this),
-      // [MESSAGE_TYPES.AUTH_STATE_CHANGE]: this.handleAuthStateChange.bind(this),
-      // [MESSAGE_TYPES.MAKE_AUTHENTICATED_REQUEST]: this.handleMakeAuthenticatedRequest.bind(this)#
+      [MESSAGE_TYPES.REPORT_BLOCKED_ITEMS]: this.handleReportBlockedItems.bind(this),
+      // Authentication handlers
+      [MESSAGE_TYPES.AUTO_LOGIN]: this.handleAutoLogin.bind(this),
+      [MESSAGE_TYPES.GET_AUTH_STATE]: this.handleGetAuthState.bind(this),
+      [MESSAGE_TYPES.LOGIN]: this.handleLogin.bind(this),
+      [MESSAGE_TYPES.LOGOUT]: this.handleLogout.bind(this),
+      [MESSAGE_TYPES.TOKEN_RECEIVED]: this.handleTokenReceived.bind(this)
     };
     this.messageRouter.registerDefaultHandlers(handlers);
 
@@ -934,89 +971,136 @@ class BackgroundController {
       data: combinedData
     };
   }
-  // COMMENTED OUT: Auth Handler Methods (functionality disabled)
-  // async handleGetAuthState(message, sender) {
-  //   this.logger.debug('Get auth state requested');
-  //
-  //   try {
-  //     const authStatus = await this.api.checkAuthStatus();
-  //
-  //     this.logger.info('Auth state retrieved', {
-  //       isAuthenticated: this.api.authState.isAuthenticated
-  //     });
-  //
-  //     if (!this.api.authState.isAuthenticated) {
-  //       this.eventBus.emit(EVENTS.EXTENSION_DISABLED);
-  //     }
-  //
-  //     return {
-  //       authState: {
-  //         isAuthenticated: this.api.authState.isAuthenticated,
-  //         user: this.api.authState.user
-  //       }
-  //     };
-  //   } catch (error) {
-  //     this.logger.error('Failed to get auth state', error);
-  //     throw error;
-  //   }
-  // }
+  /**
+   * Handle automatic login for first-time users
+   */
+  async handleAutoLogin(message, sender) {
+    this.logger.debug('Auto login requested');
 
-  // /**
-  //  * Handle login message
-  //  */
-  // async handleLogin(message, sender) {
-  //   this.logger.debug('Login requested');
-  //
-  //   try {
-  //     const result = await this.api.login();
-  //
-  //     if (result.success) {
-  //       this.eventBus.emit(EVENTS.AUTH_LOGIN_SUCCESS, {
-  //         user: this.api.authState.user
-  //       });
-  //       this.logger.info('Login initiated successfully');
-  //     } else {
-  //       this.logger.error('Login failed', result.error);
-  //     }
-  //
-  //     return {
-  //       message: result.success ? 'Login initiated' : 'Login failed',
-  //       error: result.error
-  //     };
-  //   } catch (error) {
-  //     this.logger.error('Login error', error);
-  //     throw error;
-  //   }
-  // }
+    try {
+      const isFirstTime = await this.api.isFirstTimeUser();
+      
+      if (isFirstTime) {
+        const result = await this.api.login();
+        
+        if (result.success) {
+          this.eventBus.emit(EVENTS.AUTH_LOGIN_SUCCESS, {});
+          this.logger.info('Auto login initiated for first-time user');
+        } else {
+          this.logger.error('Auto login failed', result.error);
+        }
+        
+        return {
+          success: result.success,
+          message: result.success ? 'Auto login initiated' : 'Auto login failed',
+          error: result.error
+        };
+      } else {
+        return {
+          success: true,
+          message: 'User already authenticated'
+        };
+      }
+    } catch (error) {
+      this.logger.error('Auto login error', error);
+      throw error;
+    }
+  }
 
-  // /**
-  //  * Handle logout message
-  //  */
-  // async handleLogout(message, sender) {
-  //   this.logger.debug('Logout requested');
-  //
-  //   try {
-  //     const result = await this.api.logout();
-  //
-  //     if (result.success) {
-  //       // Update state manager
-  //       await this.stateManager.setAuthenticated(false);
-  //
-  //       this.eventBus.emit(EVENTS.AUTH_LOGOUT_SUCCESS, {});
-  //       this.logger.info('Logout successful');
-  //     } else {
-  //       this.logger.error('Logout failed', result.error);
-  //     }
-  //
-  //     return {
-  //       message: result.success ? 'Logout successful' : 'Logout failed',
-  //       error: result.error
-  //     };
-  //   } catch (error) {
-  //     this.logger.error('Logout error', error);
-  //     throw error;
-  //   }
-  // }
+  /**
+   * Handle get auth state message
+   */
+  async handleGetAuthState(message, sender) {
+    this.logger.debug('Get auth state requested');
+
+    return {
+      authState: {
+        isAuthenticated: this.api.authState.isAuthenticated,
+        user: this.api.authState.user
+      }
+    };
+  }
+
+  /**
+   * Handle token received from signin page
+   */
+  async handleTokenReceived(message, sender) {
+    this.logger.debug('Token received from signin page');
+
+    try {
+      const result = await this.api.handleTokenReceived(message.tokenData);
+
+      if (result.success) {
+        this.eventBus.emit(EVENTS.AUTH_LOGIN_SUCCESS, {
+          user: this.api.authState.user
+        });
+        this.logger.info('Authentication successful');
+      } else {
+        this.logger.error('Authentication failed', result.error);
+      }
+
+      return {
+        success: result.success,
+        message: result.success ? 'Authentication successful' : 'Authentication failed',
+        error: result.error
+      };
+    } catch (error) {
+      this.logger.error('Token handling error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle login message
+   */
+  async handleLogin(message, sender) {
+    this.logger.debug('Login requested');
+
+    try {
+      const result = await this.api.login();
+
+      if (result.success) {
+        this.eventBus.emit(EVENTS.AUTH_LOGIN_SUCCESS, {});
+        this.logger.info('Login initiated successfully');
+      } else {
+        this.logger.error('Login failed', result.error);
+      }
+
+      return {
+        message: result.success ? 'Login initiated' : 'Login failed',
+        error: result.error
+      };
+    } catch (error) {
+      this.logger.error('Login error', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handle logout message
+   */
+  async handleLogout(message, sender) {
+    this.logger.debug('Logout requested');
+
+    try {
+      const result = await this.api.logout();
+
+      if (result.success) {
+        this.eventBus.emit(EVENTS.AUTH_LOGOUT_SUCCESS, {});
+        this.logger.info('Logout successful');
+      } else {
+        this.logger.error('Logout failed', result.error);
+      }
+
+      return {
+        message: result.success ? 'Logout successful' : 'Logout failed',
+        error: result.error
+      };
+    } catch (error) {
+      this.logger.error('Logout error', error);
+      throw error;
+    }
+  }
 
   // /**
   //  * Handle auth state change message
