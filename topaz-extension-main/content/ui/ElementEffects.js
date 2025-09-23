@@ -451,6 +451,17 @@ class ElementEffects {
       // Restore element based on hiding method
       const state = this.getElementState(element);
 
+      // FIXED: Clear blur effects when unhiding elements
+      if (element.classList.contains(CSS_CLASSES.BLURRED)) {
+        element.classList.remove(CSS_CLASSES.BLURRED);
+        element.removeAttribute(DATA_ATTRIBUTES.BLUR_ID.replace("data-", ""));
+        // Clear blur state from WeakMap
+        if (state.blurred) {
+          delete state.blurred;
+          delete state.blurId;
+        }
+      }
+
       if (state.hidingMethod === 'video-light-trace') {
         element.classList.remove('topaz-video-rotating', 'topaz-video-hidden');
       }
@@ -555,6 +566,19 @@ class ElementEffects {
       // Get the element's state to determine how it was hidden
       const state = this.getElementState(element);
       let wasRestored = false;
+
+      // FIXED: Clear blur effects when restoring elements
+      if (element.classList.contains(CSS_CLASSES.BLURRED)) {
+        element.classList.remove(CSS_CLASSES.BLURRED);
+        element.removeAttribute(DATA_ATTRIBUTES.BLUR_ID.replace("data-", ""));
+        // Clear blur state from WeakMap
+        if (state.blurred) {
+          delete state.blurred;
+          delete state.blurId;
+          this.setElementState(element, state);
+        }
+        wasRestored = true;
+      }
 
       // Restore based on hiding method used
       if (state.hidingMethod === 'video-light-trace') {
