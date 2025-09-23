@@ -2,89 +2,132 @@ import { API_ENDPOINTS, CONFIG } from '../shared/constants.js';
 
 class API {
   constructor() {
-
-    // COMMENTED OUT: Auth functionality disabled
     // Storage keys
-    // this.STORAGE_KEYS = {
-    //   AUTH_STATE: "topaz_auth_state",
-    //   USER_DATA: "topaz_user_data",
-    // };
+    this.STORAGE_KEYS = {
+      AUTH_STATE: "topaz_auth_state",
+      USER_DATA: "topaz_user_data",
+      ACCESS_TOKEN: "topaz_access_token",
+      REFRESH_TOKEN: "topaz_refresh_token"
+    };
 
     // Current auth state
-    // this.authState = {
-    //   isAuthenticated: false,
-    //   user: null,
-    // };
+    this.authState = {
+      isAuthenticated: false,
+      user: null,
+      accessToken: null,
+      refreshToken: null
+    };
 
     // VisitorID storage key
     this.VISITOR_ID_KEY = "topaz_visitor_id";
   }
 
-  // COMMENTED OUT: Auth functionality disabled
   // Initialize API and auth system
-  // async init() {
-  //   await this.loadAuthFromStorage();
-  // }
+  async init() {
+    await this.loadAuthFromStorage();
+  }
 
-  // COMMENTED OUT: Auth functionality disabled
   // Load auth state from Chrome storage
-  // async loadAuthFromStorage() {
-  //   try {
-  //     const keys = Object.values(this.STORAGE_KEYS);
-  //     const result = await chrome.storage.local.get(keys);
+  async loadAuthFromStorage() {
+    try {
+      const keys = Object.values(this.STORAGE_KEYS);
+      const result = await chrome.storage.local.get(keys);
 
-  //     this.authState = {
-  //       isAuthenticated: result[this.STORAGE_KEYS.AUTH_STATE] || false,
-  //       user: result[this.STORAGE_KEYS.USER_DATA] || null,
-  //     };
-  //   } catch (error) {
-  //     console.error("❌ API: Failed to load auth from storage:", error);
-  //   }
-  // }
+      this.authState = {
+        isAuthenticated: result[this.STORAGE_KEYS.AUTH_STATE] || false,
+        user: result[this.STORAGE_KEYS.USER_DATA] || null,
+        accessToken: result[this.STORAGE_KEYS.ACCESS_TOKEN] || null,
+        refreshToken: result[this.STORAGE_KEYS.REFRESH_TOKEN] || null
+      };
+    } catch (error) {
+      console.error("❌ API: Failed to load auth from storage:", error);
+    }
+  }
 
   // Save auth state to Chrome storage
-  // async saveAuthToStorage() {
-  //   try {
-  //     const dataToSave = {
-  //       [this.STORAGE_KEYS.AUTH_STATE]: this.authState.isAuthenticated,
-  //       [this.STORAGE_KEYS.USER_DATA]: this.authState.user,
-  //     };
+  async saveAuthToStorage() {
+    try {
+      const dataToSave = {
+        [this.STORAGE_KEYS.AUTH_STATE]: this.authState.isAuthenticated,
+        [this.STORAGE_KEYS.USER_DATA]: this.authState.user,
+        [this.STORAGE_KEYS.ACCESS_TOKEN]: this.authState.accessToken,
+        [this.STORAGE_KEYS.REFRESH_TOKEN]: this.authState.refreshToken
+      };
 
-  //     await chrome.storage.local.set(dataToSave);
-  //   } catch (error) {
-  //     console.error("❌ API: Failed to save auth to storage:", error);
-  //   }
-  // }
+      await chrome.storage.local.set(dataToSave);
+    } catch (error) {
+      console.error("❌ API: Failed to save auth to storage:", error);
+    }
+  }
 
-  // COMMENTED OUT: Auth functionality disabled
-  // async notifyAuthStateChange() {
-  //   try {
-  //     chrome.runtime.sendMessage({
-  //       type: "AUTH_STATE_CHANGE",
-  //       isAuthenticated: this.authState.isAuthenticated,
-  //       user: this.authState.user,
-  //     });
-  //   } catch (error) {
-  //     console.error("❌ API: Failed to send auth state change notification:", error);
-  //   }
-  // }
+  // Set authentication data
+  async setAuthData(authData) {
+    this.authState = {
+      isAuthenticated: true,
+      user: authData.user,
+      accessToken: authData.accessToken,
+      refreshToken: authData.refreshToken
+    };
+    await this.saveAuthToStorage();
+  }
 
-  // Clear all auth data
-  // async clearAuthState() {
-  //   try {
-  //     const keys = Object.values(this.STORAGE_KEYS);
-  //     await chrome.storage.local.remove(keys);
+  // Open login page in new tab with extension ID
+  async login() {
+    try {
+      const extensionId = chrome.runtime.id;
+      const loginUrl = `${CONFIG.SIGNIN_WEBSITE}/?extension_id=${extensionId}`;
+      chrome.tabs.create({ url: loginUrl });
+      return { success: true, message: 'Login page opened with extension ID' };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
 
-  //     this.authState = {
-  //       isAuthenticated: false,
-  //       user: null
-  //     };
+  // Handle token received from signin page
+  async handleTokenReceived(tokenData) {
+    try {
+      await this.setAuthData({
+        user: tokenData.user,
+        accessToken: tokenData.accessToken,
+        refreshToken: tokenData.refreshToken
+      });
+      
+      console.log("✅ Authentication successful:", tokenData.user.email);
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Failed to handle token:", error);
+      return { success: false, error: error.message };
+    }
+  }
 
-  //     await this.notifyAuthStateChange();
-  //   } catch (error) {
-  //     console.error("❌ API: Failed to clear auth state:", error);
-  //   }
-  // }
+  // Check if user is first time (no auth state)
+  async isFirstTimeUser() {
+    const result = await chrome.storage.local.get(Object.values(this.STORAGE_KEYS));
+    return !result[this.STORAGE_KEYS.AUTH_STATE];
+  }
+
+  // Clear authentication state
+  async clearAuthState() {
+    this.authState = {
+      isAuthenticated: false,
+      user: null,
+      accessToken: null,
+      refreshToken: null
+    };
+    await chrome.storage.local.remove(Object.values(this.STORAGE_KEYS));
+  }
+
+  // Logout
+  async logout() {
+    try {
+      await this.clearAuthState();
+      console.log("✅ Logout successful");
+      return { success: true };
+    } catch (error) {
+      console.error("❌ Logout failed:", error);
+      return { success: false, error: error.message };
+    }
+  }
 
   // Set auth data after successful login
   // async setAuthData(authData) {
@@ -107,6 +150,10 @@ class API {
     const headers = {
       "Content-Type": "application/json",
     };
+
+    if (this.authState.accessToken) {
+      headers["Authorization"] = `Bearer ${this.authState.accessToken}`;
+    }
 
     return headers;
   }
@@ -168,11 +215,10 @@ class API {
 
   // Make authenticated API request
   async makeAuthenticatedRequest(endpoint, options = {}, website=CONFIG.STAGING_WEBSITE) {
-    // COMMENTED OUT: Login functionality disabled
-    // if (!this.authState.isAuthenticated) {
-    //   await this.clearAuthState();
-    //   throw new Error("User not authenticated");
-    // }
+    if (!this.authState.isAuthenticated) {
+      await this.clearAuthState();
+      throw new Error("User not authenticated");
+    }
 
     const url = `${website}${endpoint}`;
     console.log(`🌐 API: Making request to URL: ${url}`);
@@ -315,12 +361,14 @@ class API {
 
   // COMMENTED OUT: Auth functionality disabled
   // Get current auth state
-  // getAuthState() {
-  //   return {
-  //     isAuthenticated: this.authState.isAuthenticated,
-  //     user: this.authState.user,
-  //   };
-  // }
+  getAuthState() {
+    return {
+      isAuthenticated: this.authState.isAuthenticated,
+      user: this.authState.user,
+      accessToken: this.authState.accessToken,
+      refreshToken: this.authState.refreshToken
+    };
+  }
 }
 
 export default API;
