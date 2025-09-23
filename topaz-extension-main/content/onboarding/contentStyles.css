@@ -1,0 +1,98 @@
+/* Minimal, readable styles for in-page onboarding */
+#doom-onboard-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 2147483647; /* above YT */
+  display: none;
+}
+
+#doom-onboard-card {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #111;
+  color: #fff;
+  border-radius: 10px;
+  width: min(96vw, 450px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  padding: 18px 18px 14px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+#doom-onboard-card h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+#doom-onboard-card p {
+  margin: 0 0 14px;
+  line-height: 1.4;
+  color: #ddd;
+}
+/* Demo video under instruction */
+#doom-onboard-card video.doom-demo {
+  width: 100%;
+  height: auto; /* scale to card width, keep aspect */
+  max-height: 60vh; /* prevent overflow on short screens */
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #000;
+  display: block;
+  margin: 8px 0 12px;
+  object-fit: contain;
+}
+#doom-onboard-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+.doom-btn {
+  border: 1px solid #3a3a3a;
+  background: #1d1d1d;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.doom-btn.primary {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+.doom-btn:hover {
+  filter: brightness(1.05);
+}
+
+/* Corner tip near top-right to hint Extensions button */
+#doom-onboard-corner-tip {
+  position: fixed;
+  top: 8px;
+  right: 12px;
+  background: rgba(17, 17, 17, 0.95);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 2147483647;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+#doom-onboard-corner-tip .hint {
+  opacity: 0.9;
+}
+#doom-onboard-corner-tip .arrow {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Fallback note if video can't play */
+.doom-demo-fallback {
+  font-size: 12px;
+  color: #bbb;
+  margin: 6px 0 10px;
+}
+.doom-demo-fallback a {
+  color: #93c5fd;
+  text-decoration: underline;
+}
