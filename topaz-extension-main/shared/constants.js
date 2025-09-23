@@ -26,6 +26,14 @@ export const MESSAGE_TYPES = {
   ENABLE: 'ENABLE',
   DISABLE: 'DISABLE',
   URL_CHANGED: 'URL_CHANGED',
+
+  // Authentication
+  AUTO_LOGIN: 'AUTO_LOGIN',
+  LOGIN: 'LOGIN',
+  LOGOUT: 'LOGOUT',
+  GET_AUTH_STATE: 'GET_AUTH_STATE',
+  TOKEN_RECEIVED: 'TOKEN_RECEIVED',
+
   // Error handling
   ERROR: 'ERROR',
   // Profile management
@@ -183,6 +191,7 @@ export const STORAGE_KEYS = {
 
 export const CONFIG = {
   STAGING_WEBSITE: 'https://topaz-backend1.onrender.com',
+  SIGNIN_WEBSITE: 'https://doom-landing.vercel.app', 
   ALLOWED_WEBSITES: ['youtube.com', 'twitter.com', 'x.com', "linkedin.com", "reddit.com"],
   TAB_ENABLE_MAX_RETRIES: 3,
   TAB_ENABLE_RETRY_DELAY: 300
