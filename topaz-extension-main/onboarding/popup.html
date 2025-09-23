@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial,
+          sans-serif;
+        background: #0b0f14;
+        color: #e6f0ff;
+      }
+      .container {
+        width: 550px;
+        max-width: 550px;
+        margin: 0 auto;
+        padding: 0;
+        height: 600px;
+        overflow: hidden;
+      }
+      header h1 {
+        margin: 0 0 6px;
+        font-size: 20px;
+      }
+      header p {
+        margin: 0;
+        color: #b8c6e0;
+      }
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+      }
+      .stepper {
+        display: none;
+        width: 550px;
+        margin: 16px auto 0;
+      }
+      .stepper.active {
+        display: block;
+      }
+      .card {
+        background: #0e1520;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 0;
+        overflow: hidden;
+        margin: 0 auto;
+        width: 550px;
+        height: 500px;
+      }
+      .card h2 {
+        margin: 6px 0 2px;
+        font-size: 16px;
+        padding: 0 16px;
+      }
+      .card p {
+        margin: 0;
+        color: #c4d0e8;
+        padding: 0 16px 16px;
+      }
+      .card video {
+        display: block;
+        width: 550px;
+        height: 420px;
+        object-fit: contain;
+        object-position: center;
+        border: 0;
+        background: #000;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin: 16px auto 0;
+        justify-content: flex-end;
+        width: 550px;
+      }
+      .btn {
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn.primary {
+        background: #6ea8fe;
+        color: #0b0f14;
+        border: none;
+      }
+      .btn.ghost {
+        background: transparent;
+        color: #e6f0ff;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        font-weight: 500;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h3>Quick tour to get you started.</h3>
+      </header>
+
+      <!-- Step 1: Pin the extension -->
+      <section id="step-1" class="stepper active">
+        <div class="card">
+          <video src="assets/pin.mp4" autoplay muted loop playsinline></video>
+          <h2>Pin the extension</h2>
+          <p>
+            Click the puzzle icon in your browser toolbar and pin Doom Blocker.
+          </p>
+        </div>
+        <div class="actions">
+          <button id="next-step" class="btn primary">Next</button>
+          <button id="close-1" class="btn ghost">Close</button>
+        </div>
+      </section>
+
+      <!-- Step 2: Open the extension -->
+      <section id="step-2" class="stepper">
+        <div class="card">
+          <video src="assets/pin2.mp4" autoplay muted loop playsinline></video>
+          <h2>Open the extension</h2>
+          <p>Click the Doom Blocker icon to open it.</p>
+        </div>
+        <div class="actions">
+          <button id="open-extension" class="btn primary">
+            Open the extension
+          </button>
+          <button id="close-2" class="btn ghost">Close</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="popup.js" type="module"></script>
+  </body>
+</html>
