@@ -30,9 +30,29 @@
       "all_frames": false
     },
     {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": ["onboarding/contentScript.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
       "matches": ["https://doom-landing.vercel.app/auth/callback*"],
       "js": ["content/auth-callback.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://m.youtube.com/*"
+      ],
+      "js": ["onboarding/contentScript.js"],
+      "run_at": "document_idle",
+      "all_frames": false
     }
   ],
   "icons": {
@@ -71,6 +91,15 @@
         "content/loading.html",
         "content/config.json",
         "logo.svg"
+      ],
+      "matches": ["http://*/*", "https://*/*"]
+    },
+    {
+      "resources": [
+        "onboarding/popup.html",
+        "onboarding/popup.js",
+        "onboarding/contentStyles.css",
+        "onboarding/assets/*"
       ],
       "matches": ["http://*/*", "https://*/*"]
     }
