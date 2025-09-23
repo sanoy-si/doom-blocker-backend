@@ -1102,6 +1102,81 @@ class BackgroundController {
     }
   }
 
+  /**
+   * Handle report blocked items message
+   * Allows users to report incorrectly blocked content for feedback
+   */
+  async handleReportBlockedItems(message, sender) {
+    this.logger.debug('Report blocked items requested', {
+      url: message.url,
+      itemCount: message.items?.length || 0
+    });
+
+    try {
+      // Validate message data
+      if (!message.items || !Array.isArray(message.items)) {
+        throw new Error('Invalid items data');
+      }
+
+      if (!message.url) {
+        throw new Error('Missing URL');
+      }
+
+      // Prepare report data
+      const reportData = {
+        url: message.url,
+        items: message.items,
+        timestamp: new Date().toISOString(),
+        userAgent: message.userAgent || 'unknown',
+        sessionId: message.sessionId || 'unknown'
+      };
+
+      // Send to backend for analysis (optional - could be stored locally)
+      try {
+        const response = await fetch(`${CONFIG.STAGING_WEBSITE}/api/report-blocked-items`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(reportData)
+        });
+
+        if (response.ok) {
+          this.logger.info('Blocked items report sent successfully');
+        } else {
+          this.logger.warn('Failed to send blocked items report to backend');
+        }
+      } catch (apiError) {
+        // Don't fail the whole operation if backend is unavailable
+        this.logger.warn('Backend unavailable for blocked items report', apiError);
+      }
+
+      // Store locally for analytics
+      const reports = await chrome.storage.local.get(['blockedItemReports']) || { blockedItemReports: [] };
+      reports.blockedItemReports = reports.blockedItemReports || [];
+      reports.blockedItemReports.push(reportData);
+      
+      // Keep only last 100 reports to prevent storage bloat
+      if (reports.blockedItemReports.length > 100) {
+        reports.blockedItemReports = reports.blockedItemReports.slice(-100);
+      }
+      
+      await chrome.storage.local.set({ blockedItemReports: reports.blockedItemReports });
+
+      return {
+        success: true,
+        message: 'Report submitted successfully'
+      };
+
+    } catch (error) {
+      this.logger.error('Failed to handle blocked items report', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
   // /**
   //  * Handle auth state change message
   //  */

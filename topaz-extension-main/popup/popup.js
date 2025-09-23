@@ -18,27 +18,19 @@ async function initializePopup() {
       throw new Error('BackgroundAPI module not loaded');
     }
     
-    console.log('✅ All modules are available');
     
-    console.log('📦 Caching DOM elements...');
     window.ui.cacheElements();
     
-    console.log('🔖 Setting version number from manifest...');
     setVersionNumber();
     
-    console.log('🔧 Setting up event listeners...');
     setupEventListeners();
     
-    console.log('📡 Setting up message listeners...');
     setupMessageListeners();
     
-    console.log('📊 Loading initial data...');
     await loadInitialData();
     
-    console.log('📞 Notifying background popup opened...');
     await notifyPopupOpened();
     
-    console.log('💓 Starting heartbeat system...');
     startHeartbeatSystem();
     
     // Load preview state from storage FIRST
@@ -51,7 +43,6 @@ async function initializePopup() {
       console.error('Failed to load preview state:', error);
     }
     
-    console.log('🎨 Rendering initial view...');
     window.ui.renderCurrentView();
     
     // Sync preview button with current tab state
@@ -1804,7 +1795,6 @@ function setVersionNumber() {
     const versionElement = document.getElementById('versionNumber');
     if (versionElement && manifestData.version) {
       versionElement.textContent = `v${manifestData.version}`;
-      console.log('✅ Version number set to:', manifestData.version);
     }
   } catch (error) {
     console.error('❌ Failed to get version from manifest:', error);
