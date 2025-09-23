@@ -240,34 +240,26 @@ class ExtensionController {
     }
   }
   async enable() {
-    console.log("🔍 [TOPAZ DEBUG] ExtensionController.enable() called");
     try {
       const result = await chrome.storage.local.get(['extensionEnabled']);
       const isExtensionEnabled = result.extensionEnabled !== undefined ? result.extensionEnabled : true;
-      console.log("🔍 [TOPAZ DEBUG] Extension enabled check:", { result, isExtensionEnabled });
 
       if (!isExtensionEnabled) {
-        console.log("🔍 [TOPAZ DEBUG] Extension is disabled globally, exiting");
         this.isDisabled = true;
         return;
       }
     } catch (error) {
-      console.log("🔍 [TOPAZ DEBUG] Error checking extension enabled state:", error);
     }
     console.time("[blur timing debug] enable duration");
     this.isDisabled = false;
     
-    console.log("🔍 [TOPAZ DEBUG] About to call configManager.setConfigFromUrl with:", window.location.href);
     await this.configManager.setConfigFromUrl(window.location.href);
     
     const shouldSkip = this.configManager.shouldSkipExtraction();
-    console.log("🔍 [TOPAZ DEBUG] shouldSkipExtraction result:", shouldSkip);
     
     if (!shouldSkip) {
-      console.log("🔍 [TOPAZ DEBUG] Proceeding with performInitialExtraction");
-      await this.performInitialEsxtraction();
+      await this.performInitialExtraction();
     } else {
-      console.log("🔍 [TOPAZ DEBUG] Skipping extraction due to config");
     }
     this.eventBus.emit(EVENTS.EXTENSION_ENABLED);
   }

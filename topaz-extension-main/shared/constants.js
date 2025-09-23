@@ -48,6 +48,9 @@ export const MESSAGE_TYPES = {
   HEARTBEAT_PONG: 'HEARTBEAT_PONG',
   // Block stats
   GET_BLOCK_STATS: 'GET_BLOCK_STATS',
+  
+  // User feedback
+  REPORT_BLOCKED_ITEMS: 'REPORT_BLOCKED_ITEMS',
 };
 
 // Background EventBus events
