@@ -13,6 +13,7 @@
       "js": [
         "content/utils/constants.js",
         "content/utils/SessionManager.js",
+        "content/utils/TruthfulCounter.js",
         "content/core/EventBus.js",
         "content/core/ConfigManager.js",
         "content/grid/GridDetector.js",

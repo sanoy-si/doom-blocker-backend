@@ -82,7 +82,7 @@ async function loadInitialData() {
       window.appState.updateState({
         isExtensionEnabled: settings.extensionEnabled ?? true,
         isPowerUserMode: settings.isPowerUserMode ?? false,
-        isCustomizationEnabled: settings.customizationToggle ?? false,
+        isCustomizationEnabled: settings.customizationToggle ?? true,
         showBlockCounter: settings.showBlockCounter ?? true,
         profiles: settings.profiles || [],
         blockedCount: stats.blockedCount,
