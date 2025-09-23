@@ -177,7 +177,8 @@ export const POPUP_EVENTS = {
 // Storage keys
 export const STORAGE_KEYS = {
   EXTENSION_ENABLED: 'extensionEnabled',
-  PROFILES: 'profiles'
+  PROFILES: 'profiles',
+  PREVIEW_ENABLED: 'previewEnabled' // FIXED: Add preview state storage key
 };
 
 export const CONFIG = {
