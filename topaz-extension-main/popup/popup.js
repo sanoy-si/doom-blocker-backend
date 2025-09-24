@@ -218,6 +218,25 @@ function setupEventListeners() {
   if (previewToggleButton) {
     previewToggleButton.addEventListener('click', handlePreviewToggleClick);
   }
+
+  // Manual onboarding tour button
+  const startOnboardingButton = document.getElementById('startOnboardingButton');
+  if (startOnboardingButton) {
+    startOnboardingButton.addEventListener('click', async () => {
+      try {
+        const url = 'https://www.youtube.com/?doomGuide=1#doomGuide=1';
+        await chrome.tabs.create({ url, active: true });
+        window.ui?.showNotification?.({
+          type: 'success',
+          message: 'Opening YouTube tour…',
+          duration: 1500
+        });
+      } catch (error) {
+        console.error('Failed to open onboarding tour:', error);
+        showError('Failed to open tour');
+      }
+    });
+  }
   
   // Simple mode send button
   const simpleSendButton = document.getElementById('simpleSendButton');
