@@ -2,20 +2,11 @@
 // Monitors the callback page and extracts tokens
 
 console.log('🔐 Auth callback content script loaded');
-console.log('🔐 Current URL:', window.location.href);
 
 // Get extension ID from URL
 const urlParams = new URLSearchParams(window.location.search);
 const extensionId = urlParams.get('extension_id');
-const isExtension = urlParams.get('extension') === 'true';
 console.log('🔐 Extension ID from URL:', extensionId);
-console.log('🔐 Is extension context:', isExtension);
-
-// Check if we're on the main page or callback page
-const isCallbackPage = window.location.pathname.includes('/auth/callback');
-const isMainPage = window.location.pathname === '/' || window.location.pathname === '';
-console.log('🔐 Is callback page:', isCallbackPage);
-console.log('🔐 Is main page:', isMainPage);
 
 // Function to extract tokens from localStorage
 function extractTokensFromStorage() {
@@ -77,12 +68,6 @@ function checkUrlParameters() {
 // Monitor for tokens
 function monitorForTokens() {
   console.log('🔐 Starting token monitoring...');
-  
-  // Only monitor if we're in extension context
-  if (!isExtension) {
-    console.log('🔐 Not in extension context, skipping token monitoring');
-    return;
-  }
   
   // Check immediately
   if (extractTokensFromStorage()) {
@@ -148,21 +133,13 @@ monitorForTokens();
 // Listen for custom auth event
 window.addEventListener('auth-tokens-ready', () => {
   console.log('🔐 Auth tokens ready event received');
-  if (isExtension) {
-    extractTokensFromStorage();
-  }
+  extractTokensFromStorage();
 });
 
 // Also listen for postMessage from the page
 window.addEventListener('message', (event) => {
   if (event.data && (event.data.type === 'AUTH_SUCCESS' || event.data.type === 'TOKEN_FOR_EXTENSION')) {
     console.log('🔐 Auth success message received:', event.data);
-    
-    // Only process if we're in extension context
-    if (!isExtension) {
-      console.log('🔐 Not in extension context, ignoring message');
-      return;
-    }
     
     // Send tokens to background script
     if (typeof chrome !== 'undefined' && chrome.runtime) {
