@@ -12,6 +12,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Request, Response, status, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from pydantic import BaseModel, Field
 # from starlette.middleware.sessions import SessionMiddleware
@@ -19,17 +22,20 @@ from pydantic import BaseModel, Field
 from supabase import create_client, Client
 
 # HTTP requests
-import requests
+import httpx
 
-# Configure logging
+# Configure logging (env-driven)
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Load environment variables
-load_dotenv('.env.local')
+# Load environment variables (skip local dotenv in production)
+ENV = os.getenv("ENV", os.getenv("ENVIRONMENT", "development"))
+if ENV != "production":
+    load_dotenv('.env.local')
 
 # Load prompts from JSON
 logger.info("Loading prompts from JSON file...")
@@ -89,6 +95,35 @@ def track_ip_request(ip_address: str):
     return request_count
 
 app = FastAPI(title="Doom Blocker Backend", version="1.0.0")
+
+# Security: optional HTTPS redirect in production
+if ENV == "production" and os.getenv("ENABLE_HTTPS_REDIRECT", "true").lower() == "true":
+    app.add_middleware(HTTPSRedirectMiddleware)
+
+# Security: Trusted hosts (comma-separated)
+trusted_hosts_env = os.getenv("TRUSTED_HOSTS", "")
+trusted_hosts = [h.strip() for h in trusted_hosts_env.split(',') if h.strip()]
+if ENV == "production" and trusted_hosts:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=trusted_hosts)
+
+# Security headers middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+        response.headers.setdefault("X-XSS-Protection", "0")
+        # Only set HSTS on HTTPS
+        try:
+            if request.url.scheme == "https":
+                response.headers.setdefault("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload")
+        except Exception:
+            pass
+        return response
+
+if ENV == "production":
+    app.add_middleware(SecurityHeadersMiddleware)
 
 # Add startup event for debugging
 @app.on_event("startup")
@@ -202,11 +237,16 @@ def cache_response(cache_key, response):
 #     max_age=3600,  # 1 hour in seconds
 # )
 
-# Add CORS middleware
+# Add CORS middleware (env-driven)
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+allow_origins = [o.strip() for o in cors_origins_env.split(',') if o.strip()]
+if not allow_origins and ENV != "production":
+    allow_origins = ["*"]
+allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "false" if ENV == "production" else "true").lower() == "true"
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=allow_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -260,6 +300,16 @@ else:
         "Content-Type": "application/json"
     }
     logger.info("OpenAI client initialized successfully")
+
+# Helper: get client IP honoring proxies
+def get_client_ip(request: Request) -> str:
+    try:
+        xff = request.headers.get('x-forwarded-for')
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.client.host if request.client else "unknown"
+    except Exception:
+        return "unknown"
 
 class GridAnalysisRequest(BaseModel):
     gridStructure: dict
@@ -475,7 +525,7 @@ async def report_blocked_items(request: Request):
         return {"success": True, "count": count}
     except Exception as e:
         logger.error(f"❌ Error reporting blocked items: {e}")
-        return {"success": False, "error": str(e)}
+        return JSONResponse(status_code=500, content={"success": False, "error": "Internal error"})
 
 # Auth routes
 # @app.get("/login")
@@ -533,7 +583,7 @@ async def create_user_session(session_request: UserSessionRequest, request: Requ
             "created_at": session_request.created_at,
             "extension_version": session_request.extension_version,
             "first_install": session_request.first_install,
-            "ip_address": request.client.host if request.client else "unknown",
+            "ip_address": get_client_ip(request),
             "last_active": datetime.now().isoformat()
         }
 
@@ -1009,7 +1059,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
     # Configuration - process entire grid structure in one call
 
     # Track the request by IP address
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_client_ip(request)
     request_count = track_ip_request(client_ip)
 
     # DISABLED: Update visitor telemetry in Supabase (fire and forget)
@@ -1085,12 +1135,10 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
         content = json.dumps(cleaned_grid, indent=2)
         
         # DEBUG: Log what we're sending to the AI
-        logger.info(f"🔍 DEBUG: Sending to AI - URL: {analysis_request.currentUrl}")
-        logger.info(f"🔍 DEBUG: Whitelist: {analysis_request.whitelist}")
-        logger.info(f"🔍 DEBUG: Blacklist: {analysis_request.blacklist}")
-        logger.info(f"🔍 DEBUG: Grid structure has {len(cleaned_grid.get('grids', []))} grids")
-        logger.info(f"🔍 DEBUG: Total children: {sum(grid.get('totalChildren', 0) for grid in cleaned_grid.get('grids', []))}")
-        logger.info(f"🔍 DEBUG: System instruction length: {len(system_instruction)} chars")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"Sending to AI - URL only")
+            logger.debug(f"Grid structure has {len(cleaned_grid.get('grids', []))} grids")
+            logger.debug(f"Total children: {sum(grid.get('totalChildren', 0) for grid in cleaned_grid.get('grids', []))}")
 
 
         payload = {
@@ -1109,11 +1157,22 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
             "temperature": 0.6  # Deterministic for consistent results
         }
 
-        response = requests.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload, timeout=30)
-
-        if response.status_code != 200:
-
-            raise HTTPException(status_code=500, detail=f"OpenAI API error: {response.status_code} - {response.text}")
+        last_exc = None
+        for attempt in range(3):
+            try:
+                timeout = httpx.Timeout(30.0, connect=10.0, read=25.0, write=10.0)
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload)
+                if response.status_code == 200:
+                    break
+                last_exc = Exception(f"OpenAI API error: {response.status_code}")
+                await asyncio.sleep(0.5 * (attempt + 1))
+            except Exception as http_err:
+                last_exc = http_err
+                await asyncio.sleep(0.5 * (attempt + 1))
+        if last_exc and response.status_code != 200:
+            logger.error(f"OpenAI API call failed: {last_exc}")
+            raise HTTPException(status_code=502, detail="AI service error")
 
         api_result = response.json()
         response_content = api_result['choices'][0]['message']['content'].strip()
@@ -1121,9 +1180,8 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
         api_duration = time.time() - api_start
         logger.info(f"✅ OpenAI API call completed ({api_duration:.3f}s)")
         
-        # DEBUG: Log what the AI returned
-        logger.info(f"🔍 DEBUG: AI response length: {len(response_content)} chars")
-        logger.info(f"🔍 DEBUG: AI response preview: {response_content[:200]}...")
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"AI response length: {len(response_content)} chars")
 
         # Parse and sanitize the result
         parse_start = time.time()
@@ -1181,8 +1239,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
     except Exception as e:
         error_duration = time.time() - start_time
         logger.error("Request failed after %.3fs: %s" % (error_duration, str(e)))
-
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 def split_grid_into_chunks(grid_structure, chunk_size):
