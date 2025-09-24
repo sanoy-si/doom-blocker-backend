@@ -49,7 +49,9 @@
       "all_frames": false
     },
     {
-      "matches": ["https://www.doomblocker.com/auth/callback*"],
+      "matches": [
+        "https://www.doomblocker.com/auth/callback*"
+      ],
       "js": ["content/auth-callback.js"],
       "run_at": "document_start"
     }
@@ -80,8 +82,7 @@
     "https://www.reddit.com/*",
     "https://reddit.com/*",
     "https://topaz-backend1.onrender.com/*",
-    "https://www.doomblocker.com/*",
-    "https://internetfilter.org/*"
+    "https://www.doomblocker.com/*"
   ],
   "web_accessible_resources": [
     {

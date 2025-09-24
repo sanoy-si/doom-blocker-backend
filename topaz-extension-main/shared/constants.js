@@ -194,7 +194,7 @@ export const STORAGE_KEYS = {
 
 export const CONFIG = {
   STAGING_WEBSITE: 'https://topaz-backend1.onrender.com',
-  SIGNIN_WEBSITE: 'https://www.doomblocker.com', 
+  SIGNIN_WEBSITE: 'https://www.doomblocker.com',
   ALLOWED_WEBSITES: ['youtube.com', 'twitter.com', 'x.com', "linkedin.com", "reddit.com"],
   TAB_ENABLE_MAX_RETRIES: 3,
   TAB_ENABLE_RETRY_DELAY: 300
