@@ -75,7 +75,8 @@ class API {
   async login() {
     try {
       const extensionId = chrome.runtime.id;
-      const loginUrl = `${CONFIG.SIGNIN_WEBSITE}/?extension_id=${extensionId}`;
+      const loginUrl = `${CONFIG.SIGNIN_WEBSITE}/?extension_id=${extensionId}&extension=true`;
+      console.log("🔐 API: Opening login URL:", loginUrl);
       chrome.tabs.create({ url: loginUrl });
       return { success: true, message: 'Login page opened with extension ID' };
     } catch (error) {
@@ -86,6 +87,13 @@ class API {
   // Handle token received from signin page
   async handleTokenReceived(tokenData) {
     try {
+      console.log("🔐 API: handleTokenReceived called with:", {
+        hasUser: !!tokenData.user,
+        hasAccessToken: !!tokenData.accessToken,
+        hasRefreshToken: !!tokenData.refreshToken,
+        userEmail: tokenData.user?.email
+      });
+
       await this.setAuthData({
         user: tokenData.user,
         accessToken: tokenData.accessToken,
@@ -93,6 +101,10 @@ class API {
       });
       
       console.log("✅ Authentication successful:", tokenData.user.email);
+      console.log("✅ Auth state updated:", {
+        isAuthenticated: this.authState.isAuthenticated,
+        userEmail: this.authState.user?.email
+      });
       return { success: true };
     } catch (error) {
       console.error("❌ Failed to handle token:", error);

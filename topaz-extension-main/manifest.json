@@ -40,7 +40,19 @@
       "all_frames": false
     },
     {
-      "matches": ["https://doom-landing.vercel.app/auth/callback*"],
+      "matches": [
+        "https://doom-landing.vercel.app/auth/callback*",
+        "http://localhost:5173/auth/callback*",
+        "http://localhost:3000/auth/callback*"
+      ],
+      "js": ["content/auth-callback.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "http://localhost:5173/*",
+        "http://localhost:3000/*"
+      ],
       "js": ["content/auth-callback.js"],
       "run_at": "document_start"
     }
@@ -71,7 +83,9 @@
     "https://www.reddit.com/*",
     "https://reddit.com/*",
     "https://topaz-backend1.onrender.com/*",
-    "https://doom-landing.vercel.app/*"
+    "https://doom-landing.vercel.app/*",
+    "http://localhost:5173/*",
+    "http://localhost:3000/*"
   ],
   "web_accessible_resources": [
     {

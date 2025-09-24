@@ -1025,16 +1025,31 @@ class BackgroundController {
    * Handle token received from signin page
    */
   async handleTokenReceived(message, sender) {
-    this.logger.debug('Token received from signin page');
+    this.logger.debug('Token received from signin page', {
+      hasTokenData: !!message.tokenData,
+      senderTab: sender.tab?.url,
+      senderFrameId: sender.frameId
+    });
 
     try {
+      // Validate token data
+      if (!message.tokenData) {
+        throw new Error('No token data provided');
+      }
+
+      if (!message.tokenData.user || !message.tokenData.accessToken) {
+        throw new Error('Invalid token data structure');
+      }
+
+      this.logger.info('Processing token data for user:', message.tokenData.user.email);
+
       const result = await this.api.handleTokenReceived(message.tokenData);
 
       if (result.success) {
         this.eventBus.emit(EVENTS.AUTH_LOGIN_SUCCESS, {
           user: this.api.authState.user
         });
-        this.logger.info('Authentication successful');
+        this.logger.info('Authentication successful for user:', this.api.authState.user?.email);
       } else {
         this.logger.error('Authentication failed', result.error);
       }
@@ -1046,7 +1061,10 @@ class BackgroundController {
       };
     } catch (error) {
       this.logger.error('Token handling error', error);
-      throw error;
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
