@@ -511,6 +511,12 @@ class UserMetricsRequest(BaseModel):
     profiles_used: List[dict] = []
     last_updated: str
 
+class UserBlockedContentRequest(BaseModel):
+    user_id: str
+    session_id: str
+    blocked_items: List[dict]
+    access_token: str  # For Supabase authentication
+
 # Pydantic models for other API endpoints
 # class Username(BaseModel):
 #     username: str
@@ -932,6 +938,99 @@ async def get_user_analytics(session_id: str):
 
     except Exception as e:
         logger.error(f"❌ Error fetching analytics: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.post("/api/user-blocked-content")
+async def save_user_blocked_content(blocked_request: UserBlockedContentRequest, request: Request):
+    """Save blocked content for authenticated users to Supabase"""
+    try:
+        if not supabase:
+            logger.warning("Supabase not configured, blocked content not saved")
+            return {"success": True, "message": "Blocked content tracking disabled"}
+
+        # Create authenticated Supabase client using user's access token
+        user_supabase = create_client(
+            os.getenv("SUPABASE_URL"),
+            os.getenv("SUPABASE_ANON_KEY"),
+            options={
+                "headers": {
+                    "Authorization": f"Bearer {blocked_request.access_token}"
+                }
+            }
+        )
+
+        # Prepare blocked content records with user information
+        blocked_records = []
+        for item in blocked_request.blocked_items:
+            for blocked_item in item.get("blocked_items", []):
+                record = {
+                    "user_id": blocked_request.user_id,
+                    "session_id": blocked_request.session_id,
+                    "timestamp": item.get("timestamp"),
+                    "count": item.get("count", 1),
+                    "url": item.get("url"),
+                    "hostname": item.get("hostname"),
+                    "content_text": blocked_item.get("text", ""),
+                    "content_type": blocked_item.get("type", "unknown"),
+                    "content_id": blocked_item.get("id", ""),
+                    "created_at": datetime.now().isoformat()
+                }
+                blocked_records.append(record)
+
+        # Insert blocked content data
+        if blocked_records:
+            result = user_supabase.table("user_blocked_content").insert(blocked_records).execute()
+            logger.info(f"✅ Saved {len(blocked_records)} blocked content items for user {blocked_request.user_id}")
+
+        return {
+            "success": True,
+            "message": "Blocked content saved successfully",
+            "user_id": blocked_request.user_id,
+            "items_saved": len(blocked_records)
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error saving user blocked content: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.get("/api/user-blocked-content/{user_id}")
+async def get_user_blocked_content(user_id: str, access_token: str, request: Request):
+    """Get blocked content for a specific authenticated user"""
+    try:
+        if not supabase:
+            return JSONResponse(
+                status_code=503,
+                content={"success": False, "error": "Blocked content service unavailable"}
+            )
+
+        # Create authenticated Supabase client using user's access token
+        user_supabase = create_client(
+            os.getenv("SUPABASE_URL"),
+            os.getenv("SUPABASE_ANON_KEY"),
+            options={
+                "headers": {
+                    "Authorization": f"Bearer {access_token}"
+                }
+            }
+        )
+
+        # Get blocked content for user
+        result = user_supabase.table("user_blocked_content").select("*").eq("user_id", user_id).order("created_at", desc=True).execute()
+
+        return {
+            "success": True,
+            "data": result.data,
+            "count": len(result.data)
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error fetching user blocked content: {e}")
         return JSONResponse(
             status_code=500,
             content={"success": False, "error": str(e)}

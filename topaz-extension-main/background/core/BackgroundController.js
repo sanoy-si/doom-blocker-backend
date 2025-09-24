@@ -136,7 +136,8 @@ class BackgroundController {
       [MESSAGE_TYPES.GET_AUTH_STATE]: this.handleGetAuthState.bind(this),
       [MESSAGE_TYPES.LOGIN]: this.handleLogin.bind(this),
       [MESSAGE_TYPES.LOGOUT]: this.handleLogout.bind(this),
-      [MESSAGE_TYPES.TOKEN_RECEIVED]: this.handleTokenReceived.bind(this)
+      [MESSAGE_TYPES.TOKEN_RECEIVED]: this.handleTokenReceived.bind(this),
+      'SAVE_USER_BLOCKED_CONTENT': this.handleSaveUserBlockedContent.bind(this)
     };
     this.messageRouter.registerDefaultHandlers(handlers);
 
@@ -1117,6 +1118,42 @@ class BackgroundController {
     } catch (error) {
       this.logger.error('Logout error', error);
       throw error;
+    }
+  }
+
+  /**
+   * Handle save user blocked content message
+   */
+  async handleSaveUserBlockedContent(message, sender) {
+    this.logger.debug('Save user blocked content requested', {
+      sessionId: message.sessionId,
+      itemCount: message.blockedItems?.length || 0
+    });
+
+    try {
+      // Validate message data
+      if (!message.blockedItems || !Array.isArray(message.blockedItems)) {
+        throw new Error('Invalid blocked items data');
+      }
+
+      if (!message.sessionId) {
+        throw new Error('Missing session ID');
+      }
+
+      // Save blocked content for authenticated user
+      const result = await this.api.saveUserBlockedContent(message.sessionId, message.blockedItems);
+
+      return {
+        success: result.success,
+        message: result.success ? 'Blocked content saved successfully' : 'Failed to save blocked content',
+        error: result.error
+      };
+    } catch (error) {
+      this.logger.error('Save user blocked content error', error);
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 
