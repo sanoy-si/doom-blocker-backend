@@ -158,13 +158,19 @@ class API {
   //   }
   // }
 
-  getAuthHeaders() {
+  async getAuthHeaders() {
     const headers = {
       "Content-Type": "application/json",
     };
 
+    // Get API key from storage or environment
+    const result = await chrome.storage.local.get(['apiKey']);
+    const apiKey = result.apiKey || 'your-development-api-key'; // Should be set during installation
+    
+    headers["Authorization"] = `Bearer ${apiKey}`;
+
     if (this.authState.accessToken) {
-      headers["Authorization"] = `Bearer ${this.authState.accessToken}`;
+      headers["X-User-Token"] = this.authState.accessToken;
     }
 
     return headers;
@@ -227,15 +233,10 @@ class API {
 
   // Make authenticated API request
   async makeAuthenticatedRequest(endpoint, options = {}, website=CONFIG.STAGING_WEBSITE) {
-    if (!this.authState.isAuthenticated) {
-      await this.clearAuthState();
-      throw new Error("User not authenticated");
-    }
-
     const url = `${website}${endpoint}`;
     console.log(`🌐 API: Making request to URL: ${url}`);
     const defaultOptions = {
-      headers: this.getAuthHeaders(),
+      headers: await this.getAuthHeaders(),
       credentials: "include",
     };
 
@@ -312,6 +313,93 @@ class API {
   }
 
   // =============================================================================
+  // INPUT SANITIZATION METHODS
+  // =============================================================================
+
+  sanitizeText(text, maxLength = 1000) {
+    if (typeof text !== 'string') {
+      return '';
+    }
+    
+    return text
+      .replace(/[<>\"'&]/g, '') // Remove basic XSS characters
+      .replace(/javascript:/gi, '') // Remove javascript: protocol
+      .replace(/data:/gi, '') // Remove data: protocol
+      .substring(0, maxLength)
+      .trim();
+  }
+
+  sanitizeUrl(url) {
+    if (typeof url !== 'string') {
+      return '';
+    }
+
+    try {
+      const parsedUrl = new URL(url);
+      
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        console.warn('🔒 Invalid URL protocol blocked:', parsedUrl.protocol);
+        return '';
+      }
+
+      return parsedUrl.href;
+    } catch (error) {
+      console.warn('🔒 Invalid URL format blocked:', url);
+      return '';
+    }
+  }
+
+  sanitizeArray(arr, maxItems = 100, maxItemLength = 100) {
+    if (!Array.isArray(arr)) {
+      return [];
+    }
+
+    return arr
+      .slice(0, maxItems)
+      .map(item => this.sanitizeText(item, maxItemLength))
+      .filter(item => item.length > 0);
+  }
+
+  sanitizeGridStructure(gridStructure) {
+    if (!gridStructure || typeof gridStructure !== 'object') {
+      throw new Error('Invalid grid structure');
+    }
+
+    if (!Array.isArray(gridStructure.grids)) {
+      throw new Error('Grid structure must contain grids array');
+    }
+
+    if (gridStructure.grids.length > 50) {
+      throw new Error('Too many grids (max 50)');
+    }
+
+    // Create sanitized copy
+    const sanitized = {
+      ...gridStructure,
+      grids: gridStructure.grids.map(grid => {
+        const sanitizedGrid = {
+          ...grid,
+          id: this.sanitizeText(grid.id, 50)
+        };
+
+        if (grid.children && Array.isArray(grid.children)) {
+          sanitizedGrid.children = grid.children
+            .slice(0, 200) // Limit children
+            .map(child => ({
+              ...child,
+              id: this.sanitizeText(child.id, 50),
+              text: this.sanitizeText(child.text || '', 500)
+            }));
+        }
+
+        return sanitizedGrid;
+      })
+    };
+
+    return sanitized;
+  }
+
+  // =============================================================================
   // API METHODS
   // =============================================================================
 
@@ -324,12 +412,13 @@ class API {
     try {
       const visitorId = await this.getVisitorId();
       
+      // Sanitize input data before sending to API
       const requestBody = {
-        gridStructure: gridStructure,
-        currentUrl: currentUrl,
-        whitelist: whitelist,
-        blacklist: blacklist,
-        visitorId: visitorId
+        gridStructure: this.sanitizeGridStructure(gridStructure),
+        currentUrl: this.sanitizeUrl(currentUrl),
+        whitelist: this.sanitizeArray(whitelist),
+        blacklist: this.sanitizeArray(blacklist),
+        visitorId: this.sanitizeText(visitorId)
       };
 
       console.log(`🌐 API: Request body:`, JSON.stringify(requestBody, null, 2));
@@ -357,6 +446,15 @@ class API {
           console.warn('🌐 API: Could not parse error response, using default message');
         }
         
+        // Provide user-friendly error messages
+        if (response.status === 401) {
+          errorMessage = 'Authentication failed. Please check your API key.';
+        } else if (response.status === 429) {
+          errorMessage = 'Rate limit exceeded. Please try again later.';
+        } else if (response.status === 502) {
+          errorMessage = 'AI service temporarily unavailable. Using fallback analysis.';
+        }
+        
         throw new Error(errorMessage);
       }
 
@@ -367,7 +465,14 @@ class API {
       return { success: true, data };
     } catch (error) {
       console.error(`🌐 API: Request error: ${error.message}`);
-      return { success: false, error: error.message };
+      
+      // Return structured error information for better handling
+      return { 
+        success: false, 
+        error: error.message,
+        shouldRetry: !error.message.includes('Authentication') && !error.message.includes('Rate limit'),
+        isTemporary: error.message.includes('temporarily unavailable')
+      };
     }
   }
 

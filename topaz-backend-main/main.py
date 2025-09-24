@@ -16,21 +16,124 @@ from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 # from starlette.middleware.sessions import SessionMiddleware
 # from authlib.integrations.starlette_client import OAuth, OAuthError
 from supabase import create_client, Client
+import uuid
+import secrets
+from functools import wraps
 
 # HTTP requests
 import httpx
 
-# Configure logging (env-driven)
+# Configure structured logging (env-driven)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL, logging.INFO),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+
+class StructuredLogger:
+    def __init__(self, name):
+        self.logger = logging.getLogger(name)
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+        self.logger.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
+    
+    def info(self, message, correlation_id=None, **kwargs):
+        extra = {"correlation_id": correlation_id, **kwargs}
+        self.logger.info(f"{message} | {extra}")
+    
+    def error(self, message, correlation_id=None, **kwargs):
+        extra = {"correlation_id": correlation_id, **kwargs}
+        self.logger.error(f"{message} | {extra}")
+    
+    def warning(self, message, correlation_id=None, **kwargs):
+        extra = {"correlation_id": correlation_id, **kwargs}
+        self.logger.warning(f"{message} | {extra}")
+    
+    def debug(self, message, correlation_id=None, **kwargs):
+        extra = {"correlation_id": correlation_id, **kwargs}
+        self.logger.debug(f"{message} | {extra}")
+
+logger = StructuredLogger(__name__)
+
+# Circuit Breaker Implementation
+class CircuitBreaker:
+    def __init__(self, failure_threshold=5, reset_timeout=60):
+        self.failure_threshold = failure_threshold
+        self.reset_timeout = reset_timeout
+        self.failure_count = 0
+        self.last_failure_time = None
+        self.state = 'CLOSED'  # CLOSED, OPEN, HALF_OPEN
+    
+    def call(self, func, *args, **kwargs):
+        if self.state == 'OPEN':
+            if time.time() - self.last_failure_time >= self.reset_timeout:
+                self.state = 'HALF_OPEN'
+                logger.info("Circuit breaker transitioning to HALF_OPEN")
+            else:
+                raise Exception("Circuit breaker is OPEN")
+        
+        try:
+            result = func(*args, **kwargs)
+            if self.state == 'HALF_OPEN':
+                self.state = 'CLOSED'
+                self.failure_count = 0
+                logger.info("Circuit breaker reset to CLOSED")
+            return result
+        except Exception as e:
+            self.failure_count += 1
+            self.last_failure_time = time.time()
+            
+            if self.failure_count >= self.failure_threshold:
+                self.state = 'OPEN'
+                logger.error(f"Circuit breaker opened due to {self.failure_count} failures")
+            
+            raise e
+
+# Global circuit breaker for OpenAI API
+openai_circuit_breaker = CircuitBreaker(failure_threshold=3, reset_timeout=30)
+
+# Authentication middleware
+class AuthenticationMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+        self.api_key = os.getenv("API_AUTH_KEY", secrets.token_urlsafe(32))
+        logger.info("Authentication middleware initialized")
+
+    async def dispatch(self, request: Request, call_next):
+        # Skip auth for health checks and public endpoints
+        if request.url.path in ["/", "/health", "/docs", "/openapi.json"]:
+            return await call_next(request)
+        
+        # Check for API key in header for protected endpoints
+        if request.url.path.startswith("/fetch_") or request.url.path.startswith("/api/"):
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "Missing or invalid authorization header"}
+                )
+            
+            token = auth_header.replace("Bearer ", "")
+            if token != self.api_key:
+                logger.warning("Invalid API key attempt", 
+                             correlation_id=str(uuid.uuid4()),
+                             ip=get_client_ip(request))
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "Invalid API key"}
+                )
+        
+        # Add correlation ID to request
+        correlation_id = str(uuid.uuid4())
+        request.state.correlation_id = correlation_id
+        
+        response = await call_next(request)
+        response.headers["X-Correlation-ID"] = correlation_id
+        return response
 
 # Load environment variables (skip local dotenv in production)
 ENV = os.getenv("ENV", os.getenv("ENVIRONMENT", "development"))
@@ -124,6 +227,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 if ENV == "production":
     app.add_middleware(SecurityHeadersMiddleware)
+
+# Add authentication middleware
+app.add_middleware(AuthenticationMiddleware)
 
 # Add startup event for debugging
 @app.on_event("startup")
@@ -237,18 +343,35 @@ def cache_response(cache_key, response):
 #     max_age=3600,  # 1 hour in seconds
 # )
 
-# Add CORS middleware (env-driven)
+# Add CORS middleware (env-driven with secure defaults)
 cors_origins_env = os.getenv("CORS_ORIGINS", "")
 allow_origins = [o.strip() for o in cors_origins_env.split(',') if o.strip()]
-if not allow_origins and ENV != "production":
-    allow_origins = ["*"]
-allow_credentials = os.getenv("CORS_ALLOW_CREDENTIALS", "false" if ENV == "production" else "true").lower() == "true"
+
+# Secure CORS configuration
+if ENV == "production":
+    # Production: Only allow specific origins
+    if not allow_origins:
+        allow_origins = [
+            "https://www.doomblocker.com",
+            "https://internetfilter.org"
+        ]
+    allow_credentials = False
+    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_headers = ["Authorization", "Content-Type", "X-Correlation-ID"]
+else:
+    # Development: More permissive but still controlled
+    if not allow_origins:
+        allow_origins = ["http://localhost:3000", "http://localhost:8000"]
+    allow_credentials = True
+    allow_methods = ["*"]
+    allow_headers = ["*"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
     allow_credentials=allow_credentials,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=allow_methods,
+    allow_headers=allow_headers,
 )
 
 # AUTH0_CLIENT_ID = os.getenv("AUTH0_CLIENT_ID")
@@ -317,6 +440,44 @@ class GridAnalysisRequest(BaseModel):
     whitelist: list[str] = []
     blacklist: list[str] = []
     visitorId: str
+    
+    @validator('currentUrl')
+    def validate_url(cls, v):
+        if not v or len(v) > 2000:
+            raise ValueError('URL must be provided and less than 2000 characters')
+        # Basic URL validation
+        if not (v.startswith('http://') or v.startswith('https://')):
+            raise ValueError('URL must start with http:// or https://')
+        return v
+    
+    @validator('gridStructure')
+    def validate_grid_structure(cls, v):
+        if not isinstance(v, dict):
+            raise ValueError('gridStructure must be a dictionary')
+        if 'grids' not in v:
+            raise ValueError('gridStructure must contain grids key')
+        if not isinstance(v['grids'], list):
+            raise ValueError('grids must be a list')
+        if len(v['grids']) > 50:  # Reasonable limit
+            raise ValueError('Too many grids (max 50)')
+        return v
+    
+    @validator('whitelist', 'blacklist')
+    def validate_lists(cls, v):
+        if not isinstance(v, list):
+            raise ValueError('Must be a list')
+        if len(v) > 100:  # Reasonable limit
+            raise ValueError('Too many items (max 100)')
+        for item in v:
+            if not isinstance(item, str) or len(item) > 100:
+                raise ValueError('List items must be strings under 100 characters')
+        return v
+    
+    @validator('visitorId')
+    def validate_visitor_id(cls, v):
+        if not v or len(v) > 100:
+            raise ValueError('visitorId must be provided and less than 100 characters')
+        return v
 
 class AnalysisResult(BaseModel):
     """
@@ -492,15 +653,60 @@ async def root():
         }
     }
 
-# Health check endpoint
+# Enhanced health check endpoint
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
-    return {
+    """Comprehensive health check endpoint"""
+    correlation_id = str(uuid.uuid4())
+    health_status = {
         "status": "healthy",
         "timestamp": time.time(),
-        "openai_configured": OPENAI_HEADERS is not None
+        "correlation_id": correlation_id,
+        "services": {},
+        "circuit_breakers": {}
     }
+    
+    # Check OpenAI configuration
+    health_status["services"]["openai"] = {
+        "configured": OPENAI_HEADERS is not None,
+        "status": "available" if OPENAI_HEADERS else "unavailable"
+    }
+    
+    # Check Supabase connection
+    supabase_status = "unavailable"
+    try:
+        if supabase:
+            # Quick ping to Supabase
+            result = supabase.table("user_sessions").select("count").limit(1).execute()
+            supabase_status = "available"
+    except Exception as e:
+        logger.warning("Supabase health check failed", 
+                      correlation_id=correlation_id, 
+                      error=str(e))
+        supabase_status = "error"
+    
+    health_status["services"]["supabase"] = {
+        "configured": supabase is not None,
+        "status": supabase_status
+    }
+    
+    # Check circuit breaker states
+    health_status["circuit_breakers"]["openai"] = {
+        "state": openai_circuit_breaker.state,
+        "failure_count": openai_circuit_breaker.failure_count
+    }
+    
+    # Overall health determination
+    critical_services_healthy = (
+        health_status["services"]["openai"]["status"] == "available" and
+        health_status["circuit_breakers"]["openai"]["state"] != "OPEN"
+    )
+    
+    if not critical_services_healthy:
+        health_status["status"] = "degraded"
+    
+    status_code = 200 if health_status["status"] == "healthy" else 503
+    return JSONResponse(content=health_status, status_code=status_code)
 
 # REST endpoint to get current counter (optional)
 @app.get("/api/blocked-count")
@@ -1055,19 +1261,30 @@ async def analytics_frontend(request: Request):
     return HTMLResponse(content=html_content)
 
 @app.post("/fetch_distracting_chunks")
-async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, request: Request): # user: Dict = Depends(require_auth)):
-    # Configuration - process entire grid structure in one call
-
+async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, request: Request):
+    # Get correlation ID from request state
+    correlation_id = getattr(request.state, 'correlation_id', str(uuid.uuid4()))
+    
     # Track the request by IP address
     client_ip = get_client_ip(request)
     request_count = track_ip_request(client_ip)
+    
+    logger.info("AI analysis request received", 
+                correlation_id=correlation_id,
+                ip=client_ip,
+                url=analysis_request.currentUrl,
+                grids_count=len(analysis_request.gridStructure.get('grids', [])),
+                request_count=request_count)
 
     # DISABLED: Update visitor telemetry in Supabase (fire and forget)
     # asyncio.create_task(update_visitor_telemetry(analysis_request.visitorId))
 
     # Check rate limit
     if request_count > 3000:
-
+        logger.warning("Rate limit exceeded", 
+                      correlation_id=correlation_id,
+                      ip=client_ip,
+                      request_count=request_count)
         raise HTTPException(
             status_code=429,
             detail="RATE_LIMIT_EXCEEDED"
@@ -1157,22 +1374,39 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
             "temperature": 0.6  # Deterministic for consistent results
         }
 
-        last_exc = None
-        for attempt in range(3):
-            try:
-                timeout = httpx.Timeout(30.0, connect=10.0, read=25.0, write=10.0)
-                async with httpx.AsyncClient(timeout=timeout) as client:
-                    response = await client.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload)
-                if response.status_code == 200:
-                    break
-                last_exc = Exception(f"OpenAI API error: {response.status_code}")
-                await asyncio.sleep(0.5 * (attempt + 1))
-            except Exception as http_err:
-                last_exc = http_err
-                await asyncio.sleep(0.5 * (attempt + 1))
-        if last_exc and response.status_code != 200:
-            logger.error(f"OpenAI API call failed: {last_exc}")
-            raise HTTPException(status_code=502, detail="AI service error")
+        # Use circuit breaker for OpenAI API call
+        async def make_openai_request():
+            timeout = httpx.Timeout(30.0, connect=10.0, read=25.0, write=10.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(OPENAI_URL, headers=OPENAI_HEADERS, json=payload)
+                if response.status_code != 200:
+                    raise Exception(f"OpenAI API error: {response.status_code} - {response.text}")
+                return response
+        
+        try:
+            response = await openai_circuit_breaker.call(make_openai_request)
+        except Exception as e:
+            logger.error("OpenAI API call failed", 
+                        correlation_id=correlation_id,
+                        error=str(e),
+                        circuit_breaker_state=openai_circuit_breaker.state)
+            
+            # Provide graceful fallback
+            if openai_circuit_breaker.state == 'OPEN':
+                logger.info("Using fallback due to circuit breaker open", 
+                           correlation_id=correlation_id)
+                result = fallback_keyword_matching(cleaned_grid, analysis_request.blacklist)
+                total_children_to_remove = len(result)
+                
+                total_duration = time.time() - start_time
+                logger.info("Fallback completed", 
+                           correlation_id=correlation_id,
+                           duration=total_duration,
+                           items_found=total_children_to_remove)
+                
+                return result
+            else:
+                raise HTTPException(status_code=502, detail="AI service temporarily unavailable")
 
         api_result = response.json()
         response_content = api_result['choices'][0]['message']['content'].strip()

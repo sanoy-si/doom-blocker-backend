@@ -23,6 +23,7 @@
         "content/utils/constants.js",
         "content/utils/SessionManager.js",
         "content/utils/TruthfulCounter.js",
+        "content/utils/InputSanitizer.js",
         "content/core/EventBus.js",
         "content/core/ConfigManager.js",
         "content/grid/GridDetector.js",
@@ -72,6 +73,9 @@
     }
   },
   "permissions": ["storage", "tabs", "scripting"],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://topaz-backend1.onrender.com https://www.doomblocker.com;"
+  },
   "host_permissions": [
     "https://www.youtube.com/*",
     "https://youtube.com/*",
