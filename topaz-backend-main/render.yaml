@@ -3,7 +3,7 @@ services:
     name: topaz-backend
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: gunicorn -k uvicorn.workers.UvicornWorker -w ${WEB_CONCURRENCY:-2} -b 0.0.0.0:${PORT} main:app --log-level ${LOG_LEVEL:-info} --forwarded-allow-ips "*" --proxy-headers
     envVars:
       - key: OPENAI_API_KEY
         sync: false
@@ -11,3 +11,11 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
+      - key: ENV
+        value: production
+      - key: CORS_ORIGINS
+        value: https://www.doomblocker.com,https://internetfilter.org
+      - key: TRUSTED_HOSTS
+        value: topaz-backend1.onrender.com,www.doomblocker.com,internetfilter.org
+      - key: LOG_LEVEL
+        value: info
