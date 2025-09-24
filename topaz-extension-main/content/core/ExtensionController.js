@@ -261,6 +261,16 @@ class ExtensionController {
       await this.performInitialExtraction();
     } else {
     }
+    
+    // Apply stored YouTube settings on enable
+    await this.applyStoredYouTubeSettings();
+    
+    // Set up observer for dynamic YouTube content
+    this.setupYouTubeContentObserver();
+    
+    // Set up URL change monitoring for immediate body attribute updates
+    this.setupYouTubeURLMonitoring();
+    
     this.eventBus.emit(EVENTS.EXTENSION_ENABLED);
   }
 
@@ -428,6 +438,20 @@ class ExtensionController {
     } catch (_) {}
     this.previewState = { enabled: false, items: [] };
     this.elementEffects.setSuppressHiding(false);
+    
+    // Update homepage body attribute for CSS targeting
+    if (window.location.hostname.includes('youtube.com')) {
+      this.updateHomepageBodyAttribute();
+    }
+    
+    // Reapply YouTube settings when URL changes (for navigation within YouTube)
+    await this.applyStoredYouTubeSettings();
+    
+    // Set up observer for dynamic content on YouTube
+    this.setupYouTubeContentObserver();
+    
+    // Set up URL monitoring for immediate homepage detection
+    this.setupYouTubeURLMonitoring();
   }
 
   
@@ -1518,16 +1542,12 @@ class ExtensionController {
   }
 
   /**
-   * Handle getting YouTube settings
+   * Handle getting YouTube settings - FIXED: Get from storage instead of DOM classes
    */
-  handleYouTubeGetSettings(sendResponse) {
+  async handleYouTubeGetSettings(sendResponse) {
     try {
-      const settings = {
-        blockShorts: document.body.classList.contains(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN),
-        blockHomeFeed: document.body.classList.contains(CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN),
-        blockComments: document.body.classList.contains(CSS_CLASSES.YOUTUBE_COMMENTS_HIDDEN)
-      };
-      sendResponse(this.messageHandler.createResponse(true, 'YouTube settings retrieved', { settings }));
+      const storedSettings = await this.getYouTubeSettings();
+      sendResponse(this.messageHandler.createResponse(true, 'YouTube settings retrieved', { settings: storedSettings }));
     } catch (error) {
       sendResponse(this.messageHandler.createResponse(false, `Error getting YouTube settings: ${error.message}`));
     }
@@ -1536,7 +1556,7 @@ class ExtensionController {
   /**
    * Block/unblock YouTube Shorts
    */
-  blockYouTubeShorts(enabled) {
+  blockYouTubeShorts(enabled, skipStorage = false) {
     const shortsSelectors = [
       '#shorts-player',
       '[data-testid="shorts-player"]',
@@ -1566,39 +1586,71 @@ class ExtensionController {
         item.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
       }
     });
+
+    // Store the setting persistently (only when called from popup)
+    if (!skipStorage) {
+      this.storeYouTubeSetting('blockShorts', enabled);
+    }
   }
 
   /**
-   * Block/unblock YouTube Home Feed
+   * Block/unblock YouTube Home Feed - FIXED: Immediate blocking to prevent flashing
    */
-  blockYouTubeHomeFeed(enabled) {
-    const homeFeedSelectors = [
-      '#contents',
-      '#primary',
-      '#secondary',
-      'ytd-rich-grid-renderer',
-      'ytd-video-renderer',
-      'ytd-grid-video-renderer',
-      '#page-manager',
-      '#primary-inner'
-    ];
+  blockYouTubeHomeFeed(enabled, skipStorage = false) {
+    // Check if we're on the YouTube homepage
+    const currentUrl = window.location.href;
+    const currentPath = window.location.pathname;
+    const isHomePage = currentPath === '/' || 
+                      currentPath === '' ||
+                      currentUrl.match(/^https:\/\/(www\.)?youtube\.com\/?(\?.*)?$/i) ||
+                      currentUrl.match(/^https:\/\/(www\.)?youtube\.com\/?#?$/i);
 
-    homeFeedSelectors.forEach(selector => {
-      const elements = document.querySelectorAll(selector);
-      elements.forEach(element => {
-        if (enabled) {
-          element.classList.add(CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN);
-        } else {
-          element.classList.remove(CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN);
-        }
+    if (enabled) {
+      // Add immediate CSS blocking to prevent any flashing
+      this.injectHomeFeedBlockingCSS();
+      
+      if (isHomePage) {
+        // On homepage: apply blocking to existing recommendation grids
+        const homeFeedSelectors = [
+          'ytd-rich-grid-renderer', // Main homepage grid
+          'ytd-two-column-browse-results-renderer ytd-rich-grid-renderer', // Homepage specific grid
+          '#contents ytd-rich-grid-renderer', // Contents area grid on homepage
+          'ytd-browse[page-subtype="home"] ytd-rich-grid-renderer' // Explicit homepage browse
+        ];
+
+        homeFeedSelectors.forEach(selector => {
+          const elements = document.querySelectorAll(selector);
+          elements.forEach(element => {
+            element.classList.add(CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN);
+          });
+        });
+        
+        console.log(`🏠 YouTube Home Feed blocked on homepage with immediate CSS`);
+      } else {
+        console.log(`🔍 YouTube Home Feed CSS blocking active (not on homepage): ${currentPath}`);
+      }
+    } else {
+      // Remove CSS blocking
+      this.removeHomeFeedBlockingCSS();
+      
+      // Remove any existing blocking classes
+      document.querySelectorAll(`.${CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN}`).forEach(element => {
+        element.classList.remove(CSS_CLASSES.YOUTUBE_HOME_FEED_HIDDEN);
       });
-    });
+      
+      console.log(`🏠 YouTube Home Feed unblocked and CSS rules removed`);
+    }
+
+    // Store the setting persistently (only when called from popup, not from applyStoredYouTubeSettings)
+    if (!skipStorage) {
+      this.storeYouTubeSetting('blockHomeFeed', enabled);
+    }
   }
 
   /**
    * Block/unblock YouTube Comments
    */
-  blockYouTubeComments(enabled) {
+  blockYouTubeComments(enabled, skipStorage = false) {
     const commentsSelectors = [
       '#comments',
       'ytd-comments',
@@ -1618,6 +1670,254 @@ class ExtensionController {
         }
       });
     });
+
+    // Store the setting persistently (only when called from popup)
+    if (!skipStorage) {
+      this.storeYouTubeSetting('blockComments', enabled);
+    }
+  }
+
+  /**
+   * Store YouTube feature setting persistently
+   */
+  async storeYouTubeSetting(feature, enabled) {
+    try {
+      const key = `youtube_${feature}`;
+      const data = { [key]: enabled };
+      await chrome.storage.local.set(data);
+      console.log(`✅ Stored YouTube setting: ${feature} = ${enabled}`);
+    } catch (error) {
+      console.warn(`⚠️ Failed to store YouTube setting ${feature}:`, error);
+    }
+  }
+
+  /**
+   * Get all YouTube settings from storage
+   */
+  async getYouTubeSettings() {
+    try {
+      const result = await chrome.storage.local.get([
+        'youtube_blockShorts',
+        'youtube_blockHomeFeed', 
+        'youtube_blockComments'
+      ]);
+      
+      return {
+        blockShorts: result.youtube_blockShorts || false,
+        blockHomeFeed: result.youtube_blockHomeFeed || false,
+        blockComments: result.youtube_blockComments || false
+      };
+    } catch (error) {
+      console.warn('⚠️ Failed to get YouTube settings:', error);
+      return {
+        blockShorts: false,
+        blockHomeFeed: false,
+        blockComments: false
+      };
+    }
+  }
+
+  /**
+   * Apply stored YouTube settings on page load
+   */
+  async applyStoredYouTubeSettings() {
+    if (!window.location.hostname.includes('youtube.com')) {
+      return;
+    }
+
+    try {
+      const settings = await this.getYouTubeSettings();
+      
+      // Apply settings without storing them again (skipStorage = true)
+      if (settings.blockShorts) {
+        this.blockYouTubeShorts(true, true);
+      }
+      if (settings.blockHomeFeed) {
+        this.blockYouTubeHomeFeed(true, true);
+      }
+      if (settings.blockComments) {
+        this.blockYouTubeComments(true, true);
+      }
+      
+      console.log('✅ Applied stored YouTube settings:', settings);
+    } catch (error) {
+      console.warn('⚠️ Failed to apply stored YouTube settings:', error);
+    }
+  }
+
+  /**
+   * Inject CSS rules to immediately block home feed content
+   */
+  injectHomeFeedBlockingCSS() {
+    // Remove existing style if present
+    this.removeHomeFeedBlockingCSS();
+    
+    const styleId = 'topaz-home-feed-blocking-css';
+    const css = `
+      /* TOPAZ: Immediate home feed blocking - only on homepage */
+      body[data-topaz-on-homepage="true"] ytd-rich-grid-renderer,
+      body[data-topaz-on-homepage="true"] ytd-two-column-browse-results-renderer ytd-rich-grid-renderer,
+      body[data-topaz-on-homepage="true"] #contents ytd-rich-grid-renderer,
+      body[data-topaz-on-homepage="true"] ytd-browse[page-subtype="home"] ytd-rich-grid-renderer {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+      }
+      
+      /* Prevent any flash during transitions - target all children */
+      body[data-topaz-on-homepage="true"] ytd-rich-grid-renderer *,
+      body[data-topaz-on-homepage="true"] ytd-rich-grid-renderer ytd-rich-item-renderer,
+      body[data-topaz-on-homepage="true"] ytd-rich-grid-renderer ytd-video-renderer {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+      }
+      
+      /* Block content containers that might appear during navigation */
+      body[data-topaz-on-homepage="true"] #primary #contents > ytd-rich-grid-renderer,
+      body[data-topaz-on-homepage="true"] #primary #contents ytd-rich-section-renderer ytd-rich-grid-renderer {
+        display: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        height: 0 !important;
+      }
+    `;
+    
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = css;
+    document.head.appendChild(style);
+    
+    // Mark body to indicate we're on homepage for CSS targeting
+    this.updateHomepageBodyAttribute();
+    
+    console.log('🎯 Injected immediate home feed blocking CSS');
+  }
+
+  /**
+   * Remove home feed blocking CSS rules
+   */
+  removeHomeFeedBlockingCSS() {
+    const styleId = 'topaz-home-feed-blocking-css';
+    const existingStyle = document.getElementById(styleId);
+    if (existingStyle) {
+      existingStyle.remove();
+      console.log('🧹 Removed home feed blocking CSS');
+    }
+    
+    // Remove homepage body attribute
+    document.body.removeAttribute('data-topaz-on-homepage');
+  }
+
+  /**
+   * Update body attribute to indicate if we're on homepage
+   */
+  updateHomepageBodyAttribute() {
+    const currentPath = window.location.pathname;
+    const isHomePage = currentPath === '/' || 
+                      currentPath === '' ||
+                      window.location.href.match(/^https:\/\/(www\.)?youtube\.com\/?(\?.*)?$/i) ||
+                      window.location.href.match(/^https:\/\/(www\.)?youtube\.com\/?#?$/i);
+    
+    if (isHomePage) {
+      document.body.setAttribute('data-topaz-on-homepage', 'true');
+    } else {
+      document.body.removeAttribute('data-topaz-on-homepage');
+    }
+  }
+
+  /**
+   * Set up observer for dynamic YouTube content
+   */
+  setupYouTubeContentObserver() {
+    if (!window.location.hostname.includes('youtube.com')) {
+      return;
+    }
+
+    // Clean up existing observer
+    if (this.youtubeObserver) {
+      this.youtubeObserver.disconnect();
+    }
+
+    this.youtubeObserver = new MutationObserver(async (mutations) => {
+      let shouldReapply = false;
+      let shouldUpdateBodyAttribute = false;
+      
+      for (const mutation of mutations) {
+        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+          // Check if any added nodes are YouTube content containers
+          for (const node of mutation.addedNodes) {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node;
+              if (element.tagName && (
+                element.tagName.toLowerCase().startsWith('ytd-') ||
+                element.querySelector && (
+                  element.querySelector('ytd-rich-grid-renderer') ||
+                  element.querySelector('ytd-reel-shelf-renderer') ||
+                  element.querySelector('#comments')
+                )
+              )) {
+                shouldReapply = true;
+                shouldUpdateBodyAttribute = true;
+                break;
+              }
+            }
+          }
+          if (shouldReapply) break;
+        }
+      }
+      
+      if (shouldUpdateBodyAttribute) {
+        // Update body attribute immediately for CSS targeting
+        this.updateHomepageBodyAttribute();
+      }
+      
+      if (shouldReapply) {
+        // Debounce reapplication
+        clearTimeout(this.youtubeReapplyTimeout);
+        this.youtubeReapplyTimeout = setTimeout(async () => {
+          await this.applyStoredYouTubeSettings();
+        }, 100); // Reduced timeout for faster response
+      }
+    });
+
+    // Observe the main YouTube content area
+    const targetNode = document.querySelector('#page-manager') || document.body;
+    this.youtubeObserver.observe(targetNode, {
+      childList: true,
+      subtree: true
+    });
+    
+    console.log('📺 YouTube content observer set up');
+  }
+
+  /**
+   * Set up URL monitoring for immediate homepage detection
+   */
+  setupYouTubeURLMonitoring() {
+    if (!window.location.hostname.includes('youtube.com')) {
+      return;
+    }
+
+    // Store original URL to detect changes
+    this.lastYouTubeUrl = window.location.href;
+    
+    // Monitor URL changes more frequently during transitions
+    this.youtubeUrlMonitorInterval = setInterval(() => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== this.lastYouTubeUrl) {
+        this.lastYouTubeUrl = currentUrl;
+        
+        // Immediately update body attribute for CSS targeting
+        this.updateHomepageBodyAttribute();
+        
+        console.log('🔄 URL changed, updated homepage detection:', currentUrl);
+      }
+    }, 50); // Check every 50ms during navigation
+    
+    console.log('📺 YouTube URL monitoring set up');
   }
 
   destroy() {
@@ -1630,5 +1930,21 @@ class ExtensionController {
     this.elementEffects.destroy();
     this.contentFingerprint.clear();
     this.eventBus.destroy();
+    
+    // Clean up YouTube observer and CSS
+    if (this.youtubeObserver) {
+      this.youtubeObserver.disconnect();
+      this.youtubeObserver = null;
+    }
+    if (this.youtubeReapplyTimeout) {
+      clearTimeout(this.youtubeReapplyTimeout);
+      this.youtubeReapplyTimeout = null;
+    }
+    if (this.youtubeUrlMonitorInterval) {
+      clearInterval(this.youtubeUrlMonitorInterval);
+      this.youtubeUrlMonitorInterval = null;
+    }
+    // Remove any injected CSS
+    this.removeHomeFeedBlockingCSS();
   }
 }
