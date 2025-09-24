@@ -22,7 +22,7 @@ const state = {
   editingProfile: null,
   tempProfileData: {
     profileName: '',
-    colour: '#ff9823',
+    colour: '#f7c13d',
     whitelistTags: [],
     blacklistTags: [],
     allowedWebsites: ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'],
@@ -111,7 +111,7 @@ function createProfile(profileData) {
     whitelistTags: profileData.whitelistTags || [],
     blacklistTags: profileData.blacklistTags || [],
     allowedWebsites: profileData.allowedWebsites || ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'],
-    colour: profileData.colour || '#ff9823'
+    colour: profileData.colour || '#f7c13d'
   };
   
   state.profiles.push(newProfile);
@@ -140,7 +140,7 @@ function updateProfile(profileName, profileData) {
     whitelistTags: profileData.whitelistTags || [],
     blacklistTags: profileData.blacklistTags || [],
     allowedWebsites: profileData.allowedWebsites || ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'],
-    colour: profileData.colour || '#ff9823'
+    colour: profileData.colour || '#f7c13d'
   };
   
   // Render UI if available

@@ -66,11 +66,11 @@
 
 :root {
     /* Color Palette */
-    --color-primary: #ff9823;
-    --color-primary-hover: #ffaa44;
-    --color-primary-light: rgba(255, 152, 35, 0.1);
-    --color-primary-transparent: rgba(255, 152, 35, 0.15);
-    --color-primary-border: rgba(255, 152, 35, 0.3);
+    --color-primary: #f7c13d;
+    --color-primary-hover: #f9cc5a;
+    --color-primary-light: rgba(247, 193, 61, 0.1);
+    --color-primary-transparent: rgba(247, 193, 61, 0.15);
+    --color-primary-border: rgba(247, 193, 61, 0.3);
     
     /* Background Colors */
     --bg-primary: #1a1a1a;
@@ -284,8 +284,8 @@ body {
 }
 
 .settings-icon:hover {
-    color: #ff9823;
-    background: rgba(255, 152, 35, 0.1);
+    color: #f7c13d;
+    background: rgba(247, 193, 61, 0.1);
 }
 
 .settings-icon:active {
@@ -396,7 +396,7 @@ body {
 }
 
 .tip-content svg {
-    color: #ff9823;
+    color: #f7c13d;
     flex-shrink: 0;
 }
 
@@ -425,7 +425,7 @@ body {
     align-items: center;
     justify-content: center;
     padding: 10px 16px;
-    background: #ff9823;
+    background: #f7c13d;
     color: black;
     border: none;
     border-radius: 6px;
@@ -472,8 +472,8 @@ body {
 }
 
 .toggle-button .logo {
-    width: 40px;
-    height: 48px;
+    width: 56px;
+    height: 56px;
     transition: filter var(--transition-normal);
     flex-shrink: 0;
 }
@@ -517,9 +517,8 @@ body {
 }
 
 .toggle-button.enabled .logo {
-    /* Dark logo when enabled - invert to make it dark */
-    filter: brightness(0) saturate(100%) invert(0%) sepia(0%) saturate(0%)
-        hue-rotate(0deg) brightness(20%) contrast(100%);
+    /* Golden logo when enabled - no filter needed since SVG is already golden */
+    filter: none;
 }
 
 .toggle-button.enabled:hover {
@@ -535,9 +534,8 @@ body {
 }
 
 .toggle-button.disabled .logo {
-    /* Orange logo when disabled */
-    filter: brightness(0) saturate(100%) invert(70%) sepia(85%) saturate(2613%)
-        hue-rotate(11deg) brightness(104%) contrast(101%);
+    /* Dimmed golden logo when disabled */
+    filter: opacity(0.5) grayscale(0.3);
 }
 
 .toggle-button.disabled:hover {
@@ -768,7 +766,7 @@ body {
 }
 
 .edit-profiles-button.edit-active {
-    background: #ff9823;
+    background: #f7c13d;
     color: #1a1a1a;
 }
 
@@ -1218,9 +1216,9 @@ body {
 }
 
 .website-pill.active {
-    background: #ff9823;
+    background: #f7c13d;
     color: #1a1a1a;
-    border-color: #ff9823;
+    border-color: #f7c13d;
 }
 
 .website-pill svg {
@@ -1313,8 +1311,8 @@ body {
 }
 
 .edit-title-input:focus {
-    background: var(--edit-title-color-transparent, rgba(255, 152, 35, 0.1));
-    border: 1px solid var(--edit-title-color, #ff9823);
+    background: var(--edit-title-color-transparent, rgba(247, 193, 61, 0.1));
+    border: 1px solid var(--edit-title-color, #f7c13d);
 }
 
 .edit-title-input::placeholder {
@@ -1341,7 +1339,7 @@ body {
 }
 
 .save-button {
-    background: #ff9823;
+    background: #f7c13d;
     border: none;
     color: black;
     cursor: pointer;
@@ -1400,13 +1398,13 @@ body {
 
 /* Unified orange theme for edit profile chips */
 .edit-profile-chip {
-    background: rgba(255, 152, 35, 0.15);
-    color: #ff9823;
-    border-color: rgba(255, 152, 35, 0.3);
+    background: rgba(247, 193, 61, 0.15);
+    color: #f7c13d;
+    border-color: rgba(247, 193, 61, 0.3);
 }
 
 .edit-profile-chip:hover {
-    background: rgba(255, 152, 35, 0.25);
+    background: rgba(247, 193, 61, 0.25);
 }
 
 .profile-config-container {
@@ -1444,7 +1442,7 @@ body {
 }
 
 .tab-button.active {
-    background: #ff9823;
+    background: #f7c13d;
     color: black;
 }
 
@@ -1510,13 +1508,13 @@ body {
 }
 
 .chip.new {
-    color: #ff9823;
-    border: 1px solid rgba(255, 152, 35, 0.3);
-    background: rgba(255, 152, 35, 0.1);
+    color: #f7c13d;
+    border: 1px solid rgba(247, 193, 61, 0.3);
+    background: rgba(247, 193, 61, 0.1);
 }
 
 .chip.new:hover {
-    background: rgba(255, 152, 35, 0.2);
+    background: rgba(247, 193, 61, 0.2);
 }
 
 .chip.deleted {
@@ -1582,7 +1580,7 @@ body {
 }
 
 .send-button:hover {
-    color: #ff9823;
+    color: #f7c13d;
 }
 
 .send-button:active {
@@ -1590,7 +1588,7 @@ body {
 }
 
 .add-item-input:focus {
-    border-color: #ff9823;
+    border-color: #f7c13d;
     background: #0d0d0d;
 }
 
@@ -1818,7 +1816,7 @@ body {
     width: 24px;
     height: 24px;
     border: 2px solid #333;
-    border-top: 2px solid #ff9823;
+    border-top: 2px solid #f7c13d;
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -1869,7 +1867,7 @@ body {
 }
 
 .profile-button.primary {
-    background: #ff9823;
+    background: #f7c13d;
     color: black;
 }
 
@@ -2446,7 +2444,7 @@ body {
 }
 
 .dialog-button.primary {
-    background: #ff9823;
+    background: #f7c13d;
     color: #1a1a1a;
 }
 
@@ -2691,7 +2689,7 @@ body {
 }
 
 .dialog-button.primary {
-    background: #ff9823;
+    background: #f7c13d;
     color: white;
 }
 
@@ -2933,7 +2931,7 @@ body {
 }
 
 .simple-chip-system .tab-button.active {
-    background: #ff9823;
+    background: #f7c13d;
     color: black;
 }
 
@@ -3084,7 +3082,7 @@ body {
 }
 
 .simple-chip-system .send-button:hover:not(:disabled) {
-    color: #ff9823;
+    color: #f7c13d;
 }
 
 .simple-chip-system .send-button:active:not(:disabled) {
@@ -3102,7 +3100,7 @@ body {
 }
 
 .simple-chip-system .add-item-input:focus:not(:disabled) {
-    border-color: #ff9823;
+    border-color: #f7c13d;
     background: #0d0d0d;
 }
 

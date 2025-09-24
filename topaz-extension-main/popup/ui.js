@@ -285,7 +285,7 @@ function renderProfilesGrid() {
       profileName: "Default",
       isEnabled: state.profiles.some(p => p.isDefault && p.isEnabled),
       isDefault: true,
-      colour: "#ff9823" // Use the orange theme color
+      colour: "#f7c13d" // Use the orange theme color
     };
     const defaultChip = createProfileChip(defaultProfile);
     elements.profilesGrid.appendChild(defaultChip);
@@ -933,7 +933,7 @@ async function renderEditForm() {
   }
   
   if (elements.editProfileColorInput) {
-    elements.editProfileColorInput.value = tempData?.colour || '#ff9823';
+    elements.editProfileColorInput.value = tempData?.colour || '#f7c13d';
   }
   
   // Set active tab

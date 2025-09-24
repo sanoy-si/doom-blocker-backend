@@ -1005,7 +1005,7 @@ function startEditMode(profileName = null) {
   // Set up temp data for editing
   const tempData = {
     profileName: profileData?.profileName || '',
-    colour: profileData?.colour || '#ff9823',
+    colour: profileData?.colour || '#f7c13d',
     whitelistTags: [...(profileData?.whitelistTags || [])],
     blacklistTags: [...(profileData?.blacklistTags || [])],
     allowedWebsites: [...(profileData?.allowedWebsites || ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'])],
@@ -1030,7 +1030,7 @@ function handleEditBack() {
     editingProfile: null,
     tempProfileData: {
       profileName: '',
-      colour: '#ff9823',
+      colour: '#f7c13d',
       whitelistTags: [],
       blacklistTags: [],
       allowedWebsites: ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'],
@@ -1076,7 +1076,7 @@ async function handleEditSave() {
         editingProfile: null,
         tempProfileData: {
           profileName: '',
-          colour: '#ff9823',
+          colour: '#f7c13d',
           whitelistTags: [],
           blacklistTags: [],
           allowedWebsites: ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'],
@@ -1132,7 +1132,7 @@ function handleEditDelete() {
                 editingProfile: null,
                 tempProfileData: {
                   profileName: '',
-                  colour: '#ff9823',
+                  colour: '#f7c13d',
                   whitelistTags: [],
                   blacklistTags: [],
                   allowedWebsites: ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'],
@@ -1398,7 +1398,7 @@ function handleResetProfile() {
     window.appState.updateState({
       tempProfileData: {
         profileName: '',
-        colour: '#ff9823',
+        colour: '#f7c13d',
         whitelistTags: [],
         blacklistTags: [],
         allowedWebsites: ['youtube.com', 'twitter.com', 'x.com', 'linkedin.com', 'reddit.com'],

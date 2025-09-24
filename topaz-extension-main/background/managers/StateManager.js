@@ -365,7 +365,7 @@ class StateManager {
       customBlacklist: Array.isArray(profileData.customBlacklist) ? profileData.customBlacklist : [],
       allowedWebsites: Array.isArray(profileData.allowedWebsites) ? profileData.allowedWebsites : [],
       isEnabled: Boolean(profileData.isEnabled),
-      colour: profileData.colour || "#ff9823",
+      colour: profileData.colour || "#f7c13d",
       isDefault: Boolean(profileData.isDefault) || false // User-created profiles are not default unless explicitly specified
     };
 
@@ -406,7 +406,7 @@ class StateManager {
       profile.isEnabled = Boolean(updates.isEnabled);
     }
     if (updates.colour !== undefined) {
-      profile.colour = updates.colour || "#ff9823";
+      profile.colour = updates.colour || "#f7c13d";
     }
     if (updates.isDefault !== undefined) {
       profile.isDefault = Boolean(updates.isDefault);
