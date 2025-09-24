@@ -16,17 +16,36 @@ function extractTokensFromStorage() {
       const tokenData = JSON.parse(storedTokens);
       console.log('🔐 Tokens found in localStorage:', tokenData);
       
+      // Validate token data structure
+      if (!tokenData.user || !tokenData.accessToken) {
+        console.error('❌ Invalid token data structure:', tokenData);
+        return false;
+      }
+      
       // Send tokens to background script
-      chrome.runtime.sendMessage({
-        type: 'TOKEN_RECEIVED',
-        tokenData: tokenData
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('❌ Failed to send tokens to background:', chrome.runtime.lastError);
-        } else {
-          console.log('✅ Tokens sent to background successfully:', response);
-        }
-      });
+      if (typeof chrome !== 'undefined' && chrome.runtime) {
+        chrome.runtime.sendMessage({
+          type: 'TOKEN_RECEIVED',
+          tokenData: tokenData
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.error('❌ Failed to send tokens to background:', chrome.runtime.lastError);
+          } else {
+            console.log('✅ Tokens sent to background successfully:', response);
+            // Clear the stored tokens after successful transmission
+            localStorage.removeItem('doom_blocker_auth');
+          }
+        });
+      } else {
+        console.error('❌ Chrome runtime not available in this context');
+        console.log('🔐 Content script running in wrong context - trying alternative method');
+        
+        // Try to communicate via postMessage to the extension
+        window.postMessage({
+          type: 'TOKEN_FOR_EXTENSION',
+          tokenData: tokenData
+        }, '*');
+      }
       
       return true;
     }
@@ -48,13 +67,17 @@ function checkUrlParameters() {
 
 // Monitor for tokens
 function monitorForTokens() {
+  console.log('🔐 Starting token monitoring...');
+  
   // Check immediately
   if (extractTokensFromStorage()) {
+    console.log('🔐 Tokens found immediately, monitoring complete');
     return;
   }
   
   // Check URL parameters
   if (checkUrlParameters()) {
+    console.log('🔐 Auth success detected in URL, waiting for tokens...');
     // Wait a bit for localStorage to be updated
     setTimeout(() => {
       extractTokensFromStorage();
@@ -66,7 +89,7 @@ function monitorForTokens() {
   localStorage.setItem = function(key, value) {
     originalSetItem.apply(this, arguments);
     if (key === 'doom_blocker_auth') {
-      console.log('🔐 Token storage detected');
+      console.log('🔐 Token storage detected via localStorage.setItem');
       setTimeout(() => {
         extractTokensFromStorage();
       }, 100);
@@ -88,6 +111,20 @@ function monitorForTokens() {
   });
   
   urlObserver.observe(document, { subtree: true, childList: true });
+  
+  // Also check periodically as a fallback
+  const checkInterval = setInterval(() => {
+    if (extractTokensFromStorage()) {
+      clearInterval(checkInterval);
+      console.log('🔐 Tokens found via periodic check, monitoring complete');
+    }
+  }, 2000);
+  
+  // Stop checking after 30 seconds
+  setTimeout(() => {
+    clearInterval(checkInterval);
+    console.log('🔐 Token monitoring timeout reached');
+  }, 30000);
 }
 
 // Start monitoring
@@ -101,19 +138,23 @@ window.addEventListener('auth-tokens-ready', () => {
 
 // Also listen for postMessage from the page
 window.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'AUTH_SUCCESS') {
+  if (event.data && (event.data.type === 'AUTH_SUCCESS' || event.data.type === 'TOKEN_FOR_EXTENSION')) {
     console.log('🔐 Auth success message received:', event.data);
     
     // Send tokens to background script
-    chrome.runtime.sendMessage({
-      type: 'TOKEN_RECEIVED',
-      tokenData: event.data.tokenData
-    }, (response) => {
-      if (chrome.runtime.lastError) {
-        console.error('❌ Failed to send tokens to background:', chrome.runtime.lastError);
-      } else {
-        console.log('✅ Tokens sent to background successfully:', response);
-      }
-    });
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      chrome.runtime.sendMessage({
+        type: 'TOKEN_RECEIVED',
+        tokenData: event.data.tokenData
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('❌ Failed to send tokens to background:', chrome.runtime.lastError);
+        } else {
+          console.log('✅ Tokens sent to background successfully:', response);
+        }
+      });
+    } else {
+      console.error('❌ Chrome runtime not available for postMessage handler');
+    }
   }
 });
