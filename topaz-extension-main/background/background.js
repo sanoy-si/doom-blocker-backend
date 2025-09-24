@@ -55,16 +55,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   console.log("📦 Extension installed/updated:", details.reason);
 
   if (details.reason === "install") {
-    console.log("🆕 First time install - initiating auto login and onboarding");
-
-    // First, open YouTube with onboarding parameter to trigger the onboarding popup
-    try {
-      const onboardingUrl = "https://www.youtube.com/?doomGuide=1";
-      await chrome.tabs.create({ url: onboardingUrl });
-      console.log("🎯 Onboarding page opened at YouTube");
-    } catch (error) {
-      console.error("❌ Failed to open onboarding page:", error);
-    }
+    console.log("🆕 First time install - initiating auto login only (no auto onboarding)");
 
     // Wait for controller to be ready
     const waitForController = () => {

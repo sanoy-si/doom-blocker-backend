@@ -36,7 +36,7 @@
         "https://m.youtube.com/*"
       ],
       "js": ["onboarding/contentScript.js"],
-      "run_at": "document_idle",
+      "run_at": "document_start",
       "all_frames": false
     },
     {

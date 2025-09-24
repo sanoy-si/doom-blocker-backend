@@ -5,7 +5,9 @@
 (function () {
   const url = new URL(location.href);
   if (url.hostname !== "www.youtube.com") return;
-  if (url.searchParams.get("doomGuide") !== "1") return;
+  const fromQuery = url.searchParams.get("doomGuide");
+  const fromHash = url.hash && new URLSearchParams(url.hash.slice(1)).get("doomGuide");
+  if ((fromQuery || fromHash) !== "1") return;
 
   const SESSION_KEY = "doom_onboard_done";
   if (sessionStorage.getItem(SESSION_KEY) === "1") return;

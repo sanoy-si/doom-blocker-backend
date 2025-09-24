@@ -4,7 +4,7 @@
 (() => {
   try {
     const url = new URL(window.location.href);
-    const enable = url.searchParams.get("doomGuide");
+    const enable = url.searchParams.get("doomGuide") || (url.hash && new URLSearchParams(url.hash.slice(1)).get("doomGuide"));
     if (enable !== "1") return; // Only run tour when explicitly requested
 
     // Avoid duplicate injections
