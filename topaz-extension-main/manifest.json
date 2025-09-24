@@ -51,8 +51,7 @@
     },
     {
       "matches": [
-        "https://www.doomblocker.com/auth/callback*",
-        "https://www.doomblocker.com/*"
+        "https://www.doomblocker.com/auth/callback*"
       ],
       "js": ["content/auth-callback.js"],
       "run_at": "document_start"
