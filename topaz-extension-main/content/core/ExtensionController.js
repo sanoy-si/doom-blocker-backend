@@ -984,8 +984,9 @@ class ExtensionController {
       // Clear any existing analysis timeout
       this.clearAnalysisTimeout();
       
-      // Restore all currently hidden elements first
-      await this.elementEffects.restoreAllElements();
+      // ✅ FIX: Don't restore previously filtered content - keep accumulating filtering decisions
+      // Previously filtered content should remain hidden when new keywords are added
+      console.log('🔄 Analyzing visible content with updated filters (keeping previous filtering decisions)...');
 
       // FAST PATH: analyze visible content first to provide instant feedback
       console.log('⚡ Performing quick analysis for visible content...');
