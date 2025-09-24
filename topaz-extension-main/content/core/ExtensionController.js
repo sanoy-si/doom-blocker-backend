@@ -1342,7 +1342,7 @@ class ExtensionController {
         }))
       };
 
-      // Send blocked items immediately
+      // Send blocked items immediately (legacy endpoint for session-based tracking)
       const response = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1371,8 +1371,31 @@ class ExtensionController {
         console.log('📊 Updated metrics with current totals');
       }
 
+      // NEW: Also send to user-specific endpoint if user is authenticated
+      await this.sendBlockedItemsToUserBackend(sessionId, blockedItemsData.blocked_items);
+
     } catch (error) {
       console.warn('⚠️ Failed to send blocked items to backend:', error);
+    }
+  }
+
+  // Send blocked items to user-specific backend endpoint
+  async sendBlockedItemsToUserBackend(sessionId, blockedItems) {
+    try {
+      // Send message to background script to save blocked content for authenticated user
+      const response = await chrome.runtime.sendMessage({
+        type: 'SAVE_USER_BLOCKED_CONTENT',
+        sessionId: sessionId,
+        blockedItems: blockedItems
+      });
+
+      if (response && response.success) {
+        console.log('🔐 Blocked content saved for authenticated user');
+      } else {
+        console.log('🔐 User not authenticated or failed to save blocked content');
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to send blocked items to user backend:', error);
     }
   }
 
