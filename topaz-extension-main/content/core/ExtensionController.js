@@ -984,9 +984,12 @@ class ExtensionController {
       // Clear any existing analysis timeout
       this.clearAnalysisTimeout();
       
-      // ✅ FIX: Don't restore previously filtered content - keep accumulating filtering decisions
-      // Previously filtered content should remain hidden when new keywords are added
-      console.log('🔄 Analyzing visible content with updated filters (keeping previous filtering decisions)...');
+      // 🔄 SMART FIX: Clear fingerprints to force re-analysis of ALL content
+      // This allows previously hidden content to reappear when keywords are removed
+      console.log('🔄 Clearing content fingerprints to force full re-analysis...');
+      this.contentFingerprint.clear();
+      
+      console.log('🔄 Re-analyzing ALL content with updated filters...');
 
       // FAST PATH: analyze visible content first to provide instant feedback
       console.log('⚡ Performing quick analysis for visible content...');
