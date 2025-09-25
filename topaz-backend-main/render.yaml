@@ -11,6 +11,8 @@ services:
         sync: false
       - key: SUPABASE_ANON_KEY
         sync: false
+      - key: API_AUTH_KEY
+        value: doom-blocker-extension-api-key-2024
       - key: ENV
         value: production
       - key: CORS_ORIGINS

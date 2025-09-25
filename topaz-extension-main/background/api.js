@@ -25,6 +25,24 @@ class API {
   // Initialize API and auth system
   async init() {
     await this.loadAuthFromStorage();
+    await this.ensureApiKeyExists();
+  }
+
+  // Ensure API key exists in storage
+  async ensureApiKeyExists() {
+    try {
+      const result = await chrome.storage.local.get(['apiKey']);
+      if (!result.apiKey) {
+        // Set the default API key that matches the backend
+        const defaultApiKey = "doom-blocker-extension-api-key-2024";
+        await chrome.storage.local.set({ apiKey: defaultApiKey });
+        console.log("✅ API: Default API key set");
+      } else {
+        console.log("✅ API: API key already exists in storage");
+      }
+    } catch (error) {
+      console.error("❌ API: Failed to ensure API key exists:", error);
+    }
   }
 
   // Load auth state from Chrome storage
@@ -163,10 +181,14 @@ class API {
       "Content-Type": "application/json",
     };
 
-    // Get API key from storage or environment
+    // Get API key from storage
     const result = await chrome.storage.local.get(['apiKey']);
-    const apiKey = result.apiKey || 'your-development-api-key'; // Should be set during installation
-    
+    const apiKey = result.apiKey;
+
+    if (!apiKey) {
+      throw new Error("No API key found. Extension may not be properly initialized.");
+    }
+
     headers["Authorization"] = `Bearer ${apiKey}`;
 
     if (this.authState.accessToken) {

@@ -100,8 +100,9 @@ openai_circuit_breaker = CircuitBreaker(failure_threshold=3, reset_timeout=30)
 class AuthenticationMiddleware(BaseHTTPMiddleware):
     def __init__(self, app):
         super().__init__(app)
-        self.api_key = os.getenv("API_AUTH_KEY", secrets.token_urlsafe(32))
-        logger.info("Authentication middleware initialized")
+        # Use a consistent API key that can be configured
+        self.api_key = os.getenv("API_AUTH_KEY", "doom-blocker-extension-api-key-2024")
+        logger.info("Authentication middleware initialized", api_key_configured=bool(os.getenv("API_AUTH_KEY")))
 
     async def dispatch(self, request: Request, call_next):
         # Skip auth for health checks and public endpoints
@@ -1313,6 +1314,9 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
         # Check if OpenAI API is configured
         if not OPENAI_HEADERS:
+            logger.error("OpenAI API not configured",
+                        correlation_id=correlation_id,
+                        error="OPENAI_API_KEY missing")
             raise HTTPException(
                 status_code=503,
                 detail="AI_SERVICE_UNAVAILABLE: OpenAI API not configured"
