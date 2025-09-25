@@ -21,8 +21,8 @@
       ],
       "js": [
         "content/utils/constants.js",
-        "content/utils/SessionManager.js",
         "content/utils/TruthfulCounter.js",
+        "content/utils/SessionManager.js",
         "content/utils/InputSanitizer.js",
         "content/core/EventBus.js",
         "content/core/ConfigManager.js",

@@ -40,19 +40,23 @@ class StructuredLogger:
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
         self.logger.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
-    
+
+    def isEnabledFor(self, level):
+        """Check if logger is enabled for the given level"""
+        return self.logger.isEnabledFor(level)
+
     def info(self, message, correlation_id=None, **kwargs):
         extra = {"correlation_id": correlation_id, **kwargs}
         self.logger.info(f"{message} | {extra}")
-    
+
     def error(self, message, correlation_id=None, **kwargs):
         extra = {"correlation_id": correlation_id, **kwargs}
         self.logger.error(f"{message} | {extra}")
-    
+
     def warning(self, message, correlation_id=None, **kwargs):
         extra = {"correlation_id": correlation_id, **kwargs}
         self.logger.warning(f"{message} | {extra}")
-    
+
     def debug(self, message, correlation_id=None, **kwargs):
         extra = {"correlation_id": correlation_id, **kwargs}
         self.logger.debug(f"{message} | {extra}")

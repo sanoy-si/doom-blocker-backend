@@ -1696,18 +1696,36 @@ class ExtensionController {
    */
   async getYouTubeSettings() {
     try {
+      // Check if extension context is still valid
+      if (!chrome.runtime?.id) {
+        console.warn('⚠️ Extension context invalidated, skipping YouTube settings');
+        return {
+          blockShorts: false,
+          blockHomeFeed: false,
+          blockComments: false
+        };
+      }
+
       const result = await chrome.storage.local.get([
         'youtube_blockShorts',
-        'youtube_blockHomeFeed', 
+        'youtube_blockHomeFeed',
         'youtube_blockComments'
       ]);
-      
+
       return {
         blockShorts: result.youtube_blockShorts || false,
         blockHomeFeed: result.youtube_blockHomeFeed || false,
         blockComments: result.youtube_blockComments || false
       };
     } catch (error) {
+      if (error.message?.includes('Extension context invalidated')) {
+        console.warn('⚠️ Extension context invalidated, stopping content script execution');
+        return {
+          blockShorts: false,
+          blockHomeFeed: false,
+          blockComments: false
+        };
+      }
       console.warn('⚠️ Failed to get YouTube settings:', error);
       return {
         blockShorts: false,
