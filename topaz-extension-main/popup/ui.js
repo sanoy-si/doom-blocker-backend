@@ -60,7 +60,6 @@ function cacheElements() {
   elements.profilesSection = document.getElementById('profilesSection');
   elements.profilesGrid = elements.profilesSection?.querySelector('.profiles-grid');
   elements.simpleModeSection = document.getElementById('simpleModeSection');
-  elements.simpleCustomizationToggle = document.getElementById('simpleCustomizationToggle');
   elements.simpleWhitelistTab = document.getElementById('simpleWhitelistTab');
   elements.simpleBlacklistTab = document.getElementById('simpleBlacklistTab');
   elements.simpleWhitelistContent = document.getElementById('simpleWhitelistContent');
@@ -357,32 +356,10 @@ function hideSimpleModeSection() {
 
 // Render simple mode content
 async function renderSimpleModeContent() {  
-  const { state } = window.appState;
+  // Always enable customization - no toggle needed
+  updateCustomizationState(true);
   
-  if (!elements.simpleCustomizationToggle._isSetup) {
-    await setupCustomizationToggle();
-    elements.simpleCustomizationToggle._isSetup = true;
-  } else {
-    // Update toggle state to match current app state and site restrictions
-    if (elements.simpleCustomizationToggle) {
-      const isOnAllowedSite = await isCurrentSiteAllowed();
-      
-      if (!isOnAllowedSite) {
-        // On non-allowed sites, force toggle to OFF and disable it (don't update state)
-        elements.simpleCustomizationToggle.checked = false;
-        elements.simpleCustomizationToggle.disabled = true;
-        updateCustomizationState(false);
-      } else {
-        // On allowed sites, use the actual state value
-        elements.simpleCustomizationToggle.checked = state.isCustomizationEnabled;
-        elements.simpleCustomizationToggle.disabled = false;
-        updateCustomizationState(state.isCustomizationEnabled);
-      }
-    }
-  }
-  
-  // Apply customization state based on the customization toggle, not extension state
-  // Users can customize even when extension is disabled
+  // Apply customization state - always enabled
   if (!elements.simpleWhitelistTab._isSetup) {
     setupSimpleModeTabs();
     if (elements.simpleWhitelistTab) elements.simpleWhitelistTab._isSetup = true;
