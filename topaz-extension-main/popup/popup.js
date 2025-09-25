@@ -1751,40 +1751,77 @@ function addSuggestionTagToSimpleMode(item) {
   }
 }
 
-// Load YouTube feature settings
+// Load YouTube feature settings - FIXED: Get from storage instead of content script
 async function loadYouTubeFeatureSettings() {
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    // Get settings directly from chrome.storage for reliability
+    const result = await chrome.storage.local.get([
+      'youtube_blockShorts',
+      'youtube_blockHomeFeed', 
+      'youtube_blockComments'
+    ]);
     
-    if (!tab || !tab.id) {
-      console.warn('No active tab found for YouTube settings');
-      return;
+    const settings = {
+      blockShorts: result.youtube_blockShorts || false,
+      blockHomeFeed: result.youtube_blockHomeFeed || false,
+      blockComments: result.youtube_blockComments || false
+    };
+    
+    console.log('📺 Loaded YouTube settings from storage:', settings);
+    
+    // Update toggle states with stored values
+    const blockShortsToggle = document.getElementById('blockShortsToggle');
+    const blockHomeFeedToggle = document.getElementById('blockHomeFeedToggle');
+    const blockCommentsToggle = document.getElementById('blockCommentsToggle');
+    
+    if (blockShortsToggle) {
+      blockShortsToggle.checked = settings.blockShorts;
+      console.log('📺 Set blockShortsToggle to:', settings.blockShorts);
     }
-
-    const response = await chrome.tabs.sendMessage(tab.id, {
-      type: 'YOUTUBE_GET_SETTINGS'
-    });
-
-    if (response && response.success && response.settings) {
-      const settings = response.settings;
-      
-      // Update toggle states
-      const blockShortsToggle = document.getElementById('blockShortsToggle');
-      const blockHomeFeedToggle = document.getElementById('blockHomeFeedToggle');
-      const blockCommentsToggle = document.getElementById('blockCommentsToggle');
-      
-      if (blockShortsToggle) {
-        blockShortsToggle.checked = settings.blockShorts || false;
-      }
-      if (blockHomeFeedToggle) {
-        blockHomeFeedToggle.checked = settings.blockHomeFeed || false;
-      }
-      if (blockCommentsToggle) {
-        blockCommentsToggle.checked = settings.blockComments || false;
-      }
+    if (blockHomeFeedToggle) {
+      blockHomeFeedToggle.checked = settings.blockHomeFeed;
+      console.log('📺 Set blockHomeFeedToggle to:', settings.blockHomeFeed);
+    }
+    if (blockCommentsToggle) {
+      blockCommentsToggle.checked = settings.blockComments;
+      console.log('📺 Set blockCommentsToggle to:', settings.blockComments);
     }
   } catch (error) {
     console.warn('Failed to load YouTube feature settings:', error);
+    
+    // Fallback: try to get from content script
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      if (tab && tab.id) {
+        const response = await chrome.tabs.sendMessage(tab.id, {
+          type: 'YOUTUBE_GET_SETTINGS'
+        });
+
+        if (response && response.success && response.settings) {
+          const settings = response.settings;
+          
+          // Update toggle states
+          const blockShortsToggle = document.getElementById('blockShortsToggle');
+          const blockHomeFeedToggle = document.getElementById('blockHomeFeedToggle');
+          const blockCommentsToggle = document.getElementById('blockCommentsToggle');
+          
+          if (blockShortsToggle) {
+            blockShortsToggle.checked = settings.blockShorts || false;
+          }
+          if (blockHomeFeedToggle) {
+            blockHomeFeedToggle.checked = settings.blockHomeFeed || false;
+          }
+          if (blockCommentsToggle) {
+            blockCommentsToggle.checked = settings.blockComments || false;
+          }
+          
+          console.log('📺 Loaded YouTube settings from content script (fallback):', settings);
+        }
+      }
+    } catch (fallbackError) {
+      console.warn('Fallback YouTube settings loading also failed:', fallbackError);
+    }
   }
 }
 
