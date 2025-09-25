@@ -1336,6 +1336,25 @@ window.removeTagFromSimpleMode = async function(tag) {
       const result = await window.backgroundAPI.saveProfiles(state.profiles);
       if (result.success) {
         console.log('Profiles saved to background after tag removal:', result);
+        
+        // 🔄 INSTANT RE-ANALYSIS: Trigger filtering to restore content
+        console.log('🔄 Triggering instant filtering after tag removal to restore content...');
+        console.log('🏷️ Removed tag:', tag, 'from profile:', currentProfile.profileName);
+        try {
+          await window.backgroundAPI.triggerInstantFiltering();
+          console.log('✅ Instant filtering triggered successfully after tag removal');
+          
+          // Show success notification
+          window.ui.showNotification({
+            type: 'success',
+            message: `Removed "${tag}" - content restored`,
+            duration: 2000
+          });
+        } catch (filterError) {
+          console.warn('⚠️ Instant filtering failed after tag removal:', filterError);
+          // Don't show error to user - filtering will happen on next page load
+        }
+        
       } else {
         console.error('Failed to save profiles to background after tag removal:', result.error);
         // Show error notification to user
