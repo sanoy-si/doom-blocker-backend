@@ -109,8 +109,12 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         logger.info("Authentication middleware initialized", api_key_configured=bool(os.getenv("API_AUTH_KEY")))
 
     async def dispatch(self, request: Request, call_next):
-        # Skip auth for health checks and public endpoints
+        # Skip auth for health checks, public endpoints, and OPTIONS requests
         if request.url.path in ["/", "/health", "/docs", "/openapi.json"]:
+            return await call_next(request)
+        
+        # Skip auth for OPTIONS requests (CORS preflight)
+        if request.method == "OPTIONS":
             return await call_next(request)
         
         # Check for API key in header for protected endpoints
@@ -173,11 +177,16 @@ blocked_items_counter = {
     'last_updated': time.time()
 }
 
-# Simple in-memory cache for API responses
+# Enhanced multi-tier cache system for optimal performance
 api_cache = {
     'responses': {},  # hash -> response
-    'max_size': 100,  # Maximum number of cached responses
-    'max_age': 300    # Cache expires after 5 minutes
+    'max_size': 1000,  # Increased cache size
+    'max_age': 1800,   # Cache expires after 30 minutes (increased)
+    'hot_cache': {},   # Hot cache for frequently accessed items
+    'warm_cache': {},  # Warm cache for moderately accessed items
+    'cold_cache': {},  # Cold cache for rarely accessed items
+    'access_counts': {},  # Track access frequency
+    'last_cleanup': time.time()
 }
 
 def reset_rate_limit_if_needed():
@@ -309,37 +318,304 @@ def get_cache_key(grid_structure, url, whitelist, blacklist):
     return hashlib.md5(key_string.encode()).hexdigest()
 
 def get_cached_response(cache_key):
-    """Get cached response if available and not expired"""
+    """Enhanced multi-tier cache lookup with intelligent tiering"""
     current_time = time.time()
     
+    # Check hot cache first (most frequently accessed)
+    if cache_key in api_cache['hot_cache']:
+        cached_data = api_cache['hot_cache'][cache_key]
+        if current_time - cached_data['timestamp'] < api_cache['max_age']:
+            api_cache['access_counts'][cache_key] = api_cache['access_counts'].get(cache_key, 0) + 1
+            logger.info(f"🔥 Hot cache hit for key: {cache_key[:8]}...")
+            return cached_data['response']
+        else:
+            del api_cache['hot_cache'][cache_key]
+    
+    # Check warm cache
+    if cache_key in api_cache['warm_cache']:
+        cached_data = api_cache['warm_cache'][cache_key]
+        if current_time - cached_data['timestamp'] < api_cache['max_age']:
+            api_cache['access_counts'][cache_key] = api_cache['access_counts'].get(cache_key, 0) + 1
+            # Promote to hot cache if accessed frequently
+            if api_cache['access_counts'][cache_key] > 5:
+                api_cache['hot_cache'][cache_key] = cached_data
+                del api_cache['warm_cache'][cache_key]
+            logger.info(f"🌡️ Warm cache hit for key: {cache_key[:8]}...")
+            return cached_data['response']
+        else:
+            del api_cache['warm_cache'][cache_key]
+    
+    # Check cold cache
+    if cache_key in api_cache['cold_cache']:
+        cached_data = api_cache['cold_cache'][cache_key]
+        if current_time - cached_data['timestamp'] < api_cache['max_age']:
+            api_cache['access_counts'][cache_key] = api_cache['access_counts'].get(cache_key, 0) + 1
+            # Promote to warm cache
+            api_cache['warm_cache'][cache_key] = cached_data
+            del api_cache['cold_cache'][cache_key]
+            logger.info(f"❄️ Cold cache hit for key: {cache_key[:8]}...")
+            return cached_data['response']
+        else:
+            del api_cache['cold_cache'][cache_key]
+    
+    # Check legacy cache
     if cache_key in api_cache['responses']:
         cached_data = api_cache['responses'][cache_key]
         if current_time - cached_data['timestamp'] < api_cache['max_age']:
-            logger.info(f"🎯 Cache hit for key: {cache_key[:8]}...")
+            api_cache['access_counts'][cache_key] = api_cache['access_counts'].get(cache_key, 0) + 1
+            logger.info(f"🎯 Legacy cache hit for key: {cache_key[:8]}...")
             return cached_data['response']
         else:
-            # Remove expired cache entry
             del api_cache['responses'][cache_key]
     
     return None
 
 def cache_response(cache_key, response):
-    """Cache the response"""
+    """Enhanced multi-tier cache storage with intelligent placement"""
     current_time = time.time()
     
-    # Clean up old cache entries if we're at max size
-    if len(api_cache['responses']) >= api_cache['max_size']:
-        # Remove oldest entries
-        oldest_keys = sorted(api_cache['responses'].keys(), 
-                           key=lambda k: api_cache['responses'][k]['timestamp'])[:10]
-        for key in oldest_keys:
-            del api_cache['responses'][key]
+    # Clean up cache if needed
+    cleanup_cache_if_needed()
     
-    api_cache['responses'][cache_key] = {
+    # Determine cache tier based on access pattern
+    access_count = api_cache['access_counts'].get(cache_key, 0)
+    
+    cache_data = {
         'response': response,
-        'timestamp': current_time
+        'timestamp': current_time,
+        'access_count': access_count,
+        'grid_signature': create_grid_signature(cleaned_grid) if 'cleaned_grid' in locals() else None
     }
-    logger.info(f"💾 Cached response for key: {cache_key[:8]}...")
+    
+    # Place in appropriate tier
+    if access_count >= 10:
+        # Hot cache for frequently accessed items
+        api_cache['hot_cache'][cache_key] = cache_data
+        logger.info(f"🔥 Cached in hot cache for key: {cache_key[:8]}...")
+    elif access_count >= 3:
+        # Warm cache for moderately accessed items
+        api_cache['warm_cache'][cache_key] = cache_data
+        logger.info(f"🌡️ Cached in warm cache for key: {cache_key[:8]}...")
+    else:
+        # Cold cache for new items
+        api_cache['cold_cache'][cache_key] = cache_data
+        logger.info(f"❄️ Cached in cold cache for key: {cache_key[:8]}...")
+    
+    # Also maintain legacy cache for compatibility
+    api_cache['responses'][cache_key] = cache_data
+
+def cleanup_cache_if_needed():
+    """Intelligent cache cleanup with tier-aware eviction"""
+    current_time = time.time()
+    
+    # Clean up expired entries
+    for tier in ['hot_cache', 'warm_cache', 'cold_cache', 'responses']:
+        expired_keys = []
+        for key, data in api_cache[tier].items():
+            if current_time - data['timestamp'] > api_cache['max_age']:
+                expired_keys.append(key)
+        
+        for key in expired_keys:
+            del api_cache[tier][key]
+    
+    # Evict least recently used items if cache is too large
+    total_size = (len(api_cache['hot_cache']) + len(api_cache['warm_cache']) + 
+                  len(api_cache['cold_cache']) + len(api_cache['responses']))
+    
+    if total_size > api_cache['max_size']:
+        # Evict from cold cache first, then warm, then hot
+        evict_from_tier('cold_cache', 20)
+        if total_size > api_cache['max_size']:
+            evict_from_tier('warm_cache', 15)
+        if total_size > api_cache['max_size']:
+            evict_from_tier('hot_cache', 10)
+
+def evict_from_tier(tier, count):
+    """Evict least recently used items from a specific tier"""
+    if len(api_cache[tier]) <= count:
+        api_cache[tier].clear()
+        return
+    
+    # Sort by timestamp and remove oldest
+    sorted_items = sorted(api_cache[tier].items(), 
+                         key=lambda x: x[1]['timestamp'])
+    
+    for i in range(min(count, len(sorted_items))):
+        key = sorted_items[i][0]
+        del api_cache[tier][key]
+
+async def handle_ai_failure(error, cleaned_grid, analysis_request, correlation_id):
+    """Enhanced error handling with multiple fallback strategies"""
+    error_type = type(error).__name__
+    error_message = str(error)
+    
+    logger.warning(f"AI failure detected: {error_type} - {error_message}", 
+                  correlation_id=correlation_id)
+    
+    # Strategy 1: Try alternative AI model if available
+    if "rate limit" in error_message.lower() or "quota" in error_message.lower():
+        logger.info("Attempting fallback to alternative model", correlation_id=correlation_id)
+        try:
+            # Try with a different model (e.g., GPT-3.5-turbo)
+            fallback_payload = {
+                "model": "gpt-3.5-turbo",
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a content filtering assistant. Return only child IDs to hide, one per line."
+                    },
+                    {
+                        "role": "user",
+                        "content": json.dumps(cleaned_grid, indent=2)
+                    }
+                ],
+                "max_tokens": 256,
+                "temperature": 0.3
+            }
+            
+            async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
+                response = await client.post(OPENAI_URL, headers=OPENAI_HEADERS, json=fallback_payload)
+                if response.status_code == 200:
+                    result = response.json()
+                    ai_response = result['choices'][0]['message']['content'].strip()
+                    parsed_ids = parse_ai_response(ai_response)
+                    
+                    logger.info(f"Fallback model succeeded: {len(parsed_ids)} items", 
+                              correlation_id=correlation_id)
+                    
+                    return {
+                        "success": True,
+                        "data": parsed_ids,
+                        "fallback_used": "gpt-3.5-turbo",
+                        "total_children_to_remove": len(parsed_ids)
+                    }
+        except Exception as fallback_error:
+            logger.warning(f"Fallback model also failed: {fallback_error}", 
+                          correlation_id=correlation_id)
+    
+    # Strategy 2: Use cached similar responses
+    if "timeout" in error_message.lower() or "connection" in error_message.lower():
+        logger.info("Attempting to use cached similar responses", correlation_id=correlation_id)
+        try:
+            # Find similar cached responses
+            similar_response = find_similar_cached_response(cleaned_grid, analysis_request)
+            if similar_response:
+                logger.info("Found similar cached response", correlation_id=correlation_id)
+                return {
+                    "success": True,
+                    "data": similar_response,
+                    "fallback_used": "cached_similar",
+                    "total_children_to_remove": len(similar_response)
+                }
+        except Exception as cache_error:
+            logger.warning(f"Cache fallback failed: {cache_error}", 
+                          correlation_id=correlation_id)
+    
+    # Strategy 3: Use rule-based filtering
+    if "circuit breaker" in error_message.lower():
+        logger.info("Using rule-based filtering fallback", correlation_id=correlation_id)
+        try:
+            rule_based_result = apply_rule_based_filtering(cleaned_grid, analysis_request)
+            if rule_based_result:
+                logger.info(f"Rule-based filtering succeeded: {len(rule_based_result)} items", 
+                          correlation_id=correlation_id)
+                return {
+                    "success": True,
+                    "data": rule_based_result,
+                    "fallback_used": "rule_based",
+                    "total_children_to_remove": len(rule_based_result)
+                }
+        except Exception as rule_error:
+            logger.warning(f"Rule-based fallback failed: {rule_error}", 
+                          correlation_id=correlation_id)
+    
+    # If all fallbacks fail, return None to use final keyword matching
+    return None
+
+def find_similar_cached_response(cleaned_grid, analysis_request):
+    """Find similar cached responses based on content similarity"""
+    # Simple similarity based on grid structure
+    grid_signature = create_grid_signature(cleaned_grid)
+    
+    for tier in ['hot_cache', 'warm_cache', 'cold_cache', 'responses']:
+        for key, cached_data in api_cache[tier].items():
+            if 'grid_signature' in cached_data:
+                similarity = calculate_grid_similarity(grid_signature, cached_data['grid_signature'])
+                if similarity > 0.8:  # 80% similarity threshold
+                    return cached_data['response'].get('data', [])
+    
+    return None
+
+def create_grid_signature(cleaned_grid):
+    """Create a signature for grid structure comparison"""
+    signature = {
+        'total_grids': len(cleaned_grid.get('grids', [])),
+        'total_children': sum(grid.get('totalChildren', 0) for grid in cleaned_grid.get('grids', [])),
+        'avg_text_length': 0
+    }
+    
+    total_text_length = 0
+    text_count = 0
+    
+    for grid in cleaned_grid.get('grids', []):
+        for child in grid.get('children', []):
+            if child.get('text'):
+                total_text_length += len(child['text'])
+                text_count += 1
+    
+    if text_count > 0:
+        signature['avg_text_length'] = total_text_length / text_count
+    
+    return signature
+
+def calculate_grid_similarity(sig1, sig2):
+    """Calculate similarity between two grid signatures"""
+    if not sig1 or not sig2:
+        return 0
+    
+    # Simple similarity calculation
+    total_diff = 0
+    max_diff = 0
+    
+    for key in ['total_grids', 'total_children', 'avg_text_length']:
+        val1 = sig1.get(key, 0)
+        val2 = sig2.get(key, 0)
+        diff = abs(val1 - val2)
+        total_diff += diff
+        max_diff = max(max_diff, val1, val2)
+    
+    if max_diff == 0:
+        return 1.0
+    
+    similarity = 1 - (total_diff / (max_diff * 3))
+    return max(0, similarity)
+
+def apply_rule_based_filtering(cleaned_grid, analysis_request):
+    """Apply rule-based filtering as fallback"""
+    blacklist = analysis_request.blacklist
+    whitelist = analysis_request.whitelist
+    
+    items_to_hide = []
+    
+    for grid in cleaned_grid.get('grids', []):
+        for child in grid.get('children', []):
+            child_text = child.get('text', '').lower()
+            child_id = child.get('id')
+            
+            if not child_id:
+                continue
+            
+            # Check whitelist first (higher priority)
+            whitelist_match = any(term.lower() in child_text for term in whitelist)
+            if whitelist_match:
+                continue  # Keep this item
+            
+            # Check blacklist
+            blacklist_match = any(term.lower() in child_text for term in blacklist)
+            if blacklist_match:
+                items_to_hide.append(child_id)
+    
+    return items_to_hide
 
 # Add session middleware
 # app.add_middleware(
@@ -354,7 +630,7 @@ allow_origins = [o.strip() for o in cors_origins_env.split(',') if o.strip()]
 
 # Secure CORS configuration
 if ENV == "production":
-    # Production: Only allow specific origins
+    # Production: Allow specific origins + Chrome extensions
     if not allow_origins:
         allow_origins = [
             "https://www.doomblocker.com",
@@ -362,7 +638,7 @@ if ENV == "production":
         ]
     allow_credentials = False
     allow_methods = ["GET", "POST", "OPTIONS"]
-    allow_headers = ["Authorization", "Content-Type", "X-Correlation-ID"]
+    allow_headers = ["Authorization", "Content-Type", "X-Correlation-ID", "X-User-Token"]
 else:
     # Development: More permissive but still controlled
     if not allow_origins:
@@ -371,6 +647,25 @@ else:
     allow_methods = ["*"]
     allow_headers = ["*"]
 
+# Custom CORS handler for Chrome extensions
+class ChromeExtensionCORSMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        # Check if request is from Chrome extension
+        origin = request.headers.get("origin")
+        if origin and origin.startswith("chrome-extension://"):
+            # Allow Chrome extension requests
+            response = await call_next(request)
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+            response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type, X-Correlation-ID, X-User-Token"
+            response.headers["Access-Control-Allow-Credentials"] = "false"
+            return response
+        
+        # For non-extension requests, use standard CORS
+        return await call_next(request)
+
+# Add both CORS middlewares
+app.add_middleware(ChromeExtensionCORSMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
@@ -722,6 +1017,11 @@ async def get_blocked_count():
         "last_updated": blocked_items_counter['last_updated']
     }
 
+@app.options("/api/report-blocked-items")
+async def options_report_blocked_items():
+    """Handle CORS preflight for report blocked items endpoint"""
+    return Response(status_code=200)
+
 @app.post("/api/report-blocked-items")
 async def report_blocked_items(request: Request):
     """Report actually blocked items from the extension"""
@@ -779,6 +1079,11 @@ async def report_blocked_items(request: Request):
 
 # User Session and Analytics Endpoints
 
+@app.options("/api/user-session")
+async def options_user_session():
+    """Handle CORS preflight for user session endpoint"""
+    return Response(status_code=200)
+
 @app.post("/api/user-session")
 async def create_user_session(session_request: UserSessionRequest, request: Request):
     """Create or update user session in Supabase"""
@@ -819,6 +1124,11 @@ async def create_user_session(session_request: UserSessionRequest, request: Requ
             content={"success": False, "error": str(e)}
         )
 
+@app.options("/api/blocked-items")
+async def options_blocked_items():
+    """Handle CORS preflight for blocked items endpoint"""
+    return Response(status_code=200)
+
 @app.post("/api/blocked-items")
 async def save_blocked_items(blocked_request: BlockedItemsRequest, request: Request):
     """Save blocked items data to Supabase"""
@@ -858,6 +1168,11 @@ async def save_blocked_items(blocked_request: BlockedItemsRequest, request: Requ
             status_code=500,
             content={"success": False, "error": str(e)}
         )
+
+@app.options("/api/user-metrics")
+async def options_user_metrics():
+    """Handle CORS preflight for user metrics endpoint"""
+    return Response(status_code=200)
 
 @app.post("/api/user-metrics")
 async def save_user_metrics(metrics_request: UserMetricsRequest, request: Request):
@@ -1265,6 +1580,11 @@ async def analytics_frontend(request: Request):
 
     return HTMLResponse(content=html_content)
 
+@app.options("/fetch_distracting_chunks")
+async def options_fetch_distracting_chunks():
+    """Handle CORS preflight for AI analysis endpoint"""
+    return Response(status_code=200)
+
 @app.post("/fetch_distracting_chunks")
 async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, request: Request):
     # Get correlation ID from request state
@@ -1313,24 +1633,92 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
     try:
         prompt_start = time.time()
-        base_system_instruction = get_prompt_for_url(analysis_request.currentUrl, analysis_request.whitelist, analysis_request.blacklist)
+
+        # Expand whitelist/blacklist with simple semantic variants and synonyms for better recall
+        def _generate_variants(term: str) -> list[str]:
+            t = (term or '').strip().lower()
+            if not t:
+                return []
+            variants = {t}
+            # Basic morphological tweaks
+            if len(t) > 2:
+                variants.add(f"{t}s")
+            if t.endswith('y') and len(t) > 3:
+                variants.add(t[:-1] + 'ies')
+            if not t.endswith('ing') and len(t) > 3:
+                variants.add(t + 'ing')
+            if not t.endswith('ed') and len(t) > 3:
+                variants.add(t + 'ed')
+            if not t.endswith('er') and len(t) > 3:
+                variants.add(t + 'er')
+            if not t.endswith('est') and len(t) > 3:
+                variants.add(t + 'est')
+            # Simple obfuscation variants
+            variants.add(t.replace(' ', ''))
+            variants.add(t.replace('-', ' '))
+            variants.add(t.replace(' ', '-'))
+            return list(variants)
+
+        _SYNONYMS: dict[str, list[str]] = {
+            'clickbait': ['bait', 'sensational', "you won't believe", 'shocking', 'overhyped', 'insane', 'crazy', 'gone wrong'],
+            'drama': ['beef', 'tea', 'exposed', 'callout', 'feud'],
+            'gossip': ['rumor', 'rumour', 'tea', 'leak', 'leaked'],
+            'reaction': ['reacts', 'reacting', 'reaction video'],
+            'prank': ['pranks', 'pranking'],
+            'conspiracy': ['theory', 'theories', 'conspiracies'],
+            'shorts': ['short', 'reel', 'reels', 'short video', 'yt shorts'],
+            'mixes': ['mix', 'playlist mix'],
+            'music': ['song', 'track', 'audio', 'lyrics', 'official video', 'mv'],
+            'compilation': ['compilations', 'best of', 'highlights', 'fails']
+        }
+
+        def _expand_terms(terms: list[str] | None) -> list[str]:
+            expanded: list[str] = []
+            seen = set()
+            for term in (terms or []):
+                for v in _generate_variants(term):
+                    if v not in seen:
+                        seen.add(v)
+                        expanded.append(v)
+                base = (term or '').strip().lower()
+                for syn in _SYNONYMS.get(base, []):
+                    for sv in _generate_variants(syn):
+                        if sv not in seen:
+                            seen.add(sv)
+                            expanded.append(sv)
+            # If expansion produced nothing, return original terms
+            return expanded if expanded else (terms or [])
+
+        expanded_whitelist = _expand_terms(analysis_request.whitelist)
+        expanded_blacklist = _expand_terms(analysis_request.blacklist)
+
+        base_system_instruction = get_prompt_for_url(analysis_request.currentUrl, expanded_whitelist, expanded_blacklist)
         logger.info(f"📋 Base system instruction loaded ({time.time() - prompt_start:.3f}s)")
 
-        # Check if OpenAI API is configured
+        # Enhanced content preprocessing before sending to LLM
+        from content_preprocessing import ContentPreprocessor
+        preprocessor = ContentPreprocessor()
+        preprocessed_grid = preprocessor.preprocess_grid_structure(grid_structure, analysis_request.currentUrl)
+        cleaned_grid = clean_grid_structure_for_llm(preprocessed_grid)
+
+        # Check if OpenAI API is configured; if not, use fallback keyword matching instead of failing
         if not OPENAI_HEADERS:
             logger.error("OpenAI API not configured",
                         correlation_id=correlation_id,
                         error="OPENAI_API_KEY missing")
-            raise HTTPException(
-                status_code=503,
-                detail="AI_SERVICE_UNAVAILABLE: OpenAI API not configured"
-            )
+            result = fallback_keyword_matching(cleaned_grid, analysis_request.blacklist)
+            total_children_to_remove = len(result)
+            total_duration = time.time() - start_time
+            logger.info("Using keyword fallback due to missing OpenAI key",
+                        correlation_id=correlation_id,
+                        duration=total_duration,
+                        items_found=total_children_to_remove)
+            # Cache the response for future similar requests
+            cache_response(cache_key, result)
+            return result
 
         # Process entire grid structure in one API call
         api_start = time.time()
-
-        # Clean grid data before sending to LLM
-        cleaned_grid = clean_grid_structure_for_llm(grid_structure)
 
         # Build strong system prompt with explicit schema and valid IDs to avoid hallucinations
         def get_valid_child_ids(cleaned):
@@ -1345,16 +1733,47 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
         def build_system_prompt(base_prompt: str, cleaned: dict) -> str:
             valid_ids = get_valid_child_ids(cleaned)
             ids_block = "\n".join(valid_ids)
-            rules = (
-                "\n\nSTRICT OUTPUT RULES:\n"
+            
+            # Enhanced prompt with better context and decision reasoning
+            enhanced_rules = (
+                "\n\n🧠 ENHANCED ANALYSIS FRAMEWORK:\n"
+                "1. **Content Analysis Depth:**\n"
+                "   - Primary: Title, description, metadata\n"
+                "   - Secondary: View counts, upload dates, badges\n"
+                "   - Context: Platform indicators, quality signals\n\n"
+                "2. **Semantic Understanding:**\n"
+                "   - Intent Recognition: Educational vs entertainment\n"
+                "   - Context Awareness: Tutorial vs reaction vs compilation\n"
+                "   - Quality Indicators: Clickbait patterns, sensational language\n"
+                "   - Cultural Context: References, memes, trending topics\n\n"
+                "3. **Advanced Pattern Detection:**\n"
+                "   - Obfuscation Detection: Leetspeak, spacing tricks, emoji substitution\n"
+                "   - Multilingual Support: Content in different languages\n"
+                "   - Euphemism Recognition: Indirect references to blacklisted topics\n"
+                "   - Temporal Relevance: Outdated vs evergreen content\n\n"
+                "   - Synonym Awareness: Treat synonyms/paraphrases of blacklist terms as matches\n\n"
+                "4. **DECISION MATRIX:**\n"
+                "   | Whitelist Match | Blacklist Match | Decision | Reasoning |\n"
+                "   |----------------|-----------------|----------|----------|\n"
+                "   | Strong | Any | KEEP | Whitelist priority |\n"
+                "   | Weak | Strong | HIDE | Clear blacklist violation |\n"
+                "   | None | Strong | HIDE | Obvious filtering target |\n"
+                "   | None | Weak | HIDE | Conservative approach |\n"
+                "   | Weak | Weak | HIDE | Default to filtering |\n\n"
+                "5. **QUALITY THRESHOLDS:**\n"
+                "   - High Confidence: >80% semantic match to blacklist\n"
+                "   - Medium Confidence: 50-80% match, consider context\n"
+                "   - Low Confidence: <50% match, prefer keeping unless clear whitelist\n\n"
+                "STRICT OUTPUT RULES:\n"
                 "- Output ONLY a newline-separated list of child IDs to hide (e.g., g1c0, g1c5).\n"
                 "- Do NOT include any explanations, JSON, code fences, or extra text.\n"
                 "- If nothing should be hidden, return an empty string.\n"
                 "- You MUST only return IDs from the VALID_CHILD_IDS list below. Never invent IDs.\n"
                 "- Prefer to hide content matching blacklist terms and unrelated to whitelist intent.\n"
+                "- Consider confidence levels and context when making decisions.\n"
                 "\nVALID_CHILD_IDS:\n" + ids_block + "\n"
             )
-            return f"{base_prompt}{rules}"
+            return f"{base_prompt}{enhanced_rules}"
 
         system_instruction = build_system_prompt(base_system_instruction, cleaned_grid)
         content = json.dumps(cleaned_grid, indent=2)
@@ -1367,7 +1786,7 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
 
 
         payload = {
-            "model": "gpt-4o-mini",  # Use a valid OpenAI model
+            "model": "gpt-4o-mini",  # Faster model for lower latency
             "messages": [
                 {
                     "role": "system",
@@ -1378,8 +1797,11 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                     "content": content
                 }
             ],
-            "max_tokens": 256,  # Much smaller for faster response
-            "temperature": 0.6  # Deterministic for consistent results
+            "max_tokens": 512,  # Increased for better analysis
+            "temperature": 0.3,  # Lower for more deterministic results
+            "top_p": 0.9,  # Add top_p for better token selection
+            "frequency_penalty": 0.1,  # Reduce repetition
+            "presence_penalty": 0.1  # Encourage diverse responses
         }
 
         # Use circuit breaker for OpenAI API call
@@ -1399,22 +1821,32 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                         error=str(e),
                         circuit_breaker_state=openai_circuit_breaker.state)
             
-            # Provide graceful fallback
-            if openai_circuit_breaker.state == 'OPEN':
-                logger.info("Using fallback due to circuit breaker open", 
-                           correlation_id=correlation_id)
-                result = fallback_keyword_matching(cleaned_grid, analysis_request.blacklist)
-                total_children_to_remove = len(result)
-                
-                total_duration = time.time() - start_time
-                logger.info("Fallback completed", 
-                           correlation_id=correlation_id,
-                           duration=total_duration,
-                           items_found=total_children_to_remove)
-                
-                return result
-            else:
-                raise HTTPException(status_code=502, detail="AI service temporarily unavailable")
+            # Enhanced fallback with multiple strategies
+            fallback_result = await handle_ai_failure(
+                e, 
+                cleaned_grid, 
+                analysis_request, 
+                correlation_id
+            )
+            
+            if fallback_result:
+                return fallback_result
+            
+            # Final fallback to keyword matching
+            logger.info("Using final fallback: keyword matching", 
+                       correlation_id=correlation_id)
+            result = fallback_keyword_matching(cleaned_grid, analysis_request.blacklist)
+            total_children_to_remove = len(result)
+            
+            total_duration = time.time() - start_time
+            logger.info("Fallback completed", 
+                        correlation_id=correlation_id,
+                        duration=total_duration,
+                        items_found=total_children_to_remove)
+            
+            return result
+        else:
+            raise HTTPException(status_code=502, detail="AI service temporarily unavailable")
 
         api_result = response.json()
         response_content = api_result['choices'][0]['message']['content'].strip()
