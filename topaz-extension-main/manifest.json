@@ -96,6 +96,7 @@
         "content/video-effects.css",
         "content/loading.html",
         "content/config.json",
+        "popup/profile.html",
         "logo.svg"
       ],
       "matches": ["http://*/*", "https://*/*"]

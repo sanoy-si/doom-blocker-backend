@@ -479,42 +479,11 @@ function handleSettingsOpen() {
 
 // Handle profile button click - opens analytics in new tab
 async function handleProfileOpen() {
-  console.log('👤 Profile button clicked - opening analytics');
   try {
-    // Get user session ID for analytics
-    const sessionId = await getUserSessionId();
-
-    console.log('🔍 Retrieved session ID:', sessionId);
-
-    // Always get fresh background stats and send to backend
-    await sendCurrentStatsToBackend(sessionId);
-
-    // Small delay to ensure data is processed before opening analytics
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Always construct URL with session ID (we always have one now)
-    const analyticsUrl = `https://topaz-backend1.onrender.com/analytics?session=${sessionId}`;
-
-    // Open analytics in new tab
-    chrome.tabs.create({ url: analyticsUrl });
-
-    console.log('✅ Analytics tab opened:', analyticsUrl);
-
-    // Show success notification
-    window.ui?.showNotification?.({
-      type: 'success',
-      message: 'Analytics opened in new tab',
-      duration: 2000
-    });
-
+    const profileUrl = chrome.runtime.getURL('popup/profile.html');
+    chrome.tabs.create({ url: profileUrl });
   } catch (error) {
-    console.error('❌ Error opening analytics:', error);
-    // Show error notification
-    window.ui?.showNotification?.({
-      type: 'error',
-      message: 'Failed to open analytics',
-      duration: 3000
-    });
+    console.error('Error opening profile page:', error);
   }
 }
 
