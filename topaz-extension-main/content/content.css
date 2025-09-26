@@ -609,3 +609,98 @@ html, body {
 .topaz-youtube-comments-hidden {
     display: none !important;
 }
+
+/* Conditional YouTube Shorts Blocking - Only when enabled */
+/* These rules only apply when the body has the 'topaz-block-shorts' class */
+
+body.topaz-block-shorts ytd-rich-shelf-renderer[is-shorts],
+body.topaz-block-shorts ytd-reel-shelf-renderer,
+body.topaz-block-shorts ytd-shorts-shelf-renderer,
+body.topaz-block-shorts [is="ytd-reel-shelf-renderer"],
+body.topaz-block-shorts [is="ytd-rich-shelf-renderer"][is-shorts] {
+    display: none !important;
+}
+
+/* Shorts player and container */
+body.topaz-block-shorts #shorts-player,
+body.topaz-block-shorts [data-testid="shorts-player"],
+body.topaz-block-shorts ytd-shorts,
+body.topaz-block-shorts #shorts-container,
+body.topaz-block-shorts .ytd-shorts,
+body.topaz-block-shorts ytd-shorts-player {
+    display: none !important;
+}
+
+/* Shorts sidebar navigation */
+body.topaz-block-shorts ytd-guide-entry-renderer:has(a[href*="/shorts"]),
+body.topaz-block-shorts ytd-mini-guide-entry-renderer:has(a[href*="/shorts"]),
+body.topaz-block-shorts a[href*="/shorts"][role="tab"],
+body.topaz-block-shorts a[href="/shorts"],
+body.topaz-block-shorts a[href*="youtube.com/shorts"] {
+    display: none !important;
+}
+
+/* Fallback for browsers without :has() support - Shorts sidebar navigation */
+body.topaz-block-shorts ytd-guide-entry-renderer a[href*="/shorts"],
+body.topaz-block-shorts ytd-mini-guide-entry-renderer a[href*="/shorts"] {
+    display: none !important;
+}
+
+/* Hide parent containers of Shorts links in sidebar */
+body.topaz-block-shorts ytd-guide-entry-renderer:has-text("Shorts"),
+body.topaz-block-shorts ytd-mini-guide-entry-renderer:has-text("Shorts") {
+    display: none !important;
+}
+
+/* Shorts in search results */
+body.topaz-block-shorts ytd-video-renderer:has([href*="/shorts"]),
+body.topaz-block-shorts ytd-compact-video-renderer:has([href*="/shorts"]),
+body.topaz-block-shorts ytd-rich-item-renderer:has([href*="/shorts"]) {
+    display: none !important;
+}
+
+/* Fallback for browsers without :has() support - Shorts in search results */
+body.topaz-block-shorts ytd-video-renderer a[href*="/shorts"],
+body.topaz-block-shorts ytd-compact-video-renderer a[href*="/shorts"],
+body.topaz-block-shorts ytd-rich-item-renderer a[href*="/shorts"] {
+    display: none !important;
+}
+
+/* Shorts thumbnails and video items */
+body.topaz-block-shorts [href*="/shorts"],
+body.topaz-block-shorts a[href*="/shorts"] {
+    display: none !important;
+}
+
+/* Shorts section headers and titles */
+body.topaz-block-shorts [aria-label*="Shorts"],
+body.topaz-block-shorts [data-testid*="shorts"],
+body.topaz-block-shorts h2:has-text("Shorts"),
+body.topaz-block-shorts #shorts-title,
+body.topaz-block-shorts .shorts-video-title,
+body.topaz-block-shorts [title*="Shorts"] {
+    display: none !important;
+}
+
+/* Mobile YouTube Shorts */
+body.topaz-block-shorts .shorts-video-cell,
+body.topaz-block-shorts .shorts-lockup,
+body.topaz-block-shorts .reel-item-endpoint,
+body.topaz-block-shorts [data-context-item-id*="shorts"] {
+    display: none !important;
+}
+
+/* Shorts creation button */
+body.topaz-block-shorts ytd-topbar-menu-button-renderer:has([aria-label*="Create"]) .ytd-topbar-menu-button-renderer:has([href*="/upload"]),
+body.topaz-block-shorts #create-icon,
+body.topaz-block-shorts ytd-topbar-menu-button-renderer[aria-label*="Create a Short"] {
+    display: none !important;
+}
+
+/* Additional Shorts elements that might appear */
+body.topaz-block-shorts .ytd-reel-shelf-renderer,
+body.topaz-block-shorts .ytd-rich-shelf-renderer[is-shorts] .ytd-rich-shelf-renderer,
+body.topaz-block-shorts [data-target-id*="shorts"],
+body.topaz-block-shorts [data-context-item-type="shorts"] {
+    display: none !important;
+}
