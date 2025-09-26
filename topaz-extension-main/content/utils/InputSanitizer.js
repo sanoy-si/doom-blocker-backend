@@ -108,3 +108,5 @@ if (typeof module !== 'undefined' && module.exports) {
 } else if (typeof window !== 'undefined') {
   window.InputSanitizer = InputSanitizer;
 }
+// Make InputSanitizer available globally for content script
+window.InputSanitizer = InputSanitizer;

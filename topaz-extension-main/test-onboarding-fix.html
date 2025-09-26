@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Onboarding Fix - Shows Only Once</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f8f9fa;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .step {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .success {
+            background: #e8f5e8;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .warning {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .test-link {
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 10px 5px;
+            font-weight: bold;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .reset-link {
+            background: #dc3545;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 5px;
+            font-size: 14px;
+        }
+        .reset-link:hover {
+            background: #c82333;
+        }
+        code {
+            background: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Test Onboarding Fix: Shows Only Once</h1>
+
+        <div class="success">
+            <strong>✅ FIXED:</strong> Onboarding now shows only on the first visit with <code>doomGuide=1</code>,
+            then is permanently marked as completed using Chrome storage.
+        </div>
+
+        <h2>🧪 Testing Instructions</h2>
+
+        <div class="step">
+            <strong>Step 1:</strong> Reset onboarding state<br>
+            <a href="reset-onboarding.html" target="_blank" class="reset-link">🔄 Open Reset Tool</a>
+            <br><small>Click "Reset Onboarding" to clear the completion flag</small>
+        </div>
+
+        <div class="step">
+            <strong>Step 2:</strong> Test first visit (should show onboarding)<br>
+            <a href="https://www.youtube.com/?doomGuide=1" target="_blank" class="test-link">
+                🎯 Test Query Parameter
+            </a>
+            <a href="https://www.youtube.com/#doomGuide=1" target="_blank" class="test-link">
+                🎯 Test Hash Parameter
+            </a>
+            <br><small>Onboarding should appear on first click</small>
+        </div>
+
+        <div class="step">
+            <strong>Step 3:</strong> Close the onboarding overlay<br>
+            <small>Click outside the overlay or use the close button. This marks onboarding as completed.</small>
+        </div>
+
+        <div class="step">
+            <strong>Step 4:</strong> Test subsequent visits (should NOT show onboarding)<br>
+            <a href="https://www.youtube.com/?doomGuide=1" target="_blank" class="test-link">
+                🔍 Test Again (Should Not Show)
+            </a>
+            <br><small>Onboarding should NOT appear on repeated visits</small>
+        </div>
+
+        <h2>🔍 What Was Fixed</h2>
+
+        <div class="warning">
+            <strong>❌ Before:</strong> Onboarding showed every time <code>https://www.youtube.com/?doomGuide=1</code> was visited
+        </div>
+
+        <div class="success">
+            <strong>✅ After:</strong> Onboarding shows only once, then is permanently disabled using Chrome storage
+        </div>
+
+        <h2>📝 Technical Details</h2>
+
+        <p>The fix involved:</p>
+        <ul>
+            <li><strong>Chrome Storage:</strong> Using <code>chrome.storage.local</code> instead of sessionStorage</li>
+            <li><strong>Persistent Tracking:</strong> Setting <code>onboardingCompleted: true</code> when closed</li>
+            <li><strong>Early Exit:</strong> Checking completion status before showing overlay</li>
+            <li><strong>Both Scripts:</strong> Updated both onboarding content scripts for consistency</li>
+        </ul>
+
+        <h2>🐛 Debug Console Output</h2>
+
+        <p>You should see these messages in the browser console:</p>
+        <ul>
+            <li><code>🎯 [Onboarding] First time visit detected, showing onboarding...</code> (first visit)</li>
+            <li><code>🎯 [Onboarding] Marking onboarding as completed</code> (when closed)</li>
+            <li><code>🎯 [Onboarding] User has already completed onboarding, skipping...</code> (subsequent visits)</li>
+        </ul>
+
+        <h2>🔄 Reset for Re-Testing</h2>
+
+        <p>To test again after completing onboarding:</p>
+        <ol>
+            <li>Open the <a href="reset-onboarding.html" target="_blank" class="reset-link">Reset Tool</a></li>
+            <li>Click "Reset Onboarding"</li>
+            <li>Test the links above again</li>
+        </ol>
+
+        <div class="warning">
+            <strong>Note:</strong> The onboarding state is stored per Chrome profile, so it persists across browser restarts but can be reset using the tool above.
+        </div>
+    </div>
+
+    <script>
+        console.log('🧪 Onboarding Fix Test Page loaded');
+        console.log('📝 Use the links above to test the one-time onboarding functionality');
+        console.log('🔄 Use the reset tool to test multiple times');
+    </script>
+</body>
+</html>

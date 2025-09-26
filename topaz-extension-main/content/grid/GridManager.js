@@ -10,8 +10,8 @@ class GridManager {
   }
 
 
-  findAllGridContainers() {
-    const gridElements = this.gridDetector.findAllGridContainers();
+  findAllGridContainers(forceComprehensive = false) {
+    const gridElements = this.gridDetector.findAllGridContainers(forceComprehensive);
     const newGrids = [];
     for (const gridElement of gridElements) {
       let existingGrid = this.getGridByElement(gridElement);
@@ -100,45 +100,64 @@ class GridManager {
   }
 
   /**
-   * Incrementally update grids based on DOM added nodes.
+   * 🚀 PERFORMANCE FIX: Incrementally update grids based on DOM added nodes.
+   * Uses the new efficient method to only process relevant nodes.
    * Returns an array of grid objects that were newly added or updated.
    */
   updateGridsNearNodes(addedNodes) {
     if (!addedNodes || addedNodes.length === 0) return [];
 
+    console.time('🔧 GridManager.updateGridsNearNodes');
+
+    // Use the new efficient method from GridDetector
+    const newGridContainers = this.gridDetector.findGridContainersFromNodes(addedNodes);
     const updated = new Set();
 
-    const considerElement = (el) => {
-      if (!el || !el.nodeType || el.nodeType !== 1) return; // Only element nodes
-      const gridContainer = this.gridDetector.findGridContainer(el);
-      if (!gridContainer) return;
-      // Validate grid
-      if (!this.gridDetector.isGridValid(gridContainer)) return;
-
+    // Process found grid containers
+    for (const gridContainer of newGridContainers) {
       let grid = this.getGridByElement(gridContainer);
       if (!grid) {
         grid = this.addGrid(gridContainer);
+        if (grid) {
+          console.log(`➕ Added new grid: ${grid.id} with ${grid.children.length} children`);
+        }
       } else {
+        const oldChildCount = grid.children.length;
         this.updateGridChildren(grid);
-      }
-      if (grid) updated.add(grid);
-    };
-
-    // Check each added node and some ancestors to find nearest grid container
-    for (const node of addedNodes) {
-      if (!node) continue;
-      if (node.nodeType === 1) {
-        considerElement(node);
-        // Also consider up to 3 ancestors to catch containers
-        let ancestor = node.parentElement;
-        let depth = 0;
-        while (ancestor && depth < 3) {
-          considerElement(ancestor);
-          ancestor = ancestor.parentElement;
-          depth++;
+        const newChildCount = grid.children.length;
+        if (newChildCount > oldChildCount) {
+          console.log(`🔄 Updated existing grid: ${grid.id} (${oldChildCount} → ${newChildCount} children)`);
         }
       }
+      if (grid) updated.add(grid);
     }
+
+    // Also check for new children in existing grids near the added nodes
+    for (const node of addedNodes) {
+      if (!node || node.nodeType !== 1) continue;
+
+      // Find existing grids that might contain this new node
+      let ancestor = node.parentElement;
+      let depth = 0;
+      while (ancestor && depth < 5) { // Check up to 5 levels up
+        const existingGrid = this.getGridByElement(ancestor);
+        if (existingGrid) {
+          const oldChildCount = existingGrid.children.length;
+          this.updateGridChildren(existingGrid);
+          const newChildCount = existingGrid.children.length;
+          if (newChildCount > oldChildCount) {
+            console.log(`🔄 Found new children in existing grid: ${existingGrid.id} (${oldChildCount} → ${newChildCount} children)`);
+            updated.add(existingGrid);
+          }
+          break; // Found a grid container, no need to go further up
+        }
+        ancestor = ancestor.parentElement;
+        depth++;
+      }
+    }
+
+    console.timeEnd('🔧 GridManager.updateGridsNearNodes');
+    console.log(`⚡ Processed ${addedNodes.length} added nodes, updated ${updated.size} grids`);
 
     return Array.from(updated);
   }
@@ -239,4 +258,5 @@ class GridManager {
   destroy() {
     this.reset();
   }
-} 
+} // Make GridManager available globally for content script
+window.GridManager = GridManager;

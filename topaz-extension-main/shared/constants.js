@@ -202,28 +202,28 @@ export const CONFIG = {
 
 export const DEFAULT_TAGS = {
   'youtube.com': {
-    defaultWhitelist: [],
-    defaultBlacklist: []
+    defaultWhitelist: ['educational', 'tutorial', 'learning', 'documentary', 'science', 'how-to'],
+    defaultBlacklist: ['clickbait', 'drama', 'gossip', 'reaction', 'prank', 'controversial', 'outrage', 'scandal', 'beef', 'exposed', 'shorts', 'mixes']
   },
   'twitter.com': {
-    defaultWhitelist: [],
-    defaultBlacklist: []
+    defaultWhitelist: ['news', 'technology', 'science', 'education', 'business'],
+    defaultBlacklist: ['drama', 'gossip', 'controversial', 'outrage', 'scandal', 'beef', 'exposed', 'clickbait']
   },
   'x.com': {
-    defaultWhitelist: [],
-    defaultBlacklist: []
+    defaultWhitelist: ['news', 'technology', 'science', 'education', 'business'],
+    defaultBlacklist: ['drama', 'gossip', 'controversial', 'outrage', 'scandal', 'beef', 'exposed', 'clickbait']
   },
   'linkedin.com': {
-    defaultWhitelist: [],
-    defaultBlacklist: []
+    defaultWhitelist: ['career', 'professional', 'business', 'networking', 'industry'],
+    defaultBlacklist: ['controversial', 'political', 'personal', 'drama', 'gossip']
   },
   'reddit.com': {
-    defaultWhitelist: [],
-    defaultBlacklist: []
+    defaultWhitelist: ['educational', 'science', 'technology', 'programming', 'learning'],
+    defaultBlacklist: ['drama', 'controversial', 'outrage', 'scandal', 'beef', 'exposed', 'clickbait']
   }
 };
 
-// Default profiles for new installations (disabled by default)
+// Default profiles for new installations (enabled by default for AI to work)
 export const DEFAULT_PROFILES = [
   {
     profileName: "YouTube",
@@ -232,7 +232,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['youtube.com'],
-    isEnabled: false,
+    isEnabled: true, // ✅ ENABLED BY DEFAULT - AI needs this to work!
     colour: "#ff0000",
     isDefault: true
   },
@@ -243,7 +243,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['twitter.com', 'x.com'],
-    isEnabled: false,
+    isEnabled: true, // ✅ ENABLED BY DEFAULT - AI needs this to work!
     colour: "#1da1f2",
     isDefault: true
   },
@@ -254,7 +254,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['linkedin.com'],
-    isEnabled: false,
+    isEnabled: true, // ✅ ENABLED BY DEFAULT - AI needs this to work!
     colour: "#0077b5",
     isDefault: true
   },
@@ -265,7 +265,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['reddit.com'],
-    isEnabled: false,
+    isEnabled: true, // ✅ ENABLED BY DEFAULT - AI needs this to work!
     colour: "#ff4500",
     isDefault: true
   }

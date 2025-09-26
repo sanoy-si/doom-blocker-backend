@@ -262,29 +262,46 @@ class ContentFingerprint {
      * @param {HTMLElement} element - DOM element to check
      * @returns {Object} Result object with shouldDelete flag and match info
      */
-    checkForAutoDelete(element) {
+    checkForAutoDelete(element, filterCriteria = null) {
         const text = this.extractText(element);
-        
+
         // Skip if text is too short
         if (text.length < this.minTextLength) {
             return { shouldDelete: false, reason: 'text_too_short' };
         }
-        
+
+        // 🚀 CRITICAL FIX: Check against current filter words FIRST!
+        if (filterCriteria && filterCriteria.allFilterWords && filterCriteria.allFilterWords.length > 0) {
+            const lowerText = text.toLowerCase();
+
+            for (const filterWord of filterCriteria.allFilterWords) {
+                if (filterWord && filterWord.trim() && lowerText.includes(filterWord.toLowerCase().trim())) {
+                    console.log(`🎯 [FILTER MATCH] Text contains filter word "${filterWord}"`);
+                    return {
+                        shouldDelete: true,
+                        reason: 'matches_filter_word',
+                        matchedWord: filterWord,
+                        textPreview: text.substring(0, 100)
+                    };
+                }
+            }
+        }
+
         const fingerprint = this.generateSimhash(text);
-        
-        // Check if similar deleted fingerprint exists
+
+        // Check if similar deleted fingerprint exists (secondary check)
         const deletedMatch = this.findSimilarDeletedFingerprint(fingerprint);
-        
+
         if (deletedMatch) {
             const distance = this.hammingDistance(fingerprint, deletedMatch);
-            return { 
-                shouldDelete: true, 
+            return {
+                shouldDelete: true,
                 reason: 'similar_to_deleted',
                 matchedFingerprint: deletedMatch,
                 distance: distance
             };
         } else {
-            return { shouldDelete: false, reason: 'no_deleted_match' };
+            return { shouldDelete: false, reason: 'no_match' };
         }
     }
 
@@ -342,4 +359,5 @@ class ContentFingerprint {
         }
         return null;
     }
-}
+}// Make ContentFingerprint available globally for content script
+window.ContentFingerprint = ContentFingerprint;

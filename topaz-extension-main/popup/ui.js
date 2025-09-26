@@ -1286,6 +1286,11 @@ window.removeTagFromSimpleMode = async function(tag) {
   const shouldShowCustomTags = await shouldShowCustomTagsForCurrentSite(state.isCustomizationEnabled);
   if (!shouldShowCustomTags) {
     console.warn('Custom tag modification not allowed: customization disabled');
+    window.ui?.showNotification?.({
+      type: 'warning',
+      message: 'Enable customization to add filters',
+      duration: 2000
+    });
     return;
   }
   
@@ -1385,6 +1390,11 @@ window.addTagToSimpleMode = async function(value, listType) {
   const shouldShowCustomTags = await shouldShowCustomTagsForCurrentSite(state.isCustomizationEnabled);
   if (!shouldShowCustomTags) {
     console.warn('Custom tag modification not allowed: customization disabled');
+    window.ui?.showNotification?.({
+      type: 'warning',
+      message: 'Enable customization to add filters',
+      duration: 2000
+    });
     return;
   }
   
@@ -1463,8 +1473,18 @@ window.addTagToSimpleMode = async function(value, listType) {
   // Re-render the chips
   renderSimpleChips(currentProfile.customWhitelist || [], elements.simpleWhitelistChips);
   renderSimpleChips(currentProfile.customBlacklist || [], elements.simpleBlacklistChips);
-  
-  console.log('Tag added successfully');
+
+  // 🚀 CRITICAL FIX: Trigger progressive filtering after adding tags
+  console.log('🔄 Tag added successfully, triggering progressive filtering...');
+
+  if (window.backgroundAPI && window.backgroundAPI.triggerInstantFiltering) {
+    try {
+      const result = await window.backgroundAPI.triggerInstantFiltering();
+      console.log('✅ Progressive filtering triggered after tag addition:', result);
+    } catch (error) {
+      console.error('❌ Failed to trigger progressive filtering after tag addition:', error);
+    }
+  }
 };
 
 // Reset simple mode to defaults

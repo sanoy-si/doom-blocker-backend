@@ -187,4 +187,5 @@ class ConfigManager {
     console.log("🔍 [TOPAZ DEBUG] ConfigManager.resetToDefaults called");
     this.resetConfig();
   }
-} 
+} // Make ConfigManager available globally for content script
+window.ConfigManager = ConfigManager;

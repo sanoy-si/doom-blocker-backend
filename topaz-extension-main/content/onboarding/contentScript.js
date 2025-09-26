@@ -1,6 +1,6 @@
 // contentScript.js
 // Shows an onboarding overlay on YouTube when URL contains doomGuide=1.
-// Keeps it one-time per tab via sessionStorage.
+// Keeps it one-time per user via Chrome storage (persistent across sessions).
 
 (function () {
   const url = new URL(location.href);
@@ -9,10 +9,19 @@
   const fromHash = url.hash && new URLSearchParams(url.hash.slice(1)).get("doomGuide");
   if ((fromQuery || fromHash) !== "1") return;
 
-  const SESSION_KEY = "doom_onboard_done";
-  if (sessionStorage.getItem(SESSION_KEY) === "1") return;
+  // Check if user has already seen onboarding (persistent storage)
+  chrome.storage.local.get(['onboardingCompleted'], (result) => {
+    if (result.onboardingCompleted) {
+      console.log("🎯 [Onboarding] User has already completed onboarding, skipping...");
+      return;
+    }
 
-  // Create overlay UI
+    console.log("🎯 [Onboarding] First time visit detected, showing onboarding...");
+    showOnboardingUI();
+  });
+
+  function showOnboardingUI() {
+    // Create overlay UI
   const overlay = document.createElement("div");
   overlay.id = "doom-onboard-overlay";
 
@@ -174,7 +183,8 @@
   }
 
   function completeAndClose() {
-    sessionStorage.setItem(SESSION_KEY, "1");
+    console.log("🎯 [Onboarding] Marking onboarding as completed");
+    chrome.storage.local.set({ onboardingCompleted: true });
     overlay.style.display = "none";
     cornerTip.remove();
     overlay.remove();
@@ -194,12 +204,13 @@
     });
   }
 
-  // Mount overlay
-  overlay.appendChild(card);
-  document.documentElement.appendChild(overlay);
-  document.documentElement.appendChild(cornerTip);
+    // Mount overlay
+    overlay.appendChild(card);
+    document.documentElement.appendChild(overlay);
+    document.documentElement.appendChild(cornerTip);
 
-  // Show overlay and step A
-  overlay.style.display = "block";
-  renderStep();
+    // Show overlay and step A
+    overlay.style.display = "block";
+    renderStep();
+  }
 })();

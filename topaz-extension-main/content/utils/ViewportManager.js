@@ -1,9 +1,10 @@
 /**
+ * 🚀 MEMORY LEAK FIX: ViewportManager with proper resource cleanup
  * Manages viewport detection, scroll monitoring, and intelligent content filtering
  * Prioritizes visible content and pauses processing when user stops interacting
  */
 class ViewportManager {
-  constructor() {
+  constructor(resourceManager = null) {
     this.scrollTimeout = null;
     this.isScrolling = false;
     this.lastScrollTime = 0;
@@ -17,12 +18,24 @@ class ViewportManager {
       onVisibilityChange: []
     };
 
+    // 🚀 MEMORY LEAK FIX: Store ResourceManager for proper cleanup
+    this.resourceManager = resourceManager;
+
+    // 🚀 MEMORY LEAK FIX: Store bound function references for cleanup
+    this.boundHandlers = {
+      scroll: null,
+      wheel: null,
+      touchmove: null,
+      visibilitychange: null,
+      resize: null
+    };
+
     this.setupScrollDetection();
     this.setupVisibilityDetection();
   }
 
   /**
-   * Setup scroll detection with debouncing
+   * 🚀 MEMORY LEAK FIX: Setup scroll detection with proper cleanup
    */
   setupScrollDetection() {
     let scrollStartTimeout = null;
@@ -40,26 +53,54 @@ class ViewportManager {
 
       // Clear existing timeout
       if (this.scrollTimeout) {
-        clearTimeout(this.scrollTimeout);
+        // Use ResourceManager if available, fallback to regular clearTimeout
+        if (this.resourceManager && this.resourceManager.clearTimeout) {
+          this.resourceManager.clearTimeout(this.scrollTimeout);
+        } else {
+          clearTimeout(this.scrollTimeout);
+        }
       }
 
       // Set timeout for scroll stop detection
-      this.scrollTimeout = setTimeout(() => {
-        this.isScrolling = false;
-        this.processingPaused = true;
-        this.notifyCallbacks('onScrollStop');
-        this.processPendingWork();
-      }, this.scrollPauseDelay);
+      if (this.resourceManager && this.resourceManager.setTimeout) {
+        this.scrollTimeout = this.resourceManager.setTimeout(() => {
+          this.isScrolling = false;
+          this.processingPaused = true;
+          this.notifyCallbacks('onScrollStop');
+          this.processPendingWork();
+        }, this.scrollPauseDelay);
+      } else {
+        this.scrollTimeout = setTimeout(() => {
+          this.isScrolling = false;
+          this.processingPaused = true;
+          this.notifyCallbacks('onScrollStop');
+          this.processPendingWork();
+        }, this.scrollPauseDelay);
+      }
     };
 
-    // Use passive listeners for better performance
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('wheel', handleScroll, { passive: true });
-    document.addEventListener('touchmove', handleScroll, { passive: true });
+    // 🚀 MEMORY LEAK FIX: Store bound function references
+    this.boundHandlers.scroll = handleScroll;
+    this.boundHandlers.wheel = handleScroll;
+    this.boundHandlers.touchmove = handleScroll;
+
+    // Use ResourceManager if available for tracked event listeners
+    if (this.resourceManager && this.resourceManager.addEventListener) {
+      console.log('✅ [ViewportManager] Using ResourceManager for scroll event listeners');
+      this.resourceManager.addEventListener(window, 'scroll', handleScroll, { passive: true });
+      this.resourceManager.addEventListener(document, 'wheel', handleScroll, { passive: true });
+      this.resourceManager.addEventListener(document, 'touchmove', handleScroll, { passive: true });
+    } else {
+      // Fallback to direct event listeners (with memory leak warning)
+      console.warn('⚠️ [ViewportManager] No ResourceManager - using direct event listeners (memory leak risk)');
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      document.addEventListener('wheel', handleScroll, { passive: true });
+      document.addEventListener('touchmove', handleScroll, { passive: true });
+    }
   }
 
   /**
-   * Setup viewport visibility change detection
+   * 🚀 MEMORY LEAK FIX: Setup viewport visibility change detection with proper cleanup
    */
   setupVisibilityDetection() {
     let lastVisibilityCheck = 0;
@@ -73,11 +114,21 @@ class ViewportManager {
       this.notifyCallbacks('onVisibilityChange');
     };
 
-    // Listen for page visibility changes
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // 🚀 MEMORY LEAK FIX: Store bound function references
+    this.boundHandlers.visibilitychange = handleVisibilityChange;
+    this.boundHandlers.resize = handleVisibilityChange;
 
-    // Listen for resize events that might affect viewport
-    window.addEventListener('resize', handleVisibilityChange, { passive: true });
+    // Use ResourceManager if available for tracked event listeners
+    if (this.resourceManager && this.resourceManager.addEventListener) {
+      console.log('✅ [ViewportManager] Using ResourceManager for visibility event listeners');
+      this.resourceManager.addEventListener(document, 'visibilitychange', handleVisibilityChange);
+      this.resourceManager.addEventListener(window, 'resize', handleVisibilityChange, { passive: true });
+    } else {
+      // Fallback to direct event listeners (with memory leak warning)
+      console.warn('⚠️ [ViewportManager] No ResourceManager - using direct event listeners (memory leak risk)');
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('resize', handleVisibilityChange, { passive: true });
+    }
   }
 
   /**
@@ -298,17 +349,68 @@ class ViewportManager {
   }
 
   /**
-   * Cleanup and remove event listeners
+   * 🚀 MEMORY LEAK FIX: Cleanup and remove ALL event listeners
    */
   destroy() {
+    console.log('🧹 [ViewportManager] Starting cleanup...');
+
+    // Clear timeout
     if (this.scrollTimeout) {
-      clearTimeout(this.scrollTimeout);
+      if (this.resourceManager && this.resourceManager.clearTimeout) {
+        this.resourceManager.clearTimeout(this.scrollTimeout);
+      } else {
+        clearTimeout(this.scrollTimeout);
+      }
       this.scrollTimeout = null;
     }
 
-    // Note: We don't remove the event listeners as they're added to window/document
-    // and would require keeping references to the bound functions
+    // 🚀 MEMORY LEAK FIX: Remove ALL event listeners using stored references
+    if (this.resourceManager && this.resourceManager.addEventListener) {
+      // If we used ResourceManager, it will clean up automatically when destroyed
+      console.log('✅ [ViewportManager] ResourceManager will handle event listener cleanup');
+    } else {
+      // Manually remove event listeners that were added directly
+      console.log('🧹 [ViewportManager] Manually removing event listeners...');
+
+      if (this.boundHandlers.scroll) {
+        window.removeEventListener('scroll', this.boundHandlers.scroll);
+        console.log('🧹 [ViewportManager] Removed scroll listener from window');
+      }
+
+      if (this.boundHandlers.wheel) {
+        document.removeEventListener('wheel', this.boundHandlers.wheel);
+        console.log('🧹 [ViewportManager] Removed wheel listener from document');
+      }
+
+      if (this.boundHandlers.touchmove) {
+        document.removeEventListener('touchmove', this.boundHandlers.touchmove);
+        console.log('🧹 [ViewportManager] Removed touchmove listener from document');
+      }
+
+      if (this.boundHandlers.visibilitychange) {
+        document.removeEventListener('visibilitychange', this.boundHandlers.visibilitychange);
+        console.log('🧹 [ViewportManager] Removed visibilitychange listener from document');
+      }
+
+      if (this.boundHandlers.resize) {
+        window.removeEventListener('resize', this.boundHandlers.resize);
+        console.log('🧹 [ViewportManager] Removed resize listener from window');
+      }
+    }
+
+    // Clear all references
+    this.boundHandlers = {
+      scroll: null,
+      wheel: null,
+      touchmove: null,
+      visibilitychange: null,
+      resize: null
+    };
+
     this.callbacks = { onScrollStart: [], onScrollStop: [], onVisibilityChange: [] };
     this.pendingWork = [];
+    this.resourceManager = null;
+
+    console.log('✅ [ViewportManager] Cleanup complete - all event listeners removed');
   }
 }

@@ -1,13 +1,75 @@
+// 🚀 MEMORY LEAK FIX: Simple popup cleanup system
+class PopupCleanup {
+  constructor() {
+    this.eventListeners = [];
+    this.intervals = [];
+    this.timeouts = [];
+  }
+
+  addEventListener(target, event, handler, options) {
+    target.addEventListener(event, handler, options);
+    this.eventListeners.push({ target, event, handler });
+  }
+
+  setInterval(handler, delay) {
+    const id = setInterval(handler, delay);
+    this.intervals.push(id);
+    return id;
+  }
+
+  setTimeout(handler, delay) {
+    const id = setTimeout(handler, delay);
+    this.timeouts.push(id);
+    return id;
+  }
+
+  cleanup() {
+    console.log('🧹 [PopupCleanup] Cleaning up popup resources...');
+
+    // Remove event listeners
+    this.eventListeners.forEach(({ target, event, handler }) => {
+      try {
+        target.removeEventListener(event, handler);
+      } catch (error) {
+        console.warn('Failed to remove event listener:', error);
+      }
+    });
+
+    // Clear intervals
+    this.intervals.forEach(id => {
+      try {
+        clearInterval(id);
+      } catch (error) {
+        console.warn('Failed to clear interval:', error);
+      }
+    });
+
+    // Clear timeouts
+    this.timeouts.forEach(id => {
+      try {
+        clearTimeout(id);
+      } catch (error) {
+        console.warn('Failed to clear timeout:', error);
+      }
+    });
+
+    console.log(`✅ [PopupCleanup] Cleaned up ${this.eventListeners.length} listeners, ${this.intervals.length} intervals, ${this.timeouts.length} timeouts`);
+  }
+}
+
+// Global popup cleanup instance
+window.popupCleanup = new PopupCleanup();
+
 async function initializePopup() {
   console.log('🚀 Initializing Doom Blocker popup...');
-  
+
   try {
     // Check if all required modules are available
     console.log('🔍 Checking module availability...');
     console.log('- window.ui:', !!window.ui);
     console.log('- window.appState:', !!window.appState);
     console.log('- window.backgroundAPI:', !!window.backgroundAPI);
-    
+
     if (!window.ui) {
       throw new Error('UI module not loaded');
     }
@@ -48,14 +110,15 @@ async function initializePopup() {
     // Sync preview button with current tab state
     await syncPreviewButtonState();
 
-    // Keyboard shortcut: Ctrl/Cmd + Shift + H toggles preview
-    window.addEventListener('keydown', (e) => {
+    // 🚀 MEMORY LEAK FIX: Keyboard shortcut with cleanup tracking
+    const keydownHandler = (e) => {
       const isModifier = (e.ctrlKey || e.metaKey) && e.shiftKey;
       if (isModifier && (e.key === 'h' || e.key === 'H')) {
         e.preventDefault();
         handlePreviewToggleClick();
       }
-    });
+    };
+    window.popupCleanup.addEventListener(window, 'keydown', keydownHandler);
     
     console.log('✅ Popup initialized successfully');
     
@@ -247,11 +310,11 @@ function setupEventListeners() {
     tag.addEventListener('click', () => handleSuggestionTagClick(tag.dataset.tag));
   });
 
-  // YouTube feature toggles - use event delegation for more reliability
+  // 🚀 MEMORY LEAK FIX: YouTube feature toggles with cleanup tracking
   console.log('Setting up YouTube toggle event listeners...');
-  
+
   // Use event delegation on the document to catch clicks on toggle inputs
-  document.addEventListener('change', (event) => {
+  const changeHandler = (event) => {
     if (event.target.id === 'blockShortsToggle') {
       console.log('Block Shorts toggle changed:', event.target.checked);
       handleYouTubeFeatureToggle('blockShorts', event.target.checked);
@@ -262,10 +325,11 @@ function setupEventListeners() {
       console.log('Block Comments toggle changed:', event.target.checked);
       handleYouTubeFeatureToggle('blockComments', event.target.checked);
     }
-  });
+  };
+  window.popupCleanup.addEventListener(document, 'change', changeHandler);
 
   // Also listen for clicks on toggle switches (in case change event doesn't fire)
-  document.addEventListener('click', (event) => {
+  const clickHandler = (event) => {
     if (event.target.id === 'blockShortsToggle' || event.target.closest('#blockShortsToggle')) {
       console.log('Block Shorts toggle clicked');
       setTimeout(() => {
@@ -294,7 +358,8 @@ function setupEventListeners() {
         }
       }, 10);
     }
-  });
+  };
+  window.popupCleanup.addEventListener(document, 'click', clickHandler);
 
   // Also try direct event listeners as backup
   setTimeout(() => {
@@ -1858,8 +1923,9 @@ async function notifyPopupOpened() {
 // Start periodic heartbeat system
 function startHeartbeatSystem() {
   console.log('💓 Starting heartbeat system...');
-  
-  const heartbeatInterval = setInterval(async () => {
+
+  // 🚀 MEMORY LEAK FIX: Use tracked interval
+  const heartbeatInterval = window.popupCleanup.setInterval(async () => {
     try {
       const result = await window.backgroundAPI.sendHeartbeat();
       if (!result.success) {
@@ -1870,8 +1936,8 @@ function startHeartbeatSystem() {
     }
   }, 1000);
   
-  // Also refresh stats periodically
-  const statsInterval = setInterval(async () => {
+  // 🚀 MEMORY LEAK FIX: Also refresh stats periodically with tracked interval
+  const statsInterval = window.popupCleanup.setInterval(async () => {
     try {
       const stats = await loadBlockStats();
       window.appState.updateState({
@@ -1885,11 +1951,16 @@ function startHeartbeatSystem() {
     }
   }, 2000); // Refresh every 2 seconds
   
-  // Clean up intervals when popup closes
-  window.addEventListener('beforeunload', () => {
+  // 🚀 MEMORY LEAK FIX: Clean up ALL resources when popup closes
+  window.popupCleanup.addEventListener(window, 'beforeunload', () => {
     console.log('🔄 Cleaning up heartbeat and stats systems...');
     clearInterval(heartbeatInterval);
     clearInterval(statsInterval);
+
+    // Clean up all tracked popup resources
+    if (window.popupCleanup) {
+      window.popupCleanup.cleanup();
+    }
   });
   
   console.log('✅ Heartbeat and stats systems started');

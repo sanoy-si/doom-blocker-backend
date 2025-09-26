@@ -141,4 +141,7 @@ const EVENTS = {
   // Message events
   MESSAGE_RECEIVED: 'message:received',
   MESSAGE_SENT: 'message:sent'
-}; 
+};
+
+// Make EventBus available globally for content script
+window.EventBus = EventBus; 

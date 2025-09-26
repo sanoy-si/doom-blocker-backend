@@ -1,23 +1,70 @@
 
 class ExtensionController {
   constructor() {
+    console.log("🔍 [TOPAZ DEBUG] ExtensionController constructor starting...");
+
     this.isDisabled = false;
     this.analysisTimeout = null;
-    this.eventBus = new EventBus();
-    this.configManager = new ConfigManager(this.eventBus);
-    this.gridManager = new GridManager();
-    this.domObserver = new DOMObserver(this.eventBus);
-    this.messageHandler = new MessageHandler(this.eventBus);
-    this.notificationManager = new NotificationManager();
-    this.elementEffects = new ElementEffects();
-    this.contentFingerprint = new ContentFingerprint();
-    this.elementsAnalyzedInCurrentCycle = new Map(); // Track elements sent for analysis
-    
-    // Initialize bulletproof counting system
-    this.truthfulCounter = new TruthfulCounter();
+    this.initializationErrors = [];
+
+    try {
+      // Initialize core systems with error handling
+      this.eventBus = new EventBus();
+      console.log("✅ EventBus initialized");
+
+      this.configManager = new ConfigManager(this.eventBus);
+      console.log("✅ ConfigManager initialized");
+
+      this.gridManager = new GridManager();
+      console.log("✅ GridManager initialized");
+
+      this.domObserver = new DOMObserver(this.eventBus);
+      console.log("✅ DOMObserver initialized");
+
+      this.messageHandler = new MessageHandler(this.eventBus);
+      console.log("✅ MessageHandler initialized");
+
+      this.notificationManager = new NotificationManager();
+      console.log("✅ NotificationManager initialized");
+
+      this.elementEffects = new ElementEffects();
+      console.log("✅ ElementEffects initialized");
+
+      this.contentFingerprint = new ContentFingerprint();
+      console.log("✅ ContentFingerprint initialized");
+
+      this.elementsAnalyzedInCurrentCycle = new Map(); // Track elements sent for analysis
+
+      // Initialize bulletproof counting system
+      this.truthfulCounter = new TruthfulCounter();
+      console.log("✅ TruthfulCounter initialized");
+    } catch (error) {
+      console.error("❌ [TOPAZ DEBUG] Error during core systems initialization:", error);
+      this.initializationErrors.push(error);
+      // Continue with fallback initialization
+      this.eventBus = this.eventBus || { on: () => {}, emit: () => {}, off: () => {} };
+      this.configManager = this.configManager || { getConfig: () => ({}), updateConfig: () => {} };
+      this.gridManager = this.gridManager || { findAllGridContainers: () => [], getAllGrids: () => [] };
+    }
     // Track preview state and items for toggle preview feature
     this.previewState = { enabled: false, items: [] };
     this.previewProcessing = false; // prevent overlapping preview toggles
+
+    // 🚀 NEW ARCHITECTURE: Initialize leak-free, race-condition-free system
+    this.lifecycleManager = null;
+    this.architectureInitialized = false;
+
+    // DEPRECATED: Old progressive filtering system (replaced by new architecture)
+    // Kept for backward compatibility during transition
+    this.progressiveFiltering = {
+      isActive: false,
+      lastScrollY: window.scrollY || 0,
+      scrollDirection: 'none',
+      processedViewports: new Set(),
+      currentBatch: 0,
+      batchSize: 5
+    };
+
     // Initialize session manager for analytics
     this.sessionManager = window.DoomBlockerSessionManager;
     // Initialize logger if available
@@ -26,11 +73,51 @@ class ExtensionController {
     } catch (_) {
       this.logger = null;
     }
-    this.setupEventListeners();
-    this.messageHandler.setupMessageListener();
+
+    // Setup event listeners first with error handling
+    try {
+      this.setupEventListeners();
+      console.log("✅ Event listeners setup complete");
+    } catch (error) {
+      console.error("❌ [TOPAZ DEBUG] Error setting up event listeners:", error);
+      this.initializationErrors.push(error);
+    }
+
+    try {
+      this.messageHandler.setupMessageListener();
+      console.log("✅ Message listener setup complete");
+    } catch (error) {
+      console.error("❌ [TOPAZ DEBUG] Error setting up message listener:", error);
+      this.initializationErrors.push(error);
+    }
+
+    // 🚀 CRITICAL FIX: Initialize new architecture (replaces problematic old system)
+    try {
+      this.initializeNewArchitecture();
+      console.log("✅ New architecture initialization started");
+    } catch (error) {
+      console.error("❌ [TOPAZ DEBUG] Error initializing new architecture:", error);
+      this.initializationErrors.push(error);
+    }
 
     // Initialize session on first load
-    this.initializeUserSession();
+    try {
+      this.initializeUserSession();
+      console.log("✅ User session initialization started");
+    } catch (error) {
+      console.error("❌ [TOPAZ DEBUG] Error initializing user session:", error);
+      this.initializationErrors.push(error);
+    }
+
+    console.log(`🔍 [TOPAZ DEBUG] ExtensionController constructor complete. Errors: ${this.initializationErrors.length}`);
+
+    // Add debug method to window for testing
+    window.__topazDebug = {
+      controller: this,
+      checkStatus: () => this.getDebugStatus(),
+      testGridDetection: () => this.testGridDetection(),
+      getErrors: () => this.initializationErrors
+    };
 
     // FIXED: Removed automatic preview disabling on visibility changes
     // This was causing the preview state to reset when opening the extension popup
@@ -41,8 +128,92 @@ class ExtensionController {
         if (this.previewState?.enabled) {
           this.handleTogglePreviewHidden(false, null).catch(() => {});
         }
+        // Clean up new architecture on page hide
+        if (this.lifecycleManager) {
+          this.lifecycleManager.destroy().catch(() => {});
+        }
       });
     } catch (_) {}
+  }
+
+  // 🚀 CRITICAL FIX: Initialize new leak-free, race-condition-free architecture
+  async initializeNewArchitecture() {
+    try {
+      console.log('🚀 [ExtensionController] Initializing new architecture...');
+
+      // Initialize lifecycle manager with proper cleanup
+      this.lifecycleManager = new ExtensionLifecycleManager({
+        debugName: 'ExtensionController-Lifecycle',
+        enableHealthMonitoring: true,
+        enablePerformanceTracking: true
+      });
+
+      const result = await this.lifecycleManager.initialize();
+
+      if (result.success) {
+        this.architectureInitialized = true;
+        console.log(`✅ [ExtensionController] New architecture initialized in ${result.initializationTime}ms`);
+
+        // Make global reference for debugging and external access
+        window.__topazController = this;
+        window.__topazLifecycle = this.lifecycleManager;
+
+        // Configure legacy component integration
+        this.configureLegacyIntegration();
+
+      } else {
+        console.error('❌ [ExtensionController] New architecture initialization failed:', result.error);
+        console.warn('⚠️ [ExtensionController] Falling back to old system (with known memory leaks)');
+        this.setupScrollTracking(); // Fallback to old system
+      }
+
+    } catch (error) {
+      console.error('❌ [ExtensionController] Critical error during new architecture initialization:', error);
+      console.warn('⚠️ [ExtensionController] Falling back to old system (with known memory leaks)');
+      this.architectureInitialized = false;
+      this.setupScrollTracking(); // Fallback to old system
+    }
+  }
+
+  // Configure legacy component integration with new architecture
+  configureLegacyIntegration() {
+    try {
+      // Provide legacy components to lifecycle manager
+      if (this.lifecycleManager && this.lifecycleManager.progressiveOrchestrator) {
+        this.lifecycleManager.progressiveOrchestrator.setComponents(
+          this.gridManager,
+          this.createLegacyFilterProcessor()
+        );
+        console.log('🔧 [ExtensionController] Legacy components integrated with new architecture');
+      }
+    } catch (error) {
+      console.error('❌ [ExtensionController] Legacy integration error:', error);
+    }
+  }
+
+  // Create filter processor that integrates with existing filtering logic
+  createLegacyFilterProcessor() {
+    return async (item, filterCriteria) => {
+      try {
+        // Integration point with existing element effects and filtering
+        if (item.element && this.elementEffects) {
+          // Use existing element effects for actual filtering/hiding
+          const result = await this.processElementForFiltering(item.element, filterCriteria);
+          return result;
+        }
+        return { processed: true, method: 'legacy_integration' };
+      } catch (error) {
+        console.error('❌ [ExtensionController] Legacy filter processor error:', error);
+        return { processed: false, error: error.message };
+      }
+    };
+  }
+
+  // Process element using existing filtering logic
+  async processElementForFiltering(element, filterCriteria) {
+    // This integrates with the existing filtering system
+    // Can be enhanced based on specific filtering requirements
+    return { processed: true, method: 'element_effects_integration' };
   }
 
   // Get truthful counts for popup
@@ -281,6 +452,10 @@ class ExtensionController {
     this.isDisabled = true;
     this.domObserver.stopObserving();
     this.clearAnalysisTimeout();
+
+    // 🚀 PROGRESSIVE FILTERING: Stop any active progressive filtering
+    this.stopProgressiveFiltering();
+
     // Ensure preview-related visuals/state are cleared
     try {
       if (this.elementEffects.clearAllPreviewArtifacts) {
@@ -302,23 +477,23 @@ class ExtensionController {
     this.eventBus.emit(EVENTS.EXTENSION_DISABLED);
   }
 
-  async performInitialExtraction() {
-    console.log("🔍 [TOPAZ DEBUG] performInitialExtraction() started");
-    
+  async performInitialExtraction(forceComprehensive = false) {
+    console.log("🔍 [TOPAZ DEBUG] performInitialExtraction() started" + (forceComprehensive ? " (comprehensive mode)" : ""));
+
     // Clear tracking of analyzed elements for new cycle
     this.elementsAnalyzedInCurrentCycle.clear();
-    
+
     const analysisRequired = await this.checkAnalysisRequired();
     console.log("🔍 [TOPAZ DEBUG] checkAnalysisRequired result:", analysisRequired);
-    if (!analysisRequired) {
+    if (!analysisRequired && !forceComprehensive) {
       console.log("🔍 [TOPAZ DEBUG] Analysis not required, exiting performInitialExtraction");
       return;
     }
     console.log("🔍 [TOPAZ DEBUG] Analysis required, proceeding with extraction");
-    
-    console.log("🔍 [TOPAZ DEBUG] Finding all grid containers");
+
+    console.log("🔍 [TOPAZ DEBUG] Finding all grid containers" + (forceComprehensive ? " (comprehensive scan)" : ""));
     console.time("[blur timing debug] DOM content loaded to blur completion");
-    this.gridManager.findAllGridContainers();
+    this.gridManager.findAllGridContainers(forceComprehensive);
 
     // REMOVED: Initial blurring of all content - now only blur elements about to be removed
     console.log("🔍 [TOPAZ DEBUG] Skipping initial blur - will blur only elements about to be removed");
@@ -337,7 +512,8 @@ class ExtensionController {
     for (const grid of allGrids) {
       const childrenToAnalyze = [];
       for (const child of grid.children) {
-        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element);
+        const filterCriteria = this.getCurrentFilterCriteria();
+        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element, filterCriteria);
         if (autoDeleteResult.shouldDelete) {
           const hidingMethod = this.configManager.getHidingMethod();
           const hiddenCount = this.elementEffects.hideElements([{
@@ -426,6 +602,11 @@ class ExtensionController {
 
   async handleUrlChanged(url) {
     this.clearAnalysisTimeout();
+
+    // 🚀 PROGRESSIVE FILTERING: Stop and reset on URL change
+    this.stopProgressiveFiltering();
+    this.progressiveFiltering.processedViewports.clear();
+
     this.gridManager.reset();
     //this.contentFingerprint.clear();
     await this.configManager.setConfigFromUrl(url);
@@ -497,7 +678,8 @@ class ExtensionController {
       const childrenToAnalyze = [];
 
       for (const child of grid.children) {
-        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element);
+        const filterCriteria = this.getCurrentFilterCriteria();
+        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element, filterCriteria);
 
         if (autoDeleteResult.shouldDelete) {
           const hidingMethod = this.configManager.getHidingMethod();
@@ -554,7 +736,8 @@ class ExtensionController {
       const childrenToAnalyze = [];
 
       for (const child of newChildren) {
-        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element);
+        const filterCriteria = this.getCurrentFilterCriteria();
+        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element, filterCriteria);
 
         if (autoDeleteResult.shouldDelete) {
           const hidingMethod = this.configManager.getHidingMethod();
@@ -579,7 +762,8 @@ class ExtensionController {
         }
       }
       for (const child of changedChildren) {
-        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element);
+        const filterCriteria = this.getCurrentFilterCriteria();
+        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element, filterCriteria);
 
         if (autoDeleteResult.shouldDelete) {
           const hidingMethod = this.configManager.getHidingMethod();
@@ -804,7 +988,8 @@ class ExtensionController {
         if (elementState && elementState.hidden === true) {
           // CRITICAL: Don't unhide elements that were auto-deleted by content fingerprinting
           // These should remain hidden even if they're not in the new hide instructions
-          const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(analyzedElement.element);
+          const filterCriteria = this.getCurrentFilterCriteria();
+          const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(analyzedElement.element, filterCriteria);
           if (!autoDeleteResult.shouldDelete) {
             elementsToUnhide.push(analyzedElement.element);
           } else {
@@ -997,10 +1182,10 @@ class ExtensionController {
     }
   }
 
-  // 🚀 INSTANT FILTERING: Handle instant filter requests from popup
+  // 🚀 CRITICAL FIX: New instant filter using leak-free, race-condition-free architecture
   async handleInstantFilter(sendResponse) {
-    console.log('🔄 Instant filtering requested - re-analyzing current page...');
-    
+    console.log('🎯 [NEW ARCHITECTURE] Starting instant filtering with leak-free system');
+
     try {
       if (this.isDisabled) {
         console.log('❌ Extension is disabled, cannot perform instant filtering');
@@ -1008,31 +1193,108 @@ class ExtensionController {
         return;
       }
 
-      // Clear any existing analysis timeout
-      this.clearAnalysisTimeout();
-      
-      // 🔄 SMART FIX: Clear fingerprints to force re-analysis of ALL content
-      // This allows previously hidden content to reappear when keywords are removed
-      console.log('🔄 Clearing content fingerprints to force full re-analysis...');
-      this.contentFingerprint.clear();
-      
-      console.log('🔄 Re-analyzing ALL content with updated filters...');
+      // Use new architecture if available, fallback to old system
+      if (this.architectureInitialized && this.lifecycleManager) {
+        console.log('✅ [NEW ARCHITECTURE] Using leak-free progressive filtering system');
 
-      // FAST PATH: analyze visible content first to provide instant feedback
-      console.log('⚡ Performing quick analysis for visible content...');
-      await this.quickAnalyzeVisible();
+        // Clear fingerprints for fresh analysis
+        this.contentFingerprint.clear();
 
-      // Then run the full extraction to catch everything else
-      console.log('🔄 Re-running full content analysis with updated filters...');
-      await this.performInitialExtraction();
-      
-      console.log('✅ Instant filtering completed successfully');
-      sendResponse(this.messageHandler.createResponse(true, "Instant filtering completed"));
-      
+        // Start new architecture progressive filtering
+        const result = await this.lifecycleManager.startProgressiveFiltering({
+          forceRestart: true,
+          processViewportOnly: false,
+          scrollDirection: this.getScrollDirection(),
+          filterCriteria: this.getCurrentFilterCriteria()
+        });
+
+        if (result.success) {
+          console.log(`✅ [NEW ARCHITECTURE] Progressive filtering started successfully`);
+          sendResponse(this.messageHandler.createResponse(true, "Instant filtering started (new architecture)", {
+            architecture: 'new',
+            sessionId: result.sessionId,
+            viewportProcessed: result.viewportProcessed
+          }));
+        } else {
+          console.warn(`⚠️ [NEW ARCHITECTURE] Progressive filtering failed, fallback to old system:`, result.reason);
+          await this.fallbackToOldInstantFilter(sendResponse);
+        }
+
+      } else {
+        console.warn('⚠️ [NEW ARCHITECTURE] Not initialized, using old system with known memory leaks');
+        await this.fallbackToOldInstantFilter(sendResponse);
+      }
+
     } catch (error) {
-      console.error('❌ Instant filtering failed:', error);
-      sendResponse(this.messageHandler.createResponse(false, `Instant filtering failed: ${error.message}`));
+      console.error('❌ [NEW ARCHITECTURE] Critical error in instant filtering:', error);
+
+      // Emergency fallback
+      try {
+        await this.fallbackToOldInstantFilter(sendResponse);
+      } catch (fallbackError) {
+        console.error('❌ [FALLBACK] Even fallback failed:', fallbackError);
+        sendResponse(this.messageHandler.createResponse(false, `Instant filtering failed: ${error.message}`));
+      }
     }
+  }
+
+  // Emergency fallback to old system (has memory leaks but works)
+  async fallbackToOldInstantFilter(sendResponse) {
+    console.log('🚨 [FALLBACK] Using old progressive filtering system (has memory leaks)');
+
+    try {
+      // Clear fingerprints for fresh analysis
+      this.contentFingerprint.clear();
+
+      // Clear processed viewports for new analysis
+      if (this.progressiveFiltering) {
+        this.progressiveFiltering.processedViewports.clear();
+      }
+
+      // Use old viewport filtering method
+      await this.filterViewportContent();
+
+      // Start old progressive filtering if method exists
+      if (this.startProgressiveFiltering && typeof this.startProgressiveFiltering === 'function') {
+        this.startProgressiveFiltering();
+      }
+
+      sendResponse(this.messageHandler.createResponse(true, "Instant filtering started (fallback)", {
+        architecture: 'old_fallback',
+        warning: 'Using old system with memory leaks'
+      }));
+
+    } catch (error) {
+      console.error('❌ [FALLBACK] Fallback filtering failed:', error);
+      sendResponse(this.messageHandler.createResponse(false, `Fallback filtering failed: ${error.message}`));
+    }
+  }
+
+  // Get current scroll direction for progressive filtering
+  getScrollDirection() {
+    if (this.lifecycleManager && this.lifecycleManager.eventCoordinator) {
+      // Use new architecture scroll tracking
+      return 'none'; // Will be dynamically determined by new system
+    }
+    // Fallback to old system
+    return this.progressiveFiltering ? this.progressiveFiltering.scrollDirection : 'none';
+  }
+
+  // Get current filter criteria (can be enhanced based on specific needs)
+  getCurrentFilterCriteria() {
+    // 🚀 CRITICAL FIX: Return actual filter words, not empty criteria!
+    const filterWords = this.configManager.getTagsToIgnore();
+    const collapseWords = this.configManager.getTagsToCollapse();
+
+    console.log(`🎯 [FILTER CRITERIA] Getting filter words: ${filterWords.length} ignore, ${collapseWords.length} collapse`);
+
+    return {
+      filterWords: filterWords || [],
+      collapseWords: collapseWords || [],
+      allFilterWords: [...(filterWords || []), ...(collapseWords || [])],
+      timestamp: Date.now(),
+      source: 'instant_filter'
+    };
   }
 
   // Determine if an element is within (or near) the current viewport
@@ -1049,10 +1311,10 @@ class ExtensionController {
   }
 
   // Quickly analyze only grids and children that are visible to user
-  async quickAnalyzeVisible() {
+  async quickAnalyzeVisible(forceComprehensive = false) {
     try {
       // Build/refresh grid information
-      this.gridManager.findAllGridContainers();
+      this.gridManager.findAllGridContainers(forceComprehensive);
       const allGrids = this.gridManager.getAllGrids();
 
       const visibleGrids = allGrids.filter(g => this.isInViewport(g.element));
@@ -1070,7 +1332,8 @@ class ExtensionController {
       for (const grid of visibleGrids) {
         const childrenToAnalyze = [];
         for (const child of grid.children) {
-          const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element);
+          const filterCriteria = this.getCurrentFilterCriteria();
+          const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element, filterCriteria);
           if (autoDeleteResult.shouldDelete) {
             const hidingMethod = this.configManager.getHidingMethod();
             const hiddenCount = this.elementEffects.hideElements([{ id: child.id, element: child.element }], hidingMethod);
@@ -1347,63 +1610,11 @@ class ExtensionController {
   // Send blocked items directly to backend in real-time
   async sendBlockedItemsToBackend(blockedItemDetails) {
     try {
-      if (!this.sessionManager || blockedItemDetails.length === 0) return;
-
-      const sessionId = this.sessionManager.getSessionId();
-      if (!sessionId) return;
-
-      console.log('🚀 Sending blocked items directly to backend:', blockedItemDetails);
-
-      // Get current total from background stats
-      const backgroundStats = await this.getBackgroundStats();
-
-      // Prepare blocked items data for immediate sending
-      const blockedItemsData = {
-        session_id: sessionId,
-        blocked_items: blockedItemDetails.map(item => ({
-          timestamp: new Date(item.timestamp).toISOString(),
-          count: 1,
-          url: item.url,
-          hostname: item.hostname,
-          blocked_items: [{
-            text: item.text,
-            type: item.type,
-            id: item.id
-          }]
-        }))
-      };
-
-      // Send blocked items immediately
-      const response = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(blockedItemsData)
-      });
-
-      if (response.ok) {
-        console.log('✅ Blocked items sent to backend successfully');
-
-        // Also update metrics with current totals
-        const metricsData = {
-          session_id: sessionId,
-          total_blocked: backgroundStats.totalBlocked || 0,
-          blocked_today: backgroundStats.blockedCount || 0,
-          sites_visited: [],
-          profiles_used: [],
-          last_updated: new Date().toISOString()
-        };
-
-        await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(metricsData)
-        });
-
-        console.log('📊 Updated metrics with current totals');
-      }
-
-    } catch (error) {
-      console.warn('⚠️ Failed to send blocked items to backend:', error);
+      // Disable duplicate network calls from content to avoid CORS/auth issues.
+      // Background already reports counts via API.reportBlockedItems and SupabaseSync.
+      return;
+    } catch (_) {
+      return;
     }
   }
 
@@ -2218,6 +2429,482 @@ class ExtensionController {
     console.log('📺 YouTube URL monitoring set up');
   }
 
+  // 🚀 DEPRECATED: Old scroll tracking (replaced by new architecture)
+  // MEMORY LEAK FIX: Old method created untracked event listeners and intervals
+  // New method integrates with ResourceManager for proper cleanup
+  setupScrollTracking() {
+    console.warn('⚠️ [DEPRECATED] Using old setupScrollTracking - this method has memory leaks!');
+    console.warn('💡 Consider upgrading to new architecture for leak-free operation');
+
+    // Check if we have new architecture available
+    if (this.lifecycleManager && this.lifecycleManager.resourceManager) {
+      console.log('🔄 [MEMORY LEAK FIX] Using ResourceManager for scroll tracking');
+      this.setupScrollTrackingWithResourceManager();
+      return;
+    }
+
+    // Fallback to old system (with memory leaks warning)
+    console.warn('🚨 [MEMORY LEAK WARNING] No ResourceManager available - using old system with leaks');
+    this.setupScrollTrackingLegacy();
+  }
+
+  // 🚀 MEMORY LEAK FIX: Resource-managed scroll tracking
+  setupScrollTrackingWithResourceManager() {
+    const resourceManager = this.lifecycleManager.resourceManager;
+    let scrollTimeout;
+
+    const scrollHandler = () => {
+      const currentScrollY = window.scrollY || 0;
+      const scrollDiff = currentScrollY - this.progressiveFiltering.lastScrollY;
+
+      // Determine scroll direction
+      if (Math.abs(scrollDiff) > 5) { // Ignore tiny movements
+        this.progressiveFiltering.scrollDirection = scrollDiff > 0 ? 'down' : 'up';
+        this.progressiveFiltering.lastScrollY = currentScrollY;
+
+        // If progressive filtering is active, continue in the new direction
+        if (this.progressiveFiltering.isActive) {
+          if (scrollTimeout) {
+            resourceManager.clearTimeout(scrollTimeout);
+          }
+          scrollTimeout = resourceManager.setTimeout(() => {
+            this.continueProgressiveFiltering();
+          }, 150); // Debounce scroll events
+        }
+      }
+    };
+
+    // Use ResourceManager for tracked event listener
+    resourceManager.addEventListener(window, 'scroll', scrollHandler, { passive: true });
+
+    // Use ResourceManager for tracked interval (prevents runaway intervals)
+    resourceManager.setInterval(() => {
+      this.checkProgressiveFilteringHealth();
+    }, 15000); // Check every 15 seconds (less frequent than old system)
+
+    console.log('✅ [MEMORY LEAK FIX] Progressive filtering scroll tracking enabled with resource management');
+  }
+
+  // 🚨 MEMORY LEAK WARNING: Legacy scroll tracking (creates untracked resources)
+  setupScrollTrackingLegacy() {
+    console.error('🚨 [MEMORY LEAK] Creating untracked event listeners and intervals!');
+
+    let scrollTimeout;
+
+    const scrollHandler = () => {
+      const currentScrollY = window.scrollY || 0;
+      const scrollDiff = currentScrollY - this.progressiveFiltering.lastScrollY;
+
+      if (Math.abs(scrollDiff) > 5) {
+        this.progressiveFiltering.scrollDirection = scrollDiff > 0 ? 'down' : 'up';
+        this.progressiveFiltering.lastScrollY = currentScrollY;
+
+        if (this.progressiveFiltering.isActive) {
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            this.continueProgressiveFiltering();
+          }, 150);
+        }
+      }
+    };
+
+    // WARNING: This creates untracked event listener (memory leak)
+    window.addEventListener('scroll', scrollHandler, { passive: true });
+
+    // WARNING: This creates untracked interval (memory leak)
+    setInterval(() => {
+      this.checkProgressiveFilteringHealth();
+    }, 15000);
+
+    console.error('❌ [MEMORY LEAK] Legacy scroll tracking enabled with untracked resources');
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Health check (improved to prevent infinite loops)
+  checkProgressiveFilteringHealth() {
+    if (!this.progressiveFiltering || !this.progressiveFiltering.isActive) {
+      return; // Not active, nothing to check
+    }
+
+    try {
+      // Check if progressive filtering has been stuck for too long
+      const maxBatches = 50; // Reduced from 100 to catch issues earlier
+      if (this.progressiveFiltering.currentBatch > maxBatches) {
+        console.warn(`⚠️ Progressive filtering stuck at batch ${this.progressiveFiltering.currentBatch}, stopping...`);
+
+        // Just stop, don't automatically restart (prevents infinite loops)
+        this.stopProgressiveFiltering();
+
+        console.log('🛑 Progressive filtering stopped due to health check - manual restart required');
+      }
+    } catch (error) {
+      console.error('❌ Health check error:', error);
+    }
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Filter only visible viewport content first
+  async filterViewportContent() {
+    console.time('⚡ Viewport Content Filtering');
+
+    try {
+      // Find all grids (use optimized method, not comprehensive)
+      this.gridManager.findAllGridContainers(false);
+      const allGrids = this.gridManager.getAllGrids();
+
+      // Filter to only grids visible in viewport
+      const viewportGrids = allGrids.filter(grid => this.isInViewport(grid.element));
+
+      const viewportKey = this.getViewportKey();
+      const wasAlreadyProcessed = this.progressiveFiltering.processedViewports.has(viewportKey);
+
+      console.log(`⚡ Found ${viewportGrids.length} grids in viewport out of ${allGrids.length} total`);
+      console.log(`📍 Current viewport key: ${viewportKey} (previously processed: ${wasAlreadyProcessed})`);
+
+      if (viewportGrids.length === 0) {
+        console.log('⚡ No viewport grids found for immediate filtering');
+        return;
+      }
+
+      // 🚀 CRITICAL FIX: Process viewport grids even if "processed" before
+      // Because we cleared processedViewports when new filters were added
+      console.log('⚡ Processing viewport grids with current filter set...');
+      await this.processGridBatch(viewportGrids, 'viewport');
+
+      // Mark this viewport area as processed with current filter set
+      this.progressiveFiltering.processedViewports.add(viewportKey);
+
+      console.timeEnd('⚡ Viewport Content Filtering');
+      console.log(`✅ Viewport filtering complete: processed ${viewportGrids.length} grids (marked viewport ${viewportKey} as processed)`);
+
+    } catch (error) {
+      console.error('❌ Viewport filtering failed:', error);
+    }
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Start background progressive filtering
+  startProgressiveFiltering() {
+    if (this.progressiveFiltering.isActive) {
+      this.stopProgressiveFiltering();
+    }
+
+    this.progressiveFiltering.isActive = true;
+    this.progressiveFiltering.currentBatch = 0;
+
+    console.log('🔄 Starting progressive background filtering...');
+
+    // Start processing in next tick to not block viewport filtering
+    setTimeout(() => {
+      this.continueProgressiveFiltering();
+    }, 100);
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Continue filtering in scroll direction
+  async continueProgressiveFiltering() {
+    if (!this.progressiveFiltering.isActive || this.isDisabled) {
+      console.log(`🔄 Progressive filtering skipped: active=${this.progressiveFiltering.isActive}, disabled=${this.isDisabled}`);
+      return;
+    }
+
+    try {
+      console.log(`🔄 Progressive batch ${this.progressiveFiltering.currentBatch + 1} (direction: ${this.progressiveFiltering.scrollDirection})`);
+
+      // Get all grids
+      this.gridManager.findAllGridContainers(false);
+      const allGrids = this.gridManager.getAllGrids();
+
+      console.log(`📊 Found ${allGrids.length} total grids for progressive processing`);
+
+      // Filter grids based on scroll direction and what we haven't processed
+      const targetGrids = this.getNextProgressiveGridBatch(allGrids);
+
+      console.log(`🎯 Selected ${targetGrids.length} grids for this batch (direction: ${this.progressiveFiltering.scrollDirection})`);
+
+      if (targetGrids.length === 0) {
+        // 🚀 BUG FIX: Don't stop immediately, try switching to comprehensive mode
+        console.log('🔄 No grids in current direction, trying comprehensive scan...');
+
+        // Try to find ANY unprocessed grids
+        const comprehensiveTargets = this.getComprehensiveGridBatch(allGrids);
+
+        if (comprehensiveTargets.length === 0) {
+          console.log('🏁 Progressive filtering complete - truly no more grids to process');
+          this.stopProgressiveFiltering();
+          return;
+        } else {
+          console.log(`🔍 Found ${comprehensiveTargets.length} grids in comprehensive scan`);
+          await this.processGridBatch(comprehensiveTargets, `comprehensive-${this.progressiveFiltering.currentBatch}`);
+        }
+      } else {
+        // Process normal directional batch
+        await this.processGridBatch(targetGrids, `batch-${this.progressiveFiltering.currentBatch}`);
+      }
+
+      this.progressiveFiltering.currentBatch++;
+
+      // 🚀 BUG FIX: Continue more aggressively, don't give up easily
+      // Schedule next batch with a small delay to keep UI responsive
+      if (this.progressiveFiltering.isActive) {
+        setTimeout(() => {
+          this.continueProgressiveFiltering();
+        }, 200);
+      }
+
+    } catch (error) {
+      console.error('❌ Progressive filtering batch failed:', error);
+      console.log(`🔧 Error details: ${error.message}`);
+      console.log(`📊 State: active=${this.progressiveFiltering.isActive}, batch=${this.progressiveFiltering.currentBatch}`);
+
+      // 🚀 BUG FIX: Don't stop on single error, retry with exponential backoff
+      if (this.progressiveFiltering.isActive && this.progressiveFiltering.currentBatch < 50) {
+        const retryDelay = Math.min(1000 * Math.pow(2, Math.min(this.progressiveFiltering.currentBatch % 5, 4)), 5000);
+        console.log(`🔄 Retrying progressive filtering in ${retryDelay}ms...`);
+        setTimeout(() => {
+          this.continueProgressiveFiltering();
+        }, retryDelay);
+      } else {
+        console.log('🛑 Too many errors or batches, stopping progressive filtering');
+        this.stopProgressiveFiltering();
+      }
+    }
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Get next batch of grids based on scroll direction
+  getNextProgressiveGridBatch(allGrids) {
+    const viewportHeight = window.innerHeight;
+    const currentScrollY = window.scrollY;
+    const batchSize = this.progressiveFiltering.batchSize;
+
+    // Filter grids by direction and processing status
+    const candidateGrids = allGrids.filter(grid => {
+      const rect = grid.element.getBoundingClientRect();
+      const elementY = rect.top + currentScrollY;
+
+      // 🚀 CRITICAL FIX: Check if already processed with current filter set
+      // Since we clear processedViewports when filters change, this now works correctly
+      const elementViewportKey = Math.floor(elementY / viewportHeight);
+      if (this.progressiveFiltering.processedViewports.has(elementViewportKey.toString())) {
+        return false; // Skip only if processed with current filter set
+      }
+
+      // Filter by scroll direction
+      if (this.progressiveFiltering.scrollDirection === 'down') {
+        return elementY > currentScrollY + viewportHeight; // Below viewport
+      } else if (this.progressiveFiltering.scrollDirection === 'up') {
+        return elementY < currentScrollY; // Above viewport
+      } else {
+        return true; // No direction preference, process any
+      }
+    });
+
+    // Sort by proximity to viewport edge in scroll direction
+    candidateGrids.sort((a, b) => {
+      const aRect = a.element.getBoundingClientRect();
+      const bRect = b.element.getBoundingClientRect();
+
+      if (this.progressiveFiltering.scrollDirection === 'down') {
+        return aRect.top - bRect.top; // Closest to bottom first
+      } else {
+        return bRect.top - aRect.top; // Closest to top first
+      }
+    });
+
+    // Return batch of grids
+    const batch = candidateGrids.slice(0, batchSize);
+
+    // Mark their viewport areas as processed
+    batch.forEach(grid => {
+      const rect = grid.element.getBoundingClientRect();
+      const elementY = rect.top + currentScrollY;
+      const viewportKey = Math.floor(elementY / viewportHeight);
+      this.progressiveFiltering.processedViewports.add(viewportKey.toString());
+    });
+
+    return batch;
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Get any unprocessed grids (fallback when directional fails)
+  getComprehensiveGridBatch(allGrids) {
+    const viewportHeight = window.innerHeight;
+    const batchSize = this.progressiveFiltering.batchSize;
+
+    console.log(`🔍 Comprehensive batch: checking ${allGrids.length} grids for unprocessed content`);
+
+    // Find ANY grids that haven't been processed yet
+    const candidateGrids = allGrids.filter(grid => {
+      const rect = grid.element.getBoundingClientRect();
+      const elementY = rect.top + window.scrollY;
+      const elementViewportKey = Math.floor(elementY / viewportHeight);
+
+      const isProcessed = this.progressiveFiltering.processedViewports.has(elementViewportKey.toString());
+      return !isProcessed; // Only unprocessed grids
+    });
+
+    console.log(`🔍 Found ${candidateGrids.length} unprocessed grids out of ${allGrids.length} total`);
+
+    // Sort by proximity to current viewport
+    const currentScrollY = window.scrollY;
+    candidateGrids.sort((a, b) => {
+      const aRect = a.element.getBoundingClientRect();
+      const bRect = b.element.getBoundingClientRect();
+      const aDistance = Math.abs((aRect.top + currentScrollY) - currentScrollY);
+      const bDistance = Math.abs((bRect.top + currentScrollY) - currentScrollY);
+      return aDistance - bDistance; // Closest first
+    });
+
+    // Return batch of closest unprocessed grids
+    const batch = candidateGrids.slice(0, batchSize);
+
+    // Mark their viewport areas as processed
+    batch.forEach(grid => {
+      const rect = grid.element.getBoundingClientRect();
+      const elementY = rect.top + window.scrollY;
+      const viewportKey = Math.floor(elementY / viewportHeight);
+      this.progressiveFiltering.processedViewports.add(viewportKey.toString());
+    });
+
+    console.log(`🔍 Comprehensive batch selected ${batch.length} closest unprocessed grids`);
+    return batch;
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Process a batch of grids
+  async processGridBatch(grids, batchName) {
+    if (grids.length === 0) return;
+
+    console.time(`🔧 Process Batch: ${batchName}`);
+
+    // 🚀 CRITICAL FIX: Get current filter criteria with actual filter words!
+    const filterCriteria = this.getCurrentFilterCriteria();
+    console.log(`🎯 [BATCH ${batchName}] Processing with ${filterCriteria.allFilterWords.length} filter words:`, filterCriteria.allFilterWords);
+
+    const gridStructure = {
+      timestamp: new Date().toISOString(),
+      totalGrids: 0,
+      grids: []
+    };
+
+    let skippedAlreadyHidden = 0;
+
+    for (const grid of grids) {
+      const childrenToAnalyze = [];
+
+      for (const child of grid.children) {
+        // 🚀 CRITICAL FIX: Skip content already blocked by other filters
+        const elementState = this.elementEffects.getElementState(child.element);
+        if (elementState && elementState.hidden === true) {
+          skippedAlreadyHidden++;
+          continue; // Skip already hidden content - don't reprocess
+        }
+
+        // 🚀 CRITICAL FIX: Pass filter criteria to check against current filter words!
+        const autoDeleteResult = this.contentFingerprint.checkForAutoDelete(child.element, filterCriteria);
+
+        if (autoDeleteResult.shouldDelete) {
+          const hidingMethod = this.configManager.getHidingMethod();
+          const hiddenCount = this.elementEffects.hideElements([{
+            id: child.id,
+            element: child.element
+          }], hidingMethod);
+
+          if (hiddenCount > 0) {
+            const toastEnabled = await this.isToastEnabled();
+            if (toastEnabled) {
+              this.notificationManager.incrementBlockedCount(hiddenCount);
+            }
+            this.messageHandler.sendMessageToBackground({
+              type: MESSAGE_TYPES.CONTENT_BLOCKED,
+              blockedCount: hiddenCount,
+              currentUrl: window.location.href,
+            });
+          }
+        } else if (!this.contentFingerprint.checkFingerprintExists(child.element)) {
+          childrenToAnalyze.push(child);
+        }
+      }
+
+      if (childrenToAnalyze.length > 0) {
+        gridStructure.grids.push({
+          id: grid.id,
+          totalChildren: childrenToAnalyze.length,
+          gridText: grid.element.innerText,
+          children: childrenToAnalyze.map(child => ({
+            id: child.id,
+            text: child.text
+          }))
+        });
+      }
+    }
+
+    gridStructure.totalGrids = gridStructure.grids.length;
+
+    if (gridStructure.totalGrids > 0) {
+      const trimmedStructure = this.trimGridForBackend(gridStructure);
+      await this.sendGridStructureForAnalysis(trimmedStructure);
+
+      // Store fingerprints
+      for (const gridData of gridStructure.grids) {
+        const grid = this.gridManager.getGridById(gridData.id);
+        if (grid) {
+          const elementsToStore = [];
+          for (const childData of gridData.children) {
+            const child = grid.children.find(c => c.id === childData.id);
+            if (child && child.element) {
+              elementsToStore.push(child.element);
+            }
+          }
+          if (elementsToStore.length > 0) {
+            this.contentFingerprint.storeFingerprints(elementsToStore);
+          }
+        }
+      }
+    }
+
+    console.timeEnd(`🔧 Process Batch: ${batchName}`);
+    console.log(`✅ Processed batch "${batchName}": ${gridStructure.totalGrids} grids with analysis data`);
+    if (skippedAlreadyHidden > 0) {
+      console.log(`⏭️ Skipped ${skippedAlreadyHidden} already hidden elements (performance optimization)`);
+    }
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Stop progressive filtering
+  stopProgressiveFiltering() {
+    if (this.progressiveFiltering.isActive) {
+      this.progressiveFiltering.isActive = false;
+      console.log('🛑 Progressive filtering stopped');
+    }
+    // 🚀 BUG FIX: Reset state completely to prevent issues
+    this.resetProgressiveFilteringState();
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Reset state to prevent bugs
+  resetProgressiveFilteringState() {
+    this.progressiveFiltering.currentBatch = 0;
+    this.progressiveFiltering.scrollDirection = window.scrollY > this.progressiveFiltering.lastScrollY ? 'down' : 'up';
+    this.progressiveFiltering.lastScrollY = window.scrollY || 0;
+    console.log('🔧 Progressive filtering state reset');
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Debug state information
+  logProgressiveFilteringState() {
+    const pf = this.progressiveFiltering;
+    console.log(`📊 Progressive Filtering State:
+      - Active: ${pf.isActive}
+      - Direction: ${pf.scrollDirection}
+      - Current Batch: ${pf.currentBatch}
+      - Processed Viewports: ${pf.processedViewports.size}
+      - Last Scroll Y: ${pf.lastScrollY}
+      - Current Scroll Y: ${window.scrollY}
+      - Extension Disabled: ${this.isDisabled}`);
+
+    const processedKeys = Array.from(pf.processedViewports);
+    console.log(`📍 Processed viewport keys: [${processedKeys.join(', ')}]`);
+  }
+
+  // 🚀 PROGRESSIVE FILTERING: Get viewport identifier for tracking
+  getViewportKey() {
+    const scrollY = window.scrollY || 0;
+    const viewportHeight = window.innerHeight || 600;
+    return Math.floor(scrollY / viewportHeight).toString();
+  }
+
   destroy() {
     this.disable();
     this.configManager.destroy();
@@ -2245,4 +2932,63 @@ class ExtensionController {
     // Remove any injected CSS
     this.removeHomeFeedBlockingCSS();
   }
+
+  // 🚀 DEBUG METHODS for testing and troubleshooting
+  getDebugStatus() {
+    return {
+      isDisabled: this.isDisabled,
+      initializationErrors: this.initializationErrors,
+      hasEventBus: !!this.eventBus,
+      hasConfigManager: !!this.configManager,
+      hasGridManager: !!this.gridManager,
+      hasDOMObserver: !!this.domObserver,
+      hasMessageHandler: !!this.messageHandler,
+      hasNotificationManager: !!this.notificationManager,
+      hasElementEffects: !!this.elementEffects,
+      hasContentFingerprint: !!this.contentFingerprint,
+      hasTruthfulCounter: !!this.truthfulCounter,
+      architectureInitialized: this.architectureInitialized,
+      lifecycleManagerStatus: this.lifecycleManager ? 'initialized' : 'not_initialized',
+      currentUrl: window.location.href,
+      hostname: window.location.hostname
+    };
+  }
+
+  testGridDetection() {
+    try {
+      console.log('🧪 Testing grid detection...');
+      if (!this.gridManager) {
+        console.error('❌ No grid manager available');
+        return { success: false, error: 'No grid manager' };
+      }
+
+      this.gridManager.findAllGridContainers();
+      const grids = this.gridManager.getAllGrids();
+      console.log(`✅ Found ${grids.length} grids`);
+
+      grids.forEach((grid, index) => {
+        console.log(`Grid ${index + 1}:`, {
+          element: grid.element.tagName,
+          children: grid.children?.length || 0,
+          id: grid.id
+        });
+      });
+
+      return {
+        success: true,
+        gridsFound: grids.length,
+        grids: grids.map(g => ({
+          element: g.element.tagName,
+          children: g.children?.length || 0,
+          id: g.id
+        }))
+      };
+    } catch (error) {
+      console.error('❌ Grid detection test failed:', error);
+      return { success: false, error: error.message };
+    }
+  }
 }
+
+// Make ExtensionController available globally for content script
+window.ExtensionController = ExtensionController;

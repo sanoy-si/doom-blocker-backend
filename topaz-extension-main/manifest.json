@@ -1,8 +1,10 @@
 {
   "name": "Doom Blocker",
-  "description": "AI-powered social media content filtering",
-  "version": "0.1.2",
+  "description": "AI-powered social media content filtering to reduce distractions and improve focus by intelligently analyzing and filtering content on YouTube, Twitter, LinkedIn, and Reddit.",
+  "version": "1.0.0",
   "manifest_version": 3,
+  "author": "Doom Blocker Team",
+  "homepage_url": "https://www.doomblocker.com",
   "background": {
     "service_worker": "background/background.js",
     "type": "module"
@@ -23,7 +25,6 @@
         "content/utils/constants.js",
         "content/utils/TruthfulCounter.js",
         "content/utils/SessionManager.js",
-        "content/utils/InputSanitizer.js",
         "content/core/EventBus.js",
         "content/core/ConfigManager.js",
         "content/grid/GridDetector.js",
@@ -33,9 +34,12 @@
         "content/ui/NotificationManager.js",
         "content/observers/DOMObserver.js",
         "content/messaging/MessageHandler.js",
+        "content/core/ResourceManager.js",
+        "content/core/ExtensionLifecycleManager.js",
         "content/core/ExtensionController.js",
         "content/index.js"
       ],
+      "css": ["content/content.css"],
       "run_at": "document_idle",
       "all_frames": false
     },
@@ -73,7 +77,7 @@
       "128": "icons/icon-128.png"
     }
   },
-  "permissions": ["storage", "tabs", "scripting"],
+  "permissions": ["storage", "activeTab", "tabs", "scripting"],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://topaz-backend1.onrender.com https://www.doomblocker.com;"
   },

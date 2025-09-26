@@ -1,12 +1,17 @@
 class DOMObserver {
   constructor(eventBus, options = {}) {
     this.eventBus = eventBus;
-    this.throttleDelay = 200 // Delay in ms (increased for performance)
+    // 🚀 PERFORMANCE FIX: Increase throttle delay for better performance after scrolling
+    this.throttleDelay = 500 // Delay in ms (increased from 200ms for performance)
 
     this.observer = null;
     this.isObserving = false;
     this.mutationsBuffer = [];
     this.throttleTimeoutId = null; // Replaces idleCallbackId
+
+    // Add smart batching - only process mutations that add significant content
+    this.lastMutationTime = 0;
+    this.mutationCountThreshold = 10; // Only process if we have significant mutations
 
     this.handleMutations = this.handleMutations.bind(this);
     this.processMutations = this.processMutations.bind(this);
@@ -52,13 +57,43 @@ class DOMObserver {
   }
 
   /**
-   * Buffers mutations and schedules a single processing call using a timer.
+   * 🚀 PERFORMANCE FIX: Buffers mutations and schedules processing with smart batching.
    */
   handleMutations(mutations) {
-    this.mutationsBuffer.push(...mutations);
-    
+    // Filter out mutations that don't add meaningful content
+    const significantMutations = mutations.filter(mutation => {
+      if (mutation.type !== 'childList') return false;
+
+      // Only process mutations that add element nodes (not text nodes)
+      const hasSignificantAddedNodes = Array.from(mutation.addedNodes).some(node =>
+        node.nodeType === 1 && // Element node
+        node.children && node.children.length > 0 // Has children (likely content)
+      );
+
+      return hasSignificantAddedNodes;
+    });
+
+    if (significantMutations.length === 0) {
+      return; // Skip processing trivial mutations
+    }
+
+    this.mutationsBuffer.push(...significantMutations);
+
+    // Smart batching: wait for more mutations if we're getting them rapidly
+    const now = Date.now();
+    const timeSinceLastMutation = now - this.lastMutationTime;
+    this.lastMutationTime = now;
+
+    // If mutations are coming rapidly (< 100ms apart), wait for more
+    if (timeSinceLastMutation < 100 && this.mutationsBuffer.length < this.mutationCountThreshold) {
+      if (this.throttleTimeoutId) {
+        clearTimeout(this.throttleTimeoutId);
+      }
+      this.throttleTimeoutId = setTimeout(this.processMutations, this.throttleDelay);
+      return;
+    }
+
     // Schedule processing only if a timer isn't already pending.
-    // This is the core of the throttling mechanism.
     if (!this.throttleTimeoutId) {
       this.throttleTimeoutId = setTimeout(this.processMutations, this.throttleDelay);
     }
@@ -80,7 +115,7 @@ class DOMObserver {
   }
 
   /**
-   * Called by setTimeout to process the entire batch of accumulated mutations.
+   * 🚀 PERFORMANCE FIX: Process batched mutations efficiently.
    */
   processMutations() {
     // If observing has been stopped or the buffer is empty, just reset and exit.
@@ -89,15 +124,27 @@ class DOMObserver {
       return;
     }
 
+    const mutationCount = this.mutationsBuffer.length;
+    console.time(`🔧 DOMObserver.processMutations (${mutationCount} mutations)`);
+
     const clonedMutations = this.cloneMutationData(this.mutationsBuffer);
     this.mutationsBuffer = []; // Clear the buffer for the next cycle.
 
-    // Your event emitting logic remains the same.
+    // Calculate total added nodes for performance logging
+    const totalAddedNodes = clonedMutations.reduce((total, mutation) =>
+      total + (mutation.addedNodes ? mutation.addedNodes.length : 0), 0
+    );
+
+    console.log(`⚡ Processing ${mutationCount} significant mutations with ${totalAddedNodes} added nodes`);
+
+    // Emit the optimized mutation data
     this.eventBus.emit(EVENTS.DOM_MUTATED, {
       mutations: clonedMutations,
       timestamp: Date.now()
     });
-    
+
+    console.timeEnd(`🔧 DOMObserver.processMutations (${mutationCount} mutations)`);
+
     // CRITICAL: Reset the timeout ID so the next mutation can schedule a new call.
     this.throttleTimeoutId = null;
   }
@@ -127,4 +174,5 @@ class DOMObserver {
     this.stopObserving();
     this.eventBus = null;
   }
-}
+}// Make DOMObserver available globally for content script
+window.DOMObserver = DOMObserver;

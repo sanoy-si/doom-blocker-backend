@@ -341,4 +341,5 @@ class SessionManager {
 }
 
 // Create global instance for content scripts
-window.DoomBlockerSessionManager = new SessionManager();
+window.DoomBlockerSessionManager = new SessionManager();// Make SessionManager available globally for content script
+window.SessionManager = SessionManager;

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extension Test</title>
+</head>
+<body>
+    <h1>Extension Test Page</h1>
+    <div id="output"></div>
+
+    <!-- Load all the content scripts in order -->
+    <script src="content/utils/constants.js"></script>
+    <script src="content/utils/TruthfulCounter.js"></script>
+    <script src="content/utils/SessionManager.js"></script>
+    <script src="content/utils/InputSanitizer.js"></script>
+    <script src="content/core/EventBus.js"></script>
+    <script src="content/core/ConfigManager.js"></script>
+    <script src="content/performance/MicroOptimizationFramework.js"></script>
+    <script src="content/performance/SmartCacheSystem.js"></script>
+    <script src="content/performance/AsyncProcessingPipeline.js"></script>
+    <script src="content/performance/UltraFastGridScanner.js"></script>
+    <script src="content/performance/CSSPerformanceOptimizer.js"></script>
+    <script src="content/performance/PerformanceMonitor.js"></script>
+    <script src="content/performance/PerformanceIntegrator.js"></script>
+    <script src="content/grid/GridDetector.js"></script>
+    <script src="content/grid/GridManager.js"></script>
+    <script src="content/grid/ContentFingerprint.js"></script>
+    <script src="content/ui/ElementEffects.js"></script>
+    <script src="content/ui/NotificationManager.js"></script>
+    <script src="content/observers/DOMObserver.js"></script>
+    <script src="content/messaging/MessageHandler.js"></script>
+    <script src="content/core/ResourceManager.js"></script>
+    <script src="content/core/StateValidator.js"></script>
+    <script src="content/core/UnifiedEventCoordinator.js"></script>
+    <script src="content/core/ViewportPriorityQueue.js"></script>
+    <script src="content/core/ProgressiveFilteringOrchestrator.js"></script>
+    <script src="content/core/ExtensionLifecycleManager.js"></script>
+    <script src="content/core/ExtensionController.js"></script>
+
+    <script>
+        console.log("🧪 Testing extension loading...");
+
+        const output = document.getElementById('output');
+
+        function logTest(message, success = true) {
+            const div = document.createElement('div');
+            div.style.color = success ? 'green' : 'red';
+            div.textContent = (success ? '✅ ' : '❌ ') + message;
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        try {
+            // Test if classes are available
+            logTest('Constants loaded: ' + (typeof MESSAGE_TYPES !== 'undefined'));
+            logTest('EventBus loaded: ' + (typeof EventBus !== 'undefined'));
+            logTest('ConfigManager loaded: ' + (typeof ConfigManager !== 'undefined'));
+            logTest('ExtensionController loaded: ' + (typeof ExtensionController !== 'undefined'));
+
+            // Try to create an ExtensionController
+            const controller = new ExtensionController();
+            logTest('ExtensionController instantiated successfully');
+
+            // Try to enable it
+            controller.enable().then(() => {
+                logTest('ExtensionController enabled successfully');
+            }).catch(error => {
+                logTest('ExtensionController enable failed: ' + error.message, false);
+            });
+
+        } catch (error) {
+            logTest('Extension test failed: ' + error.message, false);
+            console.error('Full error:', error);
+        }
+    </script>
+</body>
+</html>

@@ -730,3 +730,5 @@ removeElementWithAnimation(element) {
   }
 }
 
+// Make ElementEffects available globally for content script
+window.ElementEffects = ElementEffects;

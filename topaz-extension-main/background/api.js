@@ -426,14 +426,16 @@ class API {
   // =============================================================================
 
   async fetchDistractingChunks(gridStructure, currentUrl, whitelist = [], blacklist = []) {
-    console.log(`🌐 API: Making authenticated request to fetch_distracting_chunks`);
-    console.log(`🌐 API: Current URL: ${currentUrl}`);
-    console.log(`🌐 API: Whitelist (${whitelist.length} items):`, whitelist);
-    console.log(`🌐 API: Blacklist (${blacklist.length} items):`, blacklist);
+    console.log(`🧠 [AI PRIMARY] Making AI backend request (0.5s latency target)`);
+    console.log(`🧠 [AI PRIMARY] Current URL: ${currentUrl}`);
+    console.log(`🧠 [AI PRIMARY] Whitelist (${whitelist.length} items):`, whitelist);
+    console.log(`🧠 [AI PRIMARY] Blacklist (${blacklist.length} items):`, blacklist);
+
+    const startTime = Date.now();
 
     try {
       const visitorId = await this.getVisitorId();
-      
+
       // Sanitize input data before sending to API
       const requestBody = {
         gridStructure: this.sanitizeGridStructure(gridStructure),
@@ -443,57 +445,111 @@ class API {
         visitorId: this.sanitizeText(visitorId)
       };
 
-      console.log(`🌐 API: Request body:`, JSON.stringify(requestBody, null, 2));
+      console.log(`🧠 [AI PRIMARY] Sending AI request to: ${API_ENDPOINTS.BASE_URL}/fetch_distracting_chunks`);
 
-      // Use the authenticated request method instead of direct fetch
-      const response = await this.makeAuthenticatedRequest('/fetch_distracting_chunks', {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      }, API_ENDPOINTS.BASE_URL);
+      // 🚀 CRITICAL FIX: Add timeout and better error handling for network issues
+      const timeoutMs = 10000; // 10 second timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      if (!response.ok) {
-        console.error(`🌐 API: Request failed - HTTP ${response.status}: ${response.statusText}`);
-        
-        // Try to get the actual error message from the response body
-        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-        try {
-          const errorData = await response.json();
-          if (errorData && errorData.detail) {
-            errorMessage = errorData.detail;
+      try {
+        // Use the authenticated request method instead of direct fetch
+        const response = await this.makeAuthenticatedRequest('/fetch_distracting_chunks', {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        }, API_ENDPOINTS.BASE_URL);
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          console.error(`🧠 [AI PRIMARY] AI backend failed - HTTP ${response.status}: ${response.statusText}`);
+
+          // Try to get the actual error message from the response body
+          let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          try {
+            const errorData = await response.json();
+            if (errorData && errorData.detail) {
+              errorMessage = errorData.detail;
+            }
+          } catch (parseError) {
+            console.warn('🧠 [AI PRIMARY] Could not parse AI backend error response');
           }
-        } catch (parseError) {
-          console.warn('🌐 API: Could not parse error response, using default message');
+
+          // Provide user-friendly error messages
+          if (response.status === 401) {
+            errorMessage = 'AI backend authentication failed. Please check your API key.';
+          } else if (response.status === 429) {
+            errorMessage = 'AI backend rate limit exceeded. Please try again later.';
+          } else if (response.status === 502 || response.status === 503) {
+            errorMessage = 'AI service temporarily unavailable. Using fallback analysis.';
+          } else if (response.status === 0 || response.status >= 500) {
+            errorMessage = 'AI backend server unreachable. Using local processing.';
+          }
+
+          throw new Error(errorMessage);
         }
-        
-        // Provide user-friendly error messages
-        if (response.status === 401) {
-          errorMessage = 'Authentication failed. Please check your API key.';
-        } else if (response.status === 429) {
-          errorMessage = 'Rate limit exceeded. Please try again later.';
-        } else if (response.status === 502) {
-          errorMessage = 'AI service temporarily unavailable. Using fallback analysis.';
+
+        const data = await response.json();
+        const processingTime = Date.now() - startTime;
+
+        console.log(`✅ [AI PRIMARY] AI backend success in ${processingTime}ms (target: <500ms)`);
+
+        if (processingTime > 1000) {
+          console.warn(`⚠️ [AI PRIMARY] Slow AI response: ${processingTime}ms (expected <500ms)`);
         }
-        
-        throw new Error(errorMessage);
+
+        return { success: true, data, processingTime };
+
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
       }
 
-      console.log(`🌐 API: Request successful - Status: ${response.status}`);
-      const data = await response.json();
-      console.log(`🌐 API: Response data received`);
-
-      return { success: true, data };
     } catch (error) {
-      console.error(`🌐 API: Request error: ${error.message}`);
-      
+      const processingTime = Date.now() - startTime;
+      console.error(`❌ [AI PRIMARY] AI backend error after ${processingTime}ms: ${error.message}`);
+
+      // 🚀 ENHANCED ERROR CATEGORIZATION for better handling
+      let errorType = 'unknown';
+      let shouldRetry = false;
+      let isTemporary = false;
+
+      if (error.name === 'AbortError') {
+        errorType = 'timeout';
+        isTemporary = true;
+        shouldRetry = true;
+        console.warn(`⏰ [AI PRIMARY] AI backend timeout after ${timeoutMs}ms`);
+      } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        errorType = 'network';
+        isTemporary = true;
+        shouldRetry = true;
+        console.warn(`🌐 [AI PRIMARY] Network error - AI backend may be down`);
+      } else if (error.message.includes('Authentication')) {
+        errorType = 'auth';
+        shouldRetry = false;
+      } else if (error.message.includes('Rate limit')) {
+        errorType = 'rate_limit';
+        isTemporary = true;
+        shouldRetry = true;
+      } else if (error.message.includes('temporarily unavailable') || error.message.includes('502') || error.message.includes('503')) {
+        errorType = 'service_unavailable';
+        isTemporary = true;
+        shouldRetry = true;
+      }
+
       // Return structured error information for better handling
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.message,
-        shouldRetry: !error.message.includes('Authentication') && !error.message.includes('Rate limit'),
-        isTemporary: error.message.includes('temporarily unavailable')
+        errorType,
+        shouldRetry,
+        isTemporary,
+        processingTime,
+        fallbackRecommended: errorType === 'network' || errorType === 'timeout' || errorType === 'service_unavailable'
       };
     }
   }

@@ -124,7 +124,13 @@ class SupabaseSync {
 
             let syncQueue = [];
             try {
-                syncQueue = sessionManager.getSyncQueue() || [];
+                // Check if sessionManager has getSyncQueue method
+                if (typeof sessionManager.getSyncQueue === 'function') {
+                    syncQueue = sessionManager.getSyncQueue() || [];
+                } else {
+                    // Fallback: try to get sync queue from sessionManager data
+                    syncQueue = sessionManager.syncQueue || sessionManager.queue || [];
+                }
             } catch (error) {
                 console.warn('Could not get sync queue:', error);
                 return;

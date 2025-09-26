@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topaz Extension Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .debug-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .warning { background: #fff3cd; color: #856404; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        #logs {
+            background: #1e1e1e;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-panel">
+        <h1>🚀 Topaz Extension Debug Panel</h1>
+        <p>Use this page to test and debug the Topaz extension functionality.</p>
+
+        <div id="status-container">
+            <h3>Extension Status</h3>
+            <div id="extension-status">Checking...</div>
+        </div>
+
+        <div style="margin: 20px 0;">
+            <button onclick="checkExtensionStatus()">🔍 Check Extension Status</button>
+            <button onclick="testController()">🧪 Test Controller</button>
+            <button onclick="testGridDetection()">🎯 Test Grid Detection</button>
+            <button onclick="testAIProcessing()">🧠 Test AI Processing</button>
+            <button onclick="clearLogs()">🗑️ Clear Logs</button>
+        </div>
+    </div>
+
+    <div class="debug-panel">
+        <h3>Console Logs</h3>
+        <div id="logs"></div>
+    </div>
+
+    <script>
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        const logContainer = document.getElementById('logs');
+
+        function addLogEntry(message, type = 'log') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.style.marginBottom = '5px';
+
+            let prefix = '';
+            switch(type) {
+                case 'error': prefix = '❌ '; logEntry.style.color = '#ff6b6b'; break;
+                case 'warn': prefix = '⚠️ '; logEntry.style.color = '#ffd93d'; break;
+                case 'log':
+                default: prefix = '📝 '; break;
+            }
+
+            logEntry.innerHTML = `<span style="color: #6c757d;">[${timestamp}]</span> ${prefix}${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addLogEntry(args.join(' '), 'log');
+        };
+
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addLogEntry(args.join(' '), 'error');
+        };
+
+        console.warn = function(...args) {
+            originalWarn.apply(console, args);
+            addLogEntry(args.join(' '), 'warn');
+        };
+
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('extension-status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.textContent = message;
+        }
+
+        function checkExtensionStatus() {
+            console.log('🔍 Checking extension status...');
+
+            const checks = [
+                { name: 'Topaz Controller', check: () => typeof window.__topazController !== 'undefined' },
+                { name: 'Extension Classes', check: () => typeof ExtensionController !== 'undefined' },
+                { name: 'Chrome APIs', check: () => typeof chrome !== 'undefined' && chrome.runtime },
+                { name: 'Constants', check: () => typeof MESSAGE_TYPES !== 'undefined' },
+                { name: 'EventBus', check: () => typeof EventBus !== 'undefined' },
+            ];
+
+            let allPassed = true;
+            checks.forEach(({name, check}) => {
+                try {
+                    const passed = check();
+                    console.log(`${passed ? '✅' : '❌'} ${name}: ${passed ? 'OK' : 'FAILED'}`);
+                    if (!passed) allPassed = false;
+                } catch (error) {
+                    console.error(`❌ ${name}: ERROR - ${error.message}`);
+                    allPassed = false;
+                }
+            });
+
+            updateStatus(
+                allPassed ? 'Extension appears to be working!' : 'Extension has issues - check logs',
+                allPassed ? 'success' : 'error'
+            );
+        }
+
+        function testController() {
+            console.log('🧪 Testing ExtensionController...');
+
+            try {
+                if (window.__topazController) {
+                    console.log('✅ Using existing controller instance');
+                    console.log('Controller state:', {
+                        isDisabled: window.__topazController.isDisabled,
+                        hasEventBus: !!window.__topazController.eventBus,
+                        hasGridManager: !!window.__topazController.gridManager,
+                    });
+                } else {
+                    console.warn('⚠️ No existing controller found, trying to create new one...');
+                    const controller = new ExtensionController();
+                    console.log('✅ ExtensionController created successfully');
+                }
+            } catch (error) {
+                console.error('❌ ExtensionController test failed:', error.message);
+            }
+        }
+
+        function testGridDetection() {
+            console.log('🎯 Testing Grid Detection...');
+
+            try {
+                if (window.__topazController && window.__topazController.gridManager) {
+                    const gridManager = window.__topazController.gridManager;
+                    gridManager.findAllGridContainers();
+                    const grids = gridManager.getAllGrids();
+                    console.log(`✅ Found ${grids.length} grids on this page`);
+
+                    grids.forEach((grid, index) => {
+                        console.log(`Grid ${index + 1}:`, {
+                            element: grid.element.tagName,
+                            children: grid.children?.length || 0,
+                            id: grid.id
+                        });
+                    });
+                } else {
+                    console.error('❌ No grid manager available');
+                }
+            } catch (error) {
+                console.error('❌ Grid detection test failed:', error.message);
+            }
+        }
+
+        function testAIProcessing() {
+            console.log('🧠 Testing AI Processing...');
+
+            try {
+                if (window.__topazController) {
+                    console.log('✅ Controller available, attempting to trigger analysis...');
+                    window.__topazController.performInitialExtraction(true).then(() => {
+                        console.log('✅ Initial extraction completed successfully');
+                    }).catch(error => {
+                        console.error('❌ Initial extraction failed:', error.message);
+                    });
+                } else {
+                    console.error('❌ No controller available for AI testing');
+                }
+            } catch (error) {
+                console.error('❌ AI processing test failed:', error.message);
+            }
+        }
+
+        function clearLogs() {
+            logContainer.innerHTML = '';
+        }
+
+        // Auto-check status on load
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(checkExtensionStatus, 1000);
+        });
+
+        console.log('🚀 Topaz Extension Debug Panel Loaded');
+        console.log('📝 This page will help you debug extension issues');
+        console.log('🔧 Use the buttons above to run various tests');
+    </script>
+</body>
+</html>

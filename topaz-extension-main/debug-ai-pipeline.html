@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 AI Pipeline Debugger - Doom Blocker</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f8f9fa;
+            line-height: 1.6;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+        }
+        .debug-section {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ddd;
+        }
+        .debug-section.pass {
+            background: #e8f5e8;
+            border-left-color: #4caf50;
+        }
+        .debug-section.fail {
+            background: #ffe8e8;
+            border-left-color: #f44336;
+        }
+        .debug-section.warning {
+            background: #fff8e1;
+            border-left-color: #ff9800;
+        }
+        .debug-section.info {
+            background: #e3f2fd;
+            border-left-color: #2196f3;
+        }
+        .test-button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .test-button:hover { background: #0056b3; }
+        .critical { background: #ff4444; }
+        .critical:hover { background: #cc3333; }
+
+        .step {
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 20px 0 10px;
+            font-size: 18px;
+        }
+        .logs {
+            background: #1e1e1e;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        .error { color: #dc3545; font-weight: bold; }
+        .success { color: #28a745; font-weight: bold; }
+        .warning { color: #ffc107; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 AI Pipeline Debugger</h1>
+            <p>Deep debugging of Doom Blocker's AI content filtering system</p>
+        </div>
+
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="test-button critical" onclick="debugFullAIPipeline()">🔍 DEBUG FULL AI PIPELINE</button>
+            <button class="test-button" onclick="testGridDetection()">🎯 Test Grid Detection</button>
+            <button class="test-button" onclick="testProfiles()">👤 Test Profiles</button>
+            <button class="test-button" onclick="testAPIConnection()">🌐 Test API</button>
+            <button class="test-button" onclick="triggerManualAI()">🧠 Force AI Analysis</button>
+        </div>
+
+        <div id="debugResults">
+            <div class="debug-section info">
+                <h3>📋 Instructions</h3>
+                <ol>
+                    <li>Load the extension on YouTube.com</li>
+                    <li>Click <strong>"DEBUG FULL AI PIPELINE"</strong> to trace the entire AI flow</li>
+                    <li>Check each step for failures</li>
+                    <li>Use specific tests to isolate problems</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let debugLogs = [];
+
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const icon = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : '📝';
+            debugLogs.push(`[${timestamp}] ${icon} ${message}`);
+            updateLogsDisplay();
+        }
+
+        function updateLogsDisplay() {
+            const logsDiv = document.querySelector('.logs');
+            if (logsDiv) {
+                logsDiv.innerHTML = debugLogs.join('\n');
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+            }
+        }
+
+        function addDebugSection(title, content, status = 'info') {
+            const resultsDiv = document.getElementById('debugResults');
+            const section = document.createElement('div');
+            section.className = `debug-section ${status}`;
+            section.innerHTML = `
+                <h3>${title}</h3>
+                ${content}
+                <div class="logs"></div>
+            `;
+            resultsDiv.appendChild(section);
+            updateLogsDisplay();
+        }
+
+        async function debugFullAIPipeline() {
+            debugLogs = [];
+            document.getElementById('debugResults').innerHTML = '';
+
+            addLog('🚀 Starting full AI pipeline debug...', 'info');
+
+            // Step 1: Check extension context
+            if (typeof chrome === 'undefined' || !chrome.runtime) {
+                addDebugSection('❌ Extension Context',
+                    '<p class="error">ERROR: Not running in extension context! Load this page as an extension to debug.</p>',
+                    'fail');
+                return;
+            }
+
+            addLog('✅ Extension context detected', 'success');
+            addDebugSection('✅ Extension Context', '<p class="success">Extension APIs available</p>', 'pass');
+
+            // Step 2: Check if on YouTube
+            if (!window.location.hostname.includes('youtube.com')) {
+                addDebugSection('⚠️ YouTube Check',
+                    '<p class="warning">WARNING: Not on YouTube. AI pipeline only works on YouTube.</p><p>Go to YouTube.com and run this test.</p>',
+                    'warning');
+                return;
+            }
+
+            addLog('✅ On YouTube.com', 'success');
+            addDebugSection('✅ YouTube Check', '<p class="success">Running on YouTube.com</p>', 'pass');
+
+            // Step 3: Check if extension controller exists
+            const controller = window.__topazController || window.__topazDebug?.controller;
+            if (!controller) {
+                addDebugSection('❌ Extension Controller',
+                    '<p class="error">ERROR: Extension controller not found!</p><p>The extension may not be loaded properly.</p>',
+                    'fail');
+                return;
+            }
+
+            addLog('✅ Extension controller found', 'success');
+            addDebugSection('✅ Extension Controller', '<p class="success">Controller available</p>', 'pass');
+
+            // Step 4: Test grid detection
+            await testGridDetectionInternal();
+
+            // Step 5: Test profiles and tags
+            await testProfilesInternal();
+
+            // Step 6: Force AI analysis
+            await triggerManualAIInternal();
+
+            addLog('🎉 Full AI pipeline debug complete!', 'success');
+        }
+
+        async function testGridDetectionInternal() {
+            addLog('🎯 Testing grid detection...', 'info');
+
+            try {
+                const controller = window.__topazController || window.__topazDebug?.controller;
+                if (!controller.gridManager) {
+                    throw new Error('GridManager not available');
+                }
+
+                // Find grids
+                controller.gridManager.findAllGridContainers();
+                const grids = controller.gridManager.getAllGrids();
+
+                addLog(`Found ${grids.length} grids on page`, grids.length > 0 ? 'success' : 'warning');
+
+                if (grids.length === 0) {
+                    addDebugSection('⚠️ Grid Detection',
+                        '<p class="warning">WARNING: No grids found on page!</p><p>This means no content will be analyzed by AI.</p>',
+                        'warning');
+                } else {
+                    addDebugSection('✅ Grid Detection',
+                        `<p class="success">Found ${grids.length} grids with content</p>
+                         <p>Grid details: ${grids.map(g => `${g.element.tagName}(${g.children?.length || 0} children)`).join(', ')}</p>`,
+                        'pass');
+                }
+
+            } catch (error) {
+                addLog(`Grid detection failed: ${error.message}`, 'error');
+                addDebugSection('❌ Grid Detection',
+                    `<p class="error">ERROR: ${error.message}</p>`,
+                    'fail');
+            }
+        }
+
+        async function testProfilesInternal() {
+            addLog('👤 Testing profiles and tags...', 'info');
+
+            try {
+                // Check profiles via background script
+                const response = await chrome.runtime.sendMessage({
+                    type: 'GET_PROFILE_DATA'
+                });
+
+                if (response && response.profiles) {
+                    const enabledProfiles = response.profiles.filter(p => p.isEnabled);
+                    const youtubeProfiles = enabledProfiles.filter(p =>
+                        p.allowedWebsites.some(site => site.includes('youtube'))
+                    );
+
+                    addLog(`Total profiles: ${response.profiles.length}, Enabled: ${enabledProfiles.length}, YouTube: ${youtubeProfiles.length}`, 'info');
+
+                    if (youtubeProfiles.length === 0) {
+                        addDebugSection('❌ Profiles Configuration',
+                            `<p class="error">CRITICAL: No enabled profiles for YouTube!</p>
+                             <p>This is why AI isn't working. The background script exits early if no profiles are enabled.</p>
+                             <p><strong>Solution:</strong> Enable at least one profile in the extension popup.</p>`,
+                            'fail');
+                    } else {
+                        // Check blacklist tags
+                        const allBlacklistTags = youtubeProfiles.flatMap(p => [...(p.blacklistTags || []), ...(p.customBlacklist || [])]);
+
+                        if (allBlacklistTags.length === 0) {
+                            addDebugSection('❌ Blacklist Tags',
+                                `<p class="error">CRITICAL: No blacklist tags found!</p>
+                                 <p>AI backend needs blacklist tags to know what to filter.</p>
+                                 <p><strong>Solution:</strong> Add blacklist tags in the extension popup.</p>`,
+                                'fail');
+                        } else {
+                            addDebugSection('✅ Profiles Configuration',
+                                `<p class="success">Profiles configured correctly</p>
+                                 <p>YouTube profiles: ${youtubeProfiles.length}</p>
+                                 <p>Blacklist tags: ${allBlacklistTags.length} (${allBlacklistTags.join(', ')})</p>`,
+                                'pass');
+                        }
+                    }
+                } else {
+                    throw new Error('Failed to get profile data from background script');
+                }
+
+            } catch (error) {
+                addLog(`Profile test failed: ${error.message}`, 'error');
+                addDebugSection('❌ Profiles Test',
+                    `<p class="error">ERROR: ${error.message}</p>`,
+                    'fail');
+            }
+        }
+
+        async function triggerManualAIInternal() {
+            addLog('🧠 Triggering manual AI analysis...', 'info');
+
+            try {
+                const controller = window.__topazController || window.__topazDebug?.controller;
+
+                // Force a full AI analysis
+                await controller.performInitialExtraction(true);
+
+                addLog('AI analysis triggered successfully', 'success');
+                addDebugSection('✅ AI Analysis Triggered',
+                    '<p class="success">Manual AI analysis started</p><p>Check browser console for detailed logs from background script.</p>',
+                    'pass');
+
+            } catch (error) {
+                addLog(`AI analysis failed: ${error.message}`, 'error');
+                addDebugSection('❌ AI Analysis',
+                    `<p class="error">ERROR: ${error.message}</p>`,
+                    'fail');
+            }
+        }
+
+        async function testGridDetection() {
+            debugLogs = [];
+            document.getElementById('debugResults').innerHTML = '';
+            await testGridDetectionInternal();
+        }
+
+        async function testProfiles() {
+            debugLogs = [];
+            document.getElementById('debugResults').innerHTML = '';
+            await testProfilesInternal();
+        }
+
+        async function testAPIConnection() {
+            debugLogs = [];
+            document.getElementById('debugResults').innerHTML = '';
+
+            addLog('🌐 Testing API connection...', 'info');
+
+            try {
+                const response = await fetch('https://topaz-backend1.onrender.com/health');
+                if (response.ok) {
+                    addLog('✅ Backend API is responding', 'success');
+                    addDebugSection('✅ API Connection',
+                        '<p class="success">Backend API is live and responding</p>',
+                        'pass');
+                } else {
+                    addLog(`⚠️ Backend returned status: ${response.status}`, 'warning');
+                    addDebugSection('⚠️ API Connection',
+                        `<p class="warning">Backend returned HTTP ${response.status}</p>`,
+                        'warning');
+                }
+            } catch (error) {
+                addLog(`❌ API connection failed: ${error.message}`, 'error');
+                addDebugSection('❌ API Connection',
+                    `<p class="error">ERROR: ${error.message}</p>`,
+                    'fail');
+            }
+        }
+
+        async function triggerManualAI() {
+            debugLogs = [];
+            document.getElementById('debugResults').innerHTML = '';
+            await triggerManualAIInternal();
+        }
+
+        // Auto-load debug info
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('🧠 AI Pipeline Debugger loaded');
+            console.log('📝 Use this tool to identify why AI filtering isn\'t working');
+        });
+    </script>
+</body>
+</html>

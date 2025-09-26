@@ -50,6 +50,24 @@ class MessageHandler {
       case MESSAGE_TYPES.URL_CHANGED:
         this.handleUrlChanged(message, sendResponse);
         break;
+      // Progressive filtering trigger from background
+      case 'TRIGGER_PROGRESSIVE_FILTERING':
+        this.eventBus.emit('message:trigger-progressive-filtering', {
+          scrollData: message.scrollData,
+          priority: message.priority,
+          snappyMode: message.snappyMode,
+          sendResponse
+        });
+        break;
+      // Background prefetch prediction request
+      case 'GET_PREDICTED_CONTENT':
+        this.eventBus.emit('message:get-predicted-content', {
+          scrollDirection: message.scrollDirection,
+          velocity: message.velocity,
+          lookAhead: message.lookAhead,
+          sendResponse
+        });
+        break;
         
       // 🚀 INSTANT FILTERING: Handle instant filter requests
       case 'INSTANT_FILTER_REQUEST':
@@ -279,4 +297,5 @@ class MessageHandler {
       sendResponse(this.createResponse(false, `Error getting YouTube settings: ${error.message}`));
     }
   }
-} 
+} // Make MessageHandler available globally for content script
+window.MessageHandler = MessageHandler;

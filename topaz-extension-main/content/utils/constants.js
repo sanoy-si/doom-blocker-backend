@@ -90,3 +90,17 @@ const GRID_VALIDATION = {
   CLUSTER_SCORE_CAP: 10,
   VIEWPORT_WIDTH_THRESHOLD: 0.9
 }; 
+// Make constants available globally for content script
+window.MESSAGE_TYPES = MESSAGE_TYPES;
+window.HIDING_METHODS = HIDING_METHODS;
+// EVENTS is defined in content/core/EventBus.js; guard in case this file loads first
+if (typeof EVENTS !== 'undefined') {
+  window.EVENTS = EVENTS;
+}
+window.TIMINGS = TIMINGS;
+window.GRID_VALIDATION = GRID_VALIDATION;
+window.CSS_CLASSES = CSS_CLASSES;
+window.DATA_ATTRIBUTES = DATA_ATTRIBUTES;
+window.ELEMENT_STATES = ELEMENT_STATES;
+window.HARDCODED_TAGS_TO_IGNORE = HARDCODED_TAGS_TO_IGNORE;
+window.SIMPLE_CONTENT_TAGS = SIMPLE_CONTENT_TAGS;

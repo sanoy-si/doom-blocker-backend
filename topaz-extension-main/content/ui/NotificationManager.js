@@ -320,4 +320,5 @@ class NotificationManager {
     this.hide();
     this.clearTimeouts();
   }
-} 
+} // Make NotificationManager available globally for content script
+window.NotificationManager = NotificationManager;

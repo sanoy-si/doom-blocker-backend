@@ -75,8 +75,9 @@ class TabManager {
         // Try to inject the full content script stack before retrying
         try {
           const files = [
-            'content/core/Logger.js',
             'content/utils/constants.js',
+            'content/utils/TruthfulCounter.js',
+            'content/utils/SessionManager.js',
             'content/core/EventBus.js',
             'content/core/ConfigManager.js',
             'content/grid/GridDetector.js',
@@ -86,6 +87,8 @@ class TabManager {
             'content/ui/NotificationManager.js',
             'content/observers/DOMObserver.js',
             'content/messaging/MessageHandler.js',
+            'content/core/ResourceManager.js',
+            'content/core/ExtensionLifecycleManager.js',
             'content/core/ExtensionController.js',
             'content/index.js'
           ];
