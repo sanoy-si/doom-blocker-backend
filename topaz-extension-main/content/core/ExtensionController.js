@@ -204,6 +204,9 @@ class ExtensionController {
     this.eventBus.on('youtube:get-settings', ({ sendResponse }) => {
       this.handleYouTubeGetSettings(sendResponse);
     });
+    
+    // Enhanced DOM mutation handling for YouTube Shorts
+    this.eventBus.on(EVENTS.DOM_MUTATED, this.handleDOMChangesForShorts.bind(this));
   }
 
   handleConfigUpdate(config) {
@@ -1554,42 +1557,319 @@ class ExtensionController {
   }
 
   /**
-   * Block/unblock YouTube Shorts
+   * Block/unblock YouTube Shorts - Enhanced comprehensive blocking
    */
   blockYouTubeShorts(enabled, skipStorage = false) {
+    console.log(`🚫 YouTube Shorts blocking ${enabled ? 'enabled' : 'disabled'}`);
+    
+    // Primary method: Add/remove body class for CSS-based blocking
+    if (enabled) {
+      document.body.classList.add('topaz-block-shorts');
+    } else {
+      document.body.classList.remove('topaz-block-shorts');
+    }
+    
+    // Secondary method: JavaScript-based blocking for elements that need it
+    // Comprehensive selectors for all Shorts elements
     const shortsSelectors = [
+      // Main Shorts containers and players
       '#shorts-player',
       '[data-testid="shorts-player"]',
       'ytd-reel-shelf-renderer',
+      'ytd-rich-shelf-renderer[is-shorts]',
+      'ytd-shorts-shelf-renderer',
       'ytd-shorts',
+      'ytd-shorts-player',
       '#shorts-container',
-      '[is="ytd-reel-shelf-renderer"]'
+      '.ytd-shorts',
+      '[is="ytd-reel-shelf-renderer"]',
+      '[is="ytd-rich-shelf-renderer"][is-shorts]',
+      
+      // Shorts in video lists and search results
+      'ytd-video-renderer:has([href*="/shorts"])',
+      'ytd-compact-video-renderer:has([href*="/shorts"])',
+      'ytd-rich-item-renderer:has([href*="/shorts"])',
+      
+      // Mobile Shorts elements
+      '.shorts-video-cell',
+      '.shorts-lockup',
+      '.reel-item-endpoint',
+      '[data-context-item-id*="shorts"]',
+      '[data-context-item-type="shorts"]',
+      
+      // Additional Shorts containers
+      '.ytd-reel-shelf-renderer',
+      '.ytd-rich-shelf-renderer[is-shorts]',
+      '[data-target-id*="shorts"]'
     ];
 
+    // Apply JavaScript-based blocking as backup
     shortsSelectors.forEach(selector => {
-      const elements = document.querySelectorAll(selector);
-      elements.forEach(element => {
-        if (enabled) {
-          element.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
-        } else {
-          element.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
-        }
-      });
-    });
-
-    // Also hide Shorts navigation items
-    const shortsNavItems = document.querySelectorAll('a[href*="/shorts"]');
-    shortsNavItems.forEach(item => {
-      if (enabled) {
-        item.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
-      } else {
-        item.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+      try {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+          if (enabled) {
+            element.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+          } else {
+            element.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+          }
+        });
+      } catch (error) {
+        // Some selectors with :has() might not work in all browsers, skip silently
+        console.debug(`Selector ${selector} failed:`, error);
       }
     });
+
+    // Block Shorts navigation items (sidebar menu)
+    const shortsNavSelectors = [
+      'ytd-guide-entry-renderer:has(a[href*="/shorts"])',
+      'ytd-mini-guide-entry-renderer:has(a[href*="/shorts"])',
+      'a[href*="/shorts"][role="tab"]',
+      'a[href="/shorts"]',
+      'a[href*="youtube.com/shorts"]'
+    ];
+
+    shortsNavSelectors.forEach(selector => {
+      try {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(element => {
+          if (enabled) {
+            element.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+          } else {
+            element.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+          }
+        });
+      } catch (error) {
+        console.debug(`Nav selector ${selector} failed:`, error);
+      }
+    });
+
+    // Fallback: Block any link containing "/shorts"
+    const allShortsLinks = document.querySelectorAll('a[href*="/shorts"]');
+    allShortsLinks.forEach(link => {
+      if (enabled) {
+        link.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+      } else {
+        link.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+      }
+    });
+
+    // Block elements with Shorts-related text content
+    if (enabled) {
+      this.blockShortsByTextContent();
+    } else {
+      // When disabling, remove text-based blocking
+      this.unblockShortsByTextContent();
+    }
 
     // Store the setting persistently (only when called from popup)
     if (!skipStorage) {
       this.storeYouTubeSetting('blockShorts', enabled);
+    }
+
+    console.log(`🚫 YouTube Shorts blocking complete. Body class: ${document.body.classList.contains('topaz-block-shorts') ? 'ADDED' : 'REMOVED'}. JS-blocked elements: ${document.querySelectorAll('.topaz-youtube-shorts-hidden').length}`);
+  }
+
+  /**
+   * Block Shorts elements by analyzing text content
+   */
+  blockShortsByTextContent() {
+    // Look for sidebar menu items that contain "Shorts" text
+    const guideItems = document.querySelectorAll('ytd-guide-entry-renderer, ytd-mini-guide-entry-renderer');
+    guideItems.forEach(item => {
+      const textContent = item.textContent?.toLowerCase() || '';
+      if (textContent.includes('shorts')) {
+        item.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+      }
+    });
+
+    // Look for section headers containing "Shorts"
+    const headers = document.querySelectorAll('h2, h3, .ytd-shelf-renderer h2, .ytd-rich-shelf-renderer h2');
+    headers.forEach(header => {
+      const textContent = header.textContent?.toLowerCase() || '';
+      if (textContent.includes('shorts')) {
+        // Hide the entire shelf/section
+        const shelf = header.closest('ytd-rich-shelf-renderer, ytd-shelf-renderer, ytd-reel-shelf-renderer');
+        if (shelf) {
+          shelf.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+        }
+      }
+    });
+  }
+
+  /**
+   * Remove text-based Shorts blocking
+   */
+  unblockShortsByTextContent() {
+    // Remove blocking from sidebar menu items
+    const guideItems = document.querySelectorAll('ytd-guide-entry-renderer, ytd-mini-guide-entry-renderer');
+    guideItems.forEach(item => {
+      item.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+    });
+
+    // Remove blocking from shelves that were hidden by text content
+    const shelves = document.querySelectorAll('ytd-rich-shelf-renderer, ytd-shelf-renderer, ytd-reel-shelf-renderer');
+    shelves.forEach(shelf => {
+      shelf.classList.remove(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+    });
+  }
+
+  /**
+   * Handle DOM mutations specifically for YouTube Shorts blocking
+   * This ensures dynamically loaded Shorts content is blocked immediately
+   */
+  handleDOMChangesForShorts(data) {
+    // Only proceed if we're on YouTube
+    if (!window.location.hostname.includes('youtube.com')) {
+      return;
+    }
+
+    // Quick check: if body doesn't have the blocking class, Shorts blocking is disabled
+    if (!document.body.classList.contains('topaz-block-shorts')) {
+      return;
+    }
+
+    // Process added nodes for Shorts content
+    const { mutations } = data;
+    let foundShortsContent = false;
+
+    mutations.forEach(mutation => {
+      if (mutation.type === 'childList' && mutation.addedNodes) {
+        mutation.addedNodes.forEach(node => {
+          // Skip non-element nodes
+          if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+          // Check if the added node or its children contain Shorts content
+          if (this.containsShortsContent(node)) {
+            foundShortsContent = true;
+            this.blockShortsInNode(node);
+          }
+        });
+      }
+    });
+
+    // If we found new Shorts content, also run a full check to catch any missed elements
+    if (foundShortsContent) {
+      console.log('🚫 New Shorts content detected, running comprehensive block');
+      // Use a small delay to ensure DOM is stable
+      setTimeout(() => {
+        this.blockYouTubeShorts(true, true); // skipStorage = true
+      }, 100);
+    }
+  }
+
+  /**
+   * Check if a DOM node contains Shorts-related content
+   */
+  containsShortsContent(node) {
+    // Check if the node itself matches Shorts selectors
+    const shortsSelectors = [
+      'ytd-reel-shelf-renderer',
+      'ytd-rich-shelf-renderer[is-shorts]',
+      'ytd-shorts-shelf-renderer',
+      'ytd-shorts',
+      'ytd-shorts-player',
+      '[data-testid="shorts-player"]',
+      '.shorts-video-cell',
+      '.shorts-lockup',
+      '.reel-item-endpoint'
+    ];
+
+    // Check if node matches any Shorts selector
+    for (const selector of shortsSelectors) {
+      try {
+        if (node.matches && node.matches(selector)) {
+          return true;
+        }
+      } catch (error) {
+        // Selector might not be supported, continue
+      }
+    }
+
+    // Check if node contains any Shorts elements
+    for (const selector of shortsSelectors) {
+      try {
+        if (node.querySelector && node.querySelector(selector)) {
+          return true;
+        }
+      } catch (error) {
+        // Selector might not be supported, continue
+      }
+    }
+
+    // Check for links to Shorts
+    if (node.querySelector && node.querySelector('a[href*="/shorts"]')) {
+      return true;
+    }
+
+    // Check for text content containing "Shorts"
+    const textContent = node.textContent?.toLowerCase() || '';
+    if (textContent.includes('shorts') && 
+        (node.tagName === 'YTD-GUIDE-ENTRY-RENDERER' || 
+         node.tagName === 'YTD-MINI-GUIDE-ENTRY-RENDERER' ||
+         node.querySelector('h2, h3'))) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Block Shorts content within a specific DOM node
+   */
+  blockShortsInNode(node) {
+    // Only block if the body has the blocking class (i.e., if Shorts blocking is enabled)
+    if (!document.body.classList.contains('topaz-block-shorts')) {
+      return;
+    }
+
+    // Apply the same blocking logic as the main function, but scoped to this node
+    const shortsSelectors = [
+      'ytd-reel-shelf-renderer',
+      'ytd-rich-shelf-renderer[is-shorts]',
+      'ytd-shorts-shelf-renderer',
+      'ytd-shorts',
+      'ytd-shorts-player',
+      '[data-testid="shorts-player"]',
+      '.shorts-video-cell',
+      '.shorts-lockup',
+      '.reel-item-endpoint',
+      'a[href*="/shorts"]'
+    ];
+
+    // Check if the node itself should be blocked
+    for (const selector of shortsSelectors) {
+      try {
+        if (node.matches && node.matches(selector)) {
+          node.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+          console.log('🚫 Blocked new Shorts element:', node);
+          break;
+        }
+      } catch (error) {
+        // Selector might not be supported, continue
+      }
+    }
+
+    // Block child elements
+    shortsSelectors.forEach(selector => {
+      try {
+        const elements = node.querySelectorAll ? node.querySelectorAll(selector) : [];
+        elements.forEach(element => {
+          element.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+          console.log('🚫 Blocked new Shorts child element:', element);
+        });
+      } catch (error) {
+        // Selector might not be supported, continue
+      }
+    });
+
+    // Special handling for guide items with "Shorts" text
+    if (node.tagName === 'YTD-GUIDE-ENTRY-RENDERER' || node.tagName === 'YTD-MINI-GUIDE-ENTRY-RENDERER') {
+      const textContent = node.textContent?.toLowerCase() || '';
+      if (textContent.includes('shorts')) {
+        node.classList.add(CSS_CLASSES.YOUTUBE_SHORTS_HIDDEN);
+        console.log('🚫 Blocked Shorts navigation item:', node);
+      }
     }
   }
 
