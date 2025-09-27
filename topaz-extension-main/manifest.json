@@ -1,7 +1,7 @@
 {
   "name": "Doom Blocker",
-  "description": "AI-powered social media content filtering to reduce distractions and improve focus by intelligently analyzing and filtering content on YouTube, Twitter, LinkedIn, and Reddit.",
-  "version": "1.0.0",
+  "description": "AI-powered content filtering for YouTube, Twitter, LinkedIn & Reddit. Reduce distractions and improve focus with smart blocking.",
+  "version": "0.1.3",
   "manifest_version": 3,
   "author": "Doom Blocker Team",
   "homepage_url": "https://www.doomblocker.com",
