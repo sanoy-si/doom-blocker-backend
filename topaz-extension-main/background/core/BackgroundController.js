@@ -1009,7 +1009,9 @@ class BackgroundController {
       const count = message.count || 0;
       if (!count) return;
       await this.stateManager.incrementGlobalBlockStats(count);
-    } catch (e) {}
+    } catch (error) {
+      console.debug('Failed to increment global block stats:', error.message);
+    }
   }
 
   /**
@@ -1021,7 +1023,9 @@ class BackgroundController {
       const count = message.blockedCount || 0;
       if (!count) return;
       await this.stateManager.incrementGlobalBlockStats(count);
-    } catch (e) {}
+    } catch (error) {
+      console.debug('Failed to increment global block stats:', error.message);
+    }
   }
 
   /**
@@ -1449,7 +1453,9 @@ class BackgroundController {
             console.log("🔍 [TOPAZ DEBUG] No enabled profiles but supported site detected; allowing analysis to proceed");
             return { analysisRequired: true };
           }
-        } catch (_) {}
+        } catch (error) {
+          console.debug('Invalid URL format in checkAnalysisRequired:', error.message);
+        }
       }
       console.log("🔍 [TOPAZ DEBUG] No enabled profiles and unsupported site, analysis not required");
       return { analysisRequired: false };
@@ -1559,7 +1565,7 @@ class BackgroundController {
       const isPowerUserMode = this.stateManager.isPowerUserModeEnabled();
       const isCustomizationEnabled = this.stateManager.isCustomizationToggleEnabled();
       
-      // Get tags from enabled profiles that are allowed on the current site
+      // Get tags from profiles for the current site
       const allProfiles = this.stateManager.getProfiles();
       const enabledProfiles = allProfiles.filter(profile => profile.isEnabled);
 
@@ -1568,57 +1574,33 @@ class BackgroundController {
       const cleanHostname = hostname.replace(/^www\./, '');
 
       // Filter enabled profiles by those that are allowed on the current site
-      const applicableProfiles = enabledProfiles.filter(profile => {
+      let applicableProfiles = enabledProfiles.filter(profile => {
         return profile.allowedWebsites.some(allowedSite => {
           return cleanHostname === allowedSite ||
                  cleanHostname.endsWith('.' + allowedSite);
         });
       });
 
-      // 🚨 CRITICAL AI FIX: Ensure YouTube always has a working profile
-      if (applicableProfiles.length === 0 && cleanHostname === 'youtube.com') {
-        console.log('🔍 [AI FIX] No applicable profiles for YouTube, attempting to create/enable YouTube profile');
-
-        // First try to find and enable existing YouTube profile
-        let youtubeProfile = allProfiles.find(p =>
-          p.profileName?.toLowerCase().includes('youtube') ||
-          p.allowedWebsites?.some(site => site.includes('youtube'))
-        );
-
-        if (youtubeProfile && !youtubeProfile.isEnabled) {
-          console.log('🔍 [AI FIX] Found disabled YouTube profile, auto-enabling:', youtubeProfile.profileName);
-          youtubeProfile.isEnabled = true;
-          await this.stateManager.saveExtensionState();
-        } else if (!youtubeProfile) {
-          // Create a default YouTube profile with working blacklist tags
-          console.log('🔍 [AI FIX] No YouTube profile found, creating default one with blacklist tags');
-          youtubeProfile = {
-            id: 'youtube_default_' + Date.now(),
-            profileName: 'YouTube Default',
-            isDefault: true,
-            isEnabled: true,
-            allowedWebsites: ['youtube.com', 'www.youtube.com', 'm.youtube.com'],
-            whitelistTags: ['educational', 'tutorial', 'learning', 'documentary', 'science'],
-            blacklistTags: ['clickbait', 'drama', 'gossip', 'reaction', 'prank', 'controversial', 'outrage', 'scandal', 'exposed'],
-            customWhitelist: [],
-            customBlacklist: []
-          };
-
-          // Add to profiles array
-          allProfiles.push(youtubeProfile);
-          await this.stateManager.setProfiles(allProfiles);
-          console.log('✅ [AI FIX] Created default YouTube profile with blacklist tags');
-        }
-
-        // Re-calculate applicable profiles
-        const newEnabledProfiles = allProfiles.filter(profile => profile.isEnabled);
-        applicableProfiles.push(...newEnabledProfiles.filter(profile => {
-          return profile.allowedWebsites?.some(allowedSite => {
-            return cleanHostname === allowedSite ||
-                   cleanHostname.endsWith('.' + allowedSite);
+      // 🚀 FALLBACK: If no enabled applicable profiles, but user has custom lists for this site,
+      // use ONLY custom tags from profiles that apply to this site. This lets first-time users
+      // get filtering when they add custom words without needing to toggle profiles.
+      let usedFallbackCustomOnly = false;
+      if (applicableProfiles.length === 0) {
+        const siteProfiles = allProfiles.filter(profile => {
+          return profile.allowedWebsites.some(allowedSite => {
+            return cleanHostname === allowedSite || cleanHostname.endsWith('.' + allowedSite);
           });
-        }));
+        });
+        const anyCustomTags = siteProfiles.some(p => (p.customBlacklist && p.customBlacklist.length) || (p.customWhitelist && p.customWhitelist.length));
+        if (anyCustomTags) {
+          applicableProfiles = siteProfiles;
+          usedFallbackCustomOnly = true;
+          console.log('🔄 [TOPAZ DEBUG] Using fallback custom-only tags for site due to 0 enabled profiles');
+        }
       }
+
+      // USER CHOICE: No automatic profile creation - users must create their own profiles
+      // This ensures the extension only blocks content when explicitly configured by the user
 
       // Combine tags based on mode and settings
       const allWhitelistTags = [];
@@ -1633,21 +1615,31 @@ class BackgroundController {
       } else {
         // Simple Mode: different logic based on customization toggle
         if (isCustomizationEnabled) {
-          // Customization enabled: include default tags + custom tags from ALL applicable profiles
-          applicableProfiles.forEach(profile => {
-            allWhitelistTags.push(...(profile.whitelistTags || []));
-            allBlacklistTags.push(...(profile.blacklistTags || []));
-            allWhitelistTags.push(...(profile.customWhitelist || []));
-            allBlacklistTags.push(...(profile.customBlacklist || []));
-          });
+          // Use both default and custom tags from applicable profiles
+          if (applicableProfiles.length > 0) {
+            applicableProfiles.forEach(profile => {
+              // If using fallback, include ONLY custom tags to respect "user choice"
+              if (usedFallbackCustomOnly) {
+                allWhitelistTags.push(...(profile.customWhitelist || []));
+                allBlacklistTags.push(...(profile.customBlacklist || []));
+              } else {
+                allWhitelistTags.push(...(profile.whitelistTags || []));
+                allBlacklistTags.push(...(profile.blacklistTags || []));
+                allWhitelistTags.push(...(profile.customWhitelist || []));
+                allBlacklistTags.push(...(profile.customBlacklist || []));
+              }
+            });
+          }
         } else {
           // Customization disabled: only bundle default tags from enabled default profiles
-          applicableProfiles.forEach(profile => {
-            if (profile.isDefault) {
-              allWhitelistTags.push(...(profile.whitelistTags || []));
-              allBlacklistTags.push(...(profile.blacklistTags || []));
-            }
-          });
+          if (applicableProfiles.length > 0 && !usedFallbackCustomOnly) {
+            applicableProfiles.forEach(profile => {
+              if (profile.isDefault) {
+                allWhitelistTags.push(...(profile.whitelistTags || []));
+                allBlacklistTags.push(...(profile.blacklistTags || []));
+              }
+            });
+          }
         }
       }
 
@@ -1655,26 +1647,8 @@ class BackgroundController {
       let whitelistToSend = [...new Set(allWhitelistTags)];
       let blacklistToSend = [...new Set(allBlacklistTags)];
 
-      // 🚨 CRITICAL AI FIX: Ensure blacklist always has default entries for all sites
-      if (blacklistToSend.length === 0) {
-        console.log(`🔍 [AI FIX] No blacklist entries found for ${cleanHostname}, adding default ones to enable AI`);
-        
-        // Add site-specific default blacklist tags
-        if (cleanHostname === 'youtube.com') {
-          blacklistToSend = ['clickbait', 'drama', 'gossip', 'reaction', 'prank', 'controversial', 'outrage', 'scandal', 'shorts', 'mixes'];
-        } else if (cleanHostname === 'twitter.com' || cleanHostname === 'x.com') {
-          blacklistToSend = ['drama', 'gossip', 'controversial', 'outrage', 'scandal', 'beef', 'exposed', 'clickbait'];
-        } else if (cleanHostname === 'linkedin.com') {
-          blacklistToSend = ['controversial', 'political', 'personal', 'drama', 'gossip'];
-        } else if (cleanHostname === 'reddit.com') {
-          blacklistToSend = ['drama', 'controversial', 'outrage', 'scandal', 'beef', 'exposed', 'clickbait'];
-        } else {
-          // Generic fallback for any other site
-          blacklistToSend = ['clickbait', 'drama', 'gossip', 'controversial', 'outrage'];
-        }
-        
-        console.log(`🔍 [AI FIX] Added default blacklist tags: ${blacklistToSend.join(', ')}`);
-      }
+      // USER CHOICE: No forced default blacklist tags - only block content when user explicitly configures it
+      // If no blacklist entries are configured, no content will be blocked
 
       // If no blacklist entries, no content should be blocked - skip API call
       if (blacklistToSend.length === 0) {
@@ -1714,6 +1688,7 @@ class BackgroundController {
         allProfilesCount: allProfiles.length,
         enabledProfilesCount: enabledProfiles.length,
         applicableProfilesCount: applicableProfiles.length,
+        usedFallbackCustomOnly,
         enabledProfiles: enabledProfiles.map(p => ({
           name: p.profileName,
           isDefault: p.isDefault,

@@ -223,7 +223,7 @@ export const DEFAULT_TAGS = {
   }
 };
 
-// Default profiles for new installations (enabled by default for AI to work)
+// Default profiles for new installations (disabled by default - users must explicitly enable)
 export const DEFAULT_PROFILES = [
   {
     profileName: "YouTube",
@@ -232,7 +232,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['youtube.com'],
-    isEnabled: true, // ✅ ENABLED BY DEFAULT - AI needs this to work!
+    isEnabled: false, // 🔒 DISABLED BY DEFAULT - users must explicitly enable to block content
     colour: "#ff0000",
     isDefault: true
   },
@@ -243,7 +243,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['twitter.com', 'x.com'],
-    isEnabled: true, // ✅ ENABLED BY DEFAULT - AI needs this to work!
+    isEnabled: false, // 🔒 DISABLED BY DEFAULT - users must explicitly enable to block content
     colour: "#1da1f2",
     isDefault: true
   },
@@ -254,7 +254,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['linkedin.com'],
-    isEnabled: true, // ✅ ENABLED BY DEFAULT - AI needs this to work!
+    isEnabled: false, // 🔒 DISABLED BY DEFAULT - users must explicitly enable to block content
     colour: "#0077b5",
     isDefault: true
   },
@@ -265,7 +265,7 @@ export const DEFAULT_PROFILES = [
     customWhitelist: [],
     customBlacklist: [],
     allowedWebsites: ['reddit.com'],
-    isEnabled: true, // ✅ ENABLED BY DEFAULT - AI needs this to work!
+    isEnabled: false, // 🔒 DISABLED BY DEFAULT - users must explicitly enable to block content
     colour: "#ff4500",
     isDefault: true
   }

@@ -9,6 +9,15 @@ class TabManager {
     this.stateManager = stateManager;
     // Prevent concurrent enable/inject cycles per tab
     this.enableInFlight = new Set();
+    // Add metrics for monitoring
+    this.metrics = {
+      enableAttempts: 0,
+      enableSuccesses: 0,
+      enableFailures: 0,
+      messagesSent: 0,
+      messagesFailed: 0,
+      retries: 0
+    };
     this.setupEventListeners();
   }
 
@@ -33,6 +42,9 @@ class TabManager {
           url: changeInfo.url
         });
       } catch (error) {
+        // Log error but don't fail the entire tab update - this is a common scenario
+        // when content script isn't ready yet or tab is closing
+        console.debug(`Failed to send URL_CHANGED message to tab ${tabId}:`, error.message);
       }
     }
   }
@@ -61,14 +73,18 @@ class TabManager {
       return; // single-flight guard
     }
     this.enableInFlight.add(tabId);
+    this.metrics.enableAttempts++;
+
     try {
       await this.sendMessageToTab(tabId, {
         type: MESSAGE_TYPES.ENABLE,
         url: url // Send URL so content script can load its own config
       });
-      
+
+      this.metrics.enableSuccesses++;
       this.eventBus.emit(EVENTS.TAB_READY, { tabId, url });
     } catch (error) {
+      this.metrics.enableFailures++;
       const isContentScriptNotReady = error.message?.includes('Receiving end does not exist');
       
       if (isContentScriptNotReady && attempt < maxRetries) {
@@ -109,9 +125,12 @@ class TabManager {
    * Send message to a specific tab
    */
   async sendMessageToTab(tabId, message) {
+    this.metrics.messagesSent++;
+
     return new Promise((resolve, reject) => {
       chrome.tabs.sendMessage(tabId, message, (response) => {
         if (chrome.runtime.lastError) {
+          this.metrics.messagesFailed++;
           reject(new Error(chrome.runtime.lastError.message));
         } else {
           resolve(response);
@@ -204,6 +223,21 @@ class TabManager {
         resolve(tabs);
       });
     });
+  }
+
+  /**
+   * Get TabManager metrics for monitoring
+   */
+  getMetrics() {
+    const totalAttempts = this.metrics.enableAttempts;
+    const successRate = totalAttempts > 0 ?
+      (this.metrics.enableSuccesses / totalAttempts * 100).toFixed(2) : 0;
+
+    return {
+      ...this.metrics,
+      successRate: `${successRate}%`,
+      currentlyProcessing: this.enableInFlight.size
+    };
   }
 }
 

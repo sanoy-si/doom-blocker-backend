@@ -71,31 +71,61 @@ class CircuitBreaker:
         self.failure_count = 0
         self.last_failure_time = None
         self.state = 'CLOSED'  # CLOSED, OPEN, HALF_OPEN
+        # Metrics for monitoring
+        self.total_requests = 0
+        self.total_failures = 0
+        self.state_changes = {'CLOSED': 0, 'OPEN': 0, 'HALF_OPEN': 0}
+        self.created_at = time.time()
     
     def call(self, func, *args, **kwargs):
+        self.total_requests += 1
+
         if self.state == 'OPEN':
             if time.time() - self.last_failure_time >= self.reset_timeout:
-                self.state = 'HALF_OPEN'
+                self._change_state('HALF_OPEN')
                 logger.info("Circuit breaker transitioning to HALF_OPEN")
             else:
                 raise Exception("Circuit breaker is OPEN")
-        
+
         try:
             result = func(*args, **kwargs)
             if self.state == 'HALF_OPEN':
-                self.state = 'CLOSED'
+                self._change_state('CLOSED')
                 self.failure_count = 0
                 logger.info("Circuit breaker reset to CLOSED")
             return result
         except Exception as e:
             self.failure_count += 1
+            self.total_failures += 1
             self.last_failure_time = time.time()
-            
+
             if self.failure_count >= self.failure_threshold:
-                self.state = 'OPEN'
+                self._change_state('OPEN')
                 logger.error(f"Circuit breaker opened due to {self.failure_count} failures")
-            
+
             raise e
+
+    def _change_state(self, new_state):
+        """Track state changes for metrics"""
+        if new_state != self.state:
+            self.state_changes[new_state] += 1
+            self.state = new_state
+
+    def get_metrics(self):
+        """Get circuit breaker metrics"""
+        uptime = time.time() - self.created_at
+        failure_rate = (self.total_failures / self.total_requests * 100) if self.total_requests > 0 else 0
+
+        return {
+            'state': self.state,
+            'total_requests': self.total_requests,
+            'total_failures': self.total_failures,
+            'failure_rate_percent': round(failure_rate, 2),
+            'current_failure_count': self.failure_count,
+            'failure_threshold': self.failure_threshold,
+            'state_changes': self.state_changes.copy(),
+            'uptime_seconds': round(uptime, 2)
+        }
 
 # Global circuit breaker for OpenAI API
 openai_circuit_breaker = CircuitBreaker(failure_threshold=3, reset_timeout=30)
@@ -245,15 +275,6 @@ if ENV == "production":
 # Add authentication middleware
 app.add_middleware(AuthenticationMiddleware)
 
-# Add startup event for debugging
-@app.on_event("startup")
-async def startup_event():
-    logger.info("🚀 Doom Blocker Backend starting up...")
-    logger.info(f"📁 Current working directory: {os.getcwd()}")
-    logger.info(f"📄 Prompts loaded: {len(prompts_data)} patterns")
-    logger.info(f"🔑 OpenAI configured: {OPENAI_HEADERS is not None}")
-    logger.info(f"🗄️ Supabase configured: {supabase is not None}")
-    logger.info("✅ Startup complete!")
 
 # WebSocket connection manager
 class ConnectionManager:
@@ -724,6 +745,16 @@ else:
     }
     logger.info("OpenAI client initialized successfully")
 
+# Add startup event for debugging (after variables are defined)
+@app.on_event("startup")
+async def startup_event():
+    logger.info("🚀 Doom Blocker Backend starting up...")
+    logger.info(f"📁 Current working directory: {os.getcwd()}")
+    logger.info(f"📄 Prompts loaded: {len(prompts_data)} patterns")
+    logger.info(f"🔑 OpenAI configured: {OPENAI_HEADERS is not None}")
+    logger.info(f"🗄️ Supabase configured: {supabase is not None}")
+    logger.info("✅ Startup complete!")
+
 # Helper: get client IP honoring proxies
 def get_client_ip(request: Request) -> str:
     try:
@@ -769,14 +800,23 @@ class GridAnalysisRequest(BaseModel):
         if len(v) > 100:  # Reasonable limit
             raise ValueError('Too many items (max 100)')
         for item in v:
-            if not isinstance(item, str) or len(item) > 100:
-                raise ValueError('List items must be strings under 100 characters')
+            if not isinstance(item, str):
+                raise ValueError('List items must be strings')
+            if len(item) > 100:
+                raise ValueError('List items must be under 100 characters')
+            # Check for potentially malicious content
+            if any(char in item for char in ['<', '>', '"', "'", '&']):
+                raise ValueError('List items contain invalid characters')
         return v
-    
+
     @validator('visitorId')
     def validate_visitor_id(cls, v):
         if not v or len(v) > 100:
             raise ValueError('visitorId must be provided and less than 100 characters')
+        # Ensure visitor ID is alphanumeric or contains only safe characters
+        import re
+        if not re.match(r'^[a-zA-Z0-9\-_]+$', v):
+            raise ValueError('visitorId contains invalid characters')
         return v
 
 class AnalysisResult(BaseModel):

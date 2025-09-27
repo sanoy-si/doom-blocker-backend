@@ -25,12 +25,42 @@ class ExtensionLifecycleManager {
     this.messageHandler = null;
     this.notificationManager = null;
     this.elementEffects = null;
+    this.resourceManager = null;
+    this.stateValidator = null;
+    this.eventCoordinator = null;
+    this.viewportQueue = null;
+    this.progressiveOrchestrator = null;
 
     // Simple resource tracking
     this.trackedResources = new Set();
     this.eventListeners = new Map();
 
     console.log(`🏗️ [${this.debugName}] ExtensionLifecycleManager created`);
+  }
+
+  /**
+   * Proxy to orchestrator: start progressive filtering
+   */
+  async startProgressiveFiltering(options = {}) {
+    try {
+      // If destroyed (e.g., pagehide), try to re-initialize lazily
+      if (this.isDestroyed) {
+        console.warn(`⚠️ [${this.debugName}] Lifecycle was destroyed, re-initializing before startProgressiveFiltering`);
+        const initResult = await this.initialize();
+        if (!initResult.success) {
+          throw new Error(initResult.error || 'Re-initialization failed');
+        }
+      }
+
+      if (!this.progressiveOrchestrator) {
+        throw new Error('ProgressiveFilteringOrchestrator not available');
+      }
+
+      return await this.progressiveOrchestrator.startProgressiveFiltering(options);
+    } catch (error) {
+      console.error(`❌ [${this.debugName}] startProgressiveFiltering error:`, error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**
@@ -139,6 +169,42 @@ class ExtensionLifecycleManager {
         if (window.ElementEffects) {
           this.elementEffects = new window.ElementEffects();
           console.log(`✅ [${this.debugName}] ElementEffects initialized`);
+        }
+
+        // ResourceManager (for leak-free tracking)
+        if (window.ResourceManager) {
+          this.resourceManager = new window.ResourceManager(`${this.debugName}-Resources`);
+          console.log(`✅ [${this.debugName}] ResourceManager initialized`);
+        }
+
+        // StateValidator
+        if (window.StateValidator) {
+          this.stateValidator = new window.StateValidator(`${this.debugName}-State`);
+          console.log(`✅ [${this.debugName}] StateValidator initialized`);
+        }
+
+        // UnifiedEventCoordinator
+        if (window.UnifiedEventCoordinator) {
+          this.eventCoordinator = new window.UnifiedEventCoordinator(this.resourceManager, `${this.debugName}-Events`);
+          console.log(`✅ [${this.debugName}] UnifiedEventCoordinator initialized`);
+        }
+
+        // ViewportPriorityQueue
+        if (window.ViewportPriorityQueue) {
+          this.viewportQueue = new window.ViewportPriorityQueue(this.resourceManager, `${this.debugName}-ViewportQueue`);
+          console.log(`✅ [${this.debugName}] ViewportPriorityQueue initialized`);
+        }
+
+        // ProgressiveFilteringOrchestrator
+        if (window.ProgressiveFilteringOrchestrator && this.resourceManager && this.stateValidator && this.eventCoordinator && this.viewportQueue) {
+          this.progressiveOrchestrator = new window.ProgressiveFilteringOrchestrator(
+            this.resourceManager,
+            this.stateValidator,
+            this.eventCoordinator,
+            this.viewportQueue,
+            `${this.debugName}-FilterOrchestrator`
+          );
+          console.log(`✅ [${this.debugName}] ProgressiveFilteringOrchestrator initialized`);
         }
       }
 
@@ -316,6 +382,19 @@ class ExtensionLifecycleManager {
       this.messageHandler = null;
       this.notificationManager = null;
       this.elementEffects = null;
+      // Dispose orchestrator-related resources
+      try {
+        if (this.resourceManager && typeof this.resourceManager.destroy === 'function') {
+          this.resourceManager.destroy();
+        }
+      } catch (error) {
+        console.debug('Failed to dispose resource manager:', error.message);
+      }
+      this.progressiveOrchestrator = null;
+      this.viewportQueue = null;
+      this.eventCoordinator = null;
+      this.stateValidator = null;
+      this.resourceManager = null;
 
       this.isDestroyed = true;
 
