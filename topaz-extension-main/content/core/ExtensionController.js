@@ -129,7 +129,7 @@ class ExtensionController {
           this.handleTogglePreviewHidden(false, null).catch(() => {});
         }
         // Clean up new architecture on page hide
-        if (this.lifecycleManager) {
+        if (this.lifecycleManager && !this.lifecycleManager.isDestroyed) {
           this.lifecycleManager.destroy().catch(() => {});
         }
       });
@@ -1234,7 +1234,7 @@ class ExtensionController {
             viewportProcessed: result.viewportProcessed
           }));
         } else {
-          console.warn(`⚠️ [NEW ARCHITECTURE] Progressive filtering failed, fallback to old system:`, result.reason);
+          console.warn(`⚠️ [NEW ARCHITECTURE] Progressive filtering failed, fallback to old system:`, result.error);
           await this.fallbackToOldInstantFilter(sendResponse);
         }
 

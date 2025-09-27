@@ -40,6 +40,7 @@ class ExtensionLifecycleManager {
 
   /**
    * Proxy to orchestrator: start progressive filtering
+   * Falls back gracefully if new architecture is not available
    */
   async startProgressiveFiltering(options = {}) {
     try {
@@ -52,14 +53,16 @@ class ExtensionLifecycleManager {
         }
       }
 
+      // Check if progressive orchestrator is available
       if (!this.progressiveOrchestrator) {
-        throw new Error('ProgressiveFilteringOrchestrator not available');
+        console.warn(`⚠️ [${this.debugName}] ProgressiveFilteringOrchestrator not available, falling back to old system`);
+        return { success: false, error: 'ProgressiveFilteringOrchestrator not available', fallback: true };
       }
 
       return await this.progressiveOrchestrator.startProgressiveFiltering(options);
     } catch (error) {
       console.error(`❌ [${this.debugName}] startProgressiveFiltering error:`, error);
-      return { success: false, error: error.message };
+      return { success: false, error: error.message, fallback: true };
     }
   }
 
@@ -218,36 +221,15 @@ class ExtensionLifecycleManager {
 
   /**
    * Setup event listeners with proper cleanup tracking
+   * Note: ExtensionController handles pagehide/beforeunload, so we don't duplicate them here
    */
   async setupEventListeners() {
     console.log(`📡 [${this.debugName}] Setting up event listeners with cleanup tracking...`);
 
-    // Track page unload cleanup
-    const beforeUnloadHandler = () => {
-      console.log(`🧹 [${this.debugName}] Page unload - performing cleanup`);
-      this.destroy().catch(error => {
-        console.error(`❌ [${this.debugName}] Cleanup error:`, error);
-      });
-    };
+    // Note: ExtensionController already handles page cleanup events
+    // so we don't add duplicate listeners here to prevent double destruction
 
-    const pageHideHandler = () => {
-      console.log(`🧹 [${this.debugName}] Page hidden - performing cleanup`);
-      this.destroy().catch(error => {
-        console.error(`❌ [${this.debugName}] Cleanup error:`, error);
-      });
-    };
-
-    // Add event listeners and track them
-    if (typeof window !== 'undefined') {
-      window.addEventListener('beforeunload', beforeUnloadHandler);
-      window.addEventListener('pagehide', pageHideHandler);
-      
-      // Track for cleanup
-      this.trackEvent(window, 'beforeunload', beforeUnloadHandler);
-      this.trackEvent(window, 'pagehide', pageHideHandler);
-    }
-
-    console.log(`✅ [${this.debugName}] Event listeners configured with cleanup tracking`);
+    console.log(`✅ [${this.debugName}] Event listeners configured (delegated to ExtensionController)`);
   }
 
   /**

@@ -410,7 +410,6 @@ class ElementEffects {
       DATA_ATTRIBUTES.STATE.replace("data-", ""),
       ELEMENT_STATES.HIDDEN,
     );
-    element.setAttribute(DATA_ATTRIBUTES.ELEMENT_ID.replace("data-", ""), id);
 
     // Update state
     state.hidden = true;
