@@ -938,6 +938,11 @@ class ExtensionController {
   }
 
   async handleHideGridChildren(gridInstructions, sendResponse) {
+    // Hide loading indicator as AI analysis is complete
+    if (this.notificationManager && typeof this.notificationManager.hideLoading === 'function') {
+      this.notificationManager.hideLoading();
+    }
+
     if (this.isDisabled) {
       sendResponse(
         this.messageHandler.createResponse(false, "Extension is disabled", {
@@ -960,12 +965,25 @@ class ExtensionController {
     }
     // ENABLED: Clear blur effects when disabling
     const clearedCount = this.elementEffects.clearAllBlurs();
-    
+
+    // Add small delay to ensure DOM is stable before filtering
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     const elementsToHide = this.gridManager.getElementsToHide(gridInstructions);
     console.log("🔍 [TOPAZ DEBUG] New elements to hide:", elementsToHide.length);
-    
+
+    // Filter out invalid elements to improve accuracy
+    const validElementsToHide = elementsToHide.filter(item => {
+      return item.element &&
+             document.contains(item.element) &&
+             item.element.offsetParent !== null && // Element is visible
+             !item.element.classList.contains('topaz-hiding-animation'); // Not already being hidden
+    });
+
+    console.log("🔍 [TOPAZ DEBUG] Valid elements after filtering:", validElementsToHide.length);
+
     // Create a set of element IDs that should be hidden based on new instructions
-    const elementsToHideIds = new Set(elementsToHide.map(el => el.id));
+    const elementsToHideIds = new Set(validElementsToHide.map(el => el.id));
     
     // FIXED: Only unhide elements that were explicitly analyzed in the current cycle
     // and are confirmed to no longer match the filter criteria
@@ -1007,29 +1025,29 @@ class ExtensionController {
       console.log("🔍 [TOPAZ DEBUG] Unhidden", unhiddenCount, "analyzed elements that no longer match criteria");
     }
 
-    if (elementsToHide.length > 0) {
+    if (validElementsToHide.length > 0) {
       const deletionResults = this.contentFingerprint.markFingerprintsAsDeleted(
-        elementsToHide.map(el => el.element)
+        validElementsToHide.map(el => el.element)
       );
-      
+
       // NEW: Blur elements that are about to be removed for better UX
-      console.log("🔍 [TOPAZ DEBUG] Blurring elements about to be removed:", elementsToHide.length);
-      this.elementEffects.blurElements(elementsToHide);
-      
+      console.log("🔍 [TOPAZ DEBUG] Blurring elements about to be removed:", validElementsToHide.length);
+      this.elementEffects.blurElements(validElementsToHide);
+
       // Wait a moment for user to see the blur effect before hiding
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 200)); // Reduced wait time for better responsiveness
     }
-    
+
     const hidingMethod = this.configManager.getHidingMethod();
     const markedCount = this.elementEffects.hideElements(
-      elementsToHide,
+      validElementsToHide,
       hidingMethod,
     );
 
     if (markedCount > 0) {
       // Use truthful counter to count only actually blocked elements
       const actuallyBlockedCount = this.truthfulCounter.countBlockedElements(
-        elementsToHide, 
+        validElementsToHide,
         'aiAnalysis'
       );
       

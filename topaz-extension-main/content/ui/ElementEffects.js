@@ -347,25 +347,18 @@ class ElementEffects {
 
       const state = this.getElementState(element);
 
+      // Check if element is already in process of being hidden
+      if (state.hidden || element.classList.contains(CSS_CLASSES.HIDING_ANIMATION)) {
+        return;
+      }
+
       switch (method) {
         case HIDING_METHODS.HEIGHT:
-          element.classList.add(CSS_CLASSES.COLLAPSED);
-          element.setAttribute(
-            DATA_ATTRIBUTES.STATE.replace("data-", ""),
-            ELEMENT_STATES.HIDDEN,
-          );
-          state.hidden = true;
-          state.hidingMethod = HIDING_METHODS.HEIGHT;
+          this.hideElementWithAnimation(element, id, CSS_CLASSES.COLLAPSED, HIDING_METHODS.HEIGHT);
           break;
 
         case HIDING_METHODS.DISPLAY:
-          element.style.display = "none";
-          element.setAttribute(
-            DATA_ATTRIBUTES.STATE.replace("data-", ""),
-            ELEMENT_STATES.HIDDEN,
-          );
-          state.hidden = true;
-          state.hidingMethod = HIDING_METHODS.DISPLAY;
+          this.hideElementWithAnimation(element, id, 'display-none', HIDING_METHODS.DISPLAY);
           break;
 
         case HIDING_METHODS.HIGHLIGHTING:
@@ -390,6 +383,46 @@ class ElementEffects {
     });
 
     return successCount;
+  }
+
+  /**
+   * Hide element with smooth animation
+   * @param {HTMLElement} element - Element to hide
+   * @param {string} id - Element ID
+   * @param {string} finalClass - Class to apply after animation
+   * @param {string} method - Hiding method
+   */
+  hideElementWithAnimation(element, id, finalClass, method) {
+    const state = this.getElementState(element);
+
+    // Step 1: Add animation class
+    element.classList.add(CSS_CLASSES.HIDING_ANIMATION);
+
+    // Step 2: After animation completes, apply final hiding
+    setTimeout(() => {
+      if (document.contains(element)) {
+        // Remove animation class
+        element.classList.remove(CSS_CLASSES.HIDING_ANIMATION);
+
+        // Apply final hiding method
+        if (finalClass === 'display-none') {
+          element.style.display = "none";
+        } else {
+          element.classList.add(finalClass);
+        }
+
+        // Set state attributes
+        element.setAttribute(
+          DATA_ATTRIBUTES.STATE.replace("data-", ""),
+          ELEMENT_STATES.HIDDEN,
+        );
+
+        // Update state
+        state.hidden = true;
+        state.hidingMethod = method;
+        this.setElementState(element, state);
+      }
+    }, 150); // Match the animation duration from CSS (0.15s)
   }
 
   /**

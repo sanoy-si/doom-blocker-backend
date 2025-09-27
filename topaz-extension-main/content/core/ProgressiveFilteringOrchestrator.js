@@ -24,8 +24,14 @@ class ProgressiveFilteringOrchestrator {
       backgroundBatchSize: 10,       // Larger batches for background processing
       scrollContinuationDelay: 100,  // Delay before continuing after scroll
       healthCheckInterval: 15000,    // Health check every 15 seconds
-      maxConcurrentSessions: 1       // Only one session at a time
+      maxConcurrentSessions: 1,      // Only one session at a time
+      cacheMaxSize: 100,             // Max cached analysis results
+      cacheMaxAge: 300000            // Cache expires after 5 minutes
     };
+
+    // Analysis cache for performance optimization
+    this.analysisCache = new Map();
+    this.cacheTimestamps = new Map();
 
     // Components integration
     this.gridManager = null;
@@ -471,6 +477,11 @@ class ProgressiveFilteringOrchestrator {
     console.log(`🧠 [${this.debugName}] ULTRA-FAST AI Analysis - PRIMARY FEATURE! (0.5s latency expected)`);
 
     try {
+      // Show loading indicator for first-time or slow analysis
+      if (window.notificationManager && typeof window.notificationManager.showLoading === 'function') {
+        window.notificationManager.showLoading("🧠 Analyzing content with AI...");
+      }
+
       // 🚀 ALWAYS trigger AI analysis - it's the main feature!
       console.log(`🧠 [${this.debugName}] Building grid structure for AI analysis (PRIMARY FEATURE)`);
 
@@ -1005,6 +1016,84 @@ class ProgressiveFilteringOrchestrator {
   }
 
   /**
+   * Generate cache key for content analysis
+   * @param {Object} filterCriteria - Filter criteria
+   * @param {string} contentHash - Hash of content to analyze
+   * @returns {string} Cache key
+   */
+  generateCacheKey(filterCriteria, contentHash) {
+    const criteriaStr = JSON.stringify({
+      whitelist: filterCriteria.whitelist?.sort() || [],
+      blacklist: filterCriteria.blacklist?.sort() || []
+    });
+    return `${contentHash}_${btoa(criteriaStr).slice(0, 10)}`;
+  }
+
+  /**
+   * Get cached analysis result
+   * @param {string} cacheKey - Cache key
+   * @returns {Object|null} Cached result or null
+   */
+  getCachedAnalysis(cacheKey) {
+    const cached = this.analysisCache.get(cacheKey);
+    const timestamp = this.cacheTimestamps.get(cacheKey);
+
+    if (cached && timestamp && (Date.now() - timestamp < this.config.cacheMaxAge)) {
+      console.log(`⚡ [${this.debugName}] Using cached analysis result`);
+      return cached;
+    }
+
+    // Remove expired cache entry
+    if (cached) {
+      this.analysisCache.delete(cacheKey);
+      this.cacheTimestamps.delete(cacheKey);
+    }
+
+    return null;
+  }
+
+  /**
+   * Cache analysis result
+   * @param {string} cacheKey - Cache key
+   * @param {Object} result - Analysis result to cache
+   */
+  setCachedAnalysis(cacheKey, result) {
+    // Clean up old cache entries if we're at max size
+    if (this.analysisCache.size >= this.config.cacheMaxSize) {
+      const oldestKey = this.analysisCache.keys().next().value;
+      this.analysisCache.delete(oldestKey);
+      this.cacheTimestamps.delete(oldestKey);
+    }
+
+    this.analysisCache.set(cacheKey, result);
+    this.cacheTimestamps.set(cacheKey, Date.now());
+    console.log(`💾 [${this.debugName}] Cached analysis result (${this.analysisCache.size}/${this.config.cacheMaxSize})`);
+  }
+
+  /**
+   * Clear expired cache entries
+   */
+  cleanupCache() {
+    const now = Date.now();
+    const expiredKeys = [];
+
+    for (const [key, timestamp] of this.cacheTimestamps) {
+      if (now - timestamp > this.config.cacheMaxAge) {
+        expiredKeys.push(key);
+      }
+    }
+
+    expiredKeys.forEach(key => {
+      this.analysisCache.delete(key);
+      this.cacheTimestamps.delete(key);
+    });
+
+    if (expiredKeys.length > 0) {
+      console.log(`🧹 [${this.debugName}] Cleaned up ${expiredKeys.length} expired cache entries`);
+    }
+  }
+
+  /**
    * Get current filtering status
    */
   getStatus() {
@@ -1014,7 +1103,12 @@ class ProgressiveFilteringOrchestrator {
       sessionDuration: this.filteringStartTime ? Date.now() - this.filteringStartTime : 0,
       metrics: this.metrics,
       queueStatus: this.viewportQueue.getQueueStatus(),
-      stateValidatorStatus: this.stateValidator.getStateSummary()
+      stateValidatorStatus: this.stateValidator.getStateSummary(),
+      cacheStats: {
+        size: this.analysisCache.size,
+        maxSize: this.config.cacheMaxSize,
+        maxAge: this.config.cacheMaxAge
+      }
     };
   }
 }

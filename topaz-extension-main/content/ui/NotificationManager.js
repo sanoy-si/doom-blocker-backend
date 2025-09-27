@@ -9,6 +9,8 @@ class NotificationManager {
     this.blockedCount = 0;
     this.counterAnimationFrame = null;
     this.enabled = true;
+    this.loadingElement = null;
+    this.isShowingLoading = false;
   }
 
   show(count, startValue = null) {
@@ -314,10 +316,91 @@ class NotificationManager {
   }
 
   /**
+   * Show loading indicator for AI analysis
+   * @param {string} message - Loading message to display
+   */
+  showLoading(message = "Analyzing content...") {
+    if (this.isShowingLoading) return;
+
+    // Hide existing notification first
+    this.hide();
+
+    this.isShowingLoading = true;
+    this.loadingElement = this.createLoadingElement(message);
+    document.body.appendChild(this.loadingElement);
+
+    // Trigger animation after DOM insertion
+    setTimeout(() => {
+      this.loadingElement.classList.add(CSS_CLASSES.NOTIFICATION_VISIBLE);
+    }, 10);
+  }
+
+  /**
+   * Hide loading indicator
+   */
+  hideLoading() {
+    if (!this.loadingElement || !this.isShowingLoading) return;
+
+    this.loadingElement.classList.remove(CSS_CLASSES.NOTIFICATION_VISIBLE);
+    this.loadingElement.classList.add(CSS_CLASSES.NOTIFICATION_HIDING);
+
+    setTimeout(() => {
+      if (this.loadingElement && document.contains(this.loadingElement)) {
+        document.body.removeChild(this.loadingElement);
+      }
+      this.loadingElement = null;
+      this.isShowingLoading = false;
+    }, 200);
+  }
+
+  /**
+   * Create loading notification element
+   * @param {string} message - Loading message
+   * @returns {HTMLElement} Loading element
+   */
+  createLoadingElement(message) {
+    const notification = document.createElement('div');
+    notification.className = `${CSS_CLASSES.NOTIFICATION} topaz-loading-notification`;
+    notification.style.backgroundColor = '#4A90E2';
+    notification.style.color = 'white';
+
+    const content = document.createElement('div');
+    content.className = 'topaz-notification-content';
+    content.style.display = 'flex';
+    content.style.alignItems = 'center';
+    content.style.gap = '12px';
+
+    // Loading spinner
+    const spinner = document.createElement('div');
+    spinner.className = 'topaz-loading-spinner';
+    spinner.style.cssText = `
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: topaz-spin 1s linear infinite;
+    `;
+
+    // Loading text
+    const text = document.createElement('div');
+    text.textContent = message;
+    text.style.fontSize = '14px';
+    text.style.fontWeight = '500';
+
+    content.appendChild(spinner);
+    content.appendChild(text);
+    notification.appendChild(content);
+
+    return notification;
+  }
+
+  /**
    * Destroy notification manager
    */
   destroy() {
     this.hide();
+    this.hideLoading();
     this.clearTimeouts();
   }
 } // Make NotificationManager available globally for content script
