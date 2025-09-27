@@ -2050,18 +2050,26 @@ class BackgroundController {
    */
   async handleReportBlockedItems(message, sender) {
     this.logger.debug('Report blocked items requested', {
-      url: message.url,
-      itemCount: message.items?.length || 0
+      url: message?.url,
+      itemCount: message?.items?.length || 0,
+      messageData: message
     });
 
     try {
-      // Validate message data
-      if (!message.items || !Array.isArray(message.items)) {
-        throw new Error('Invalid items data');
+      // Validate message data with better error handling
+      if (!message || typeof message !== 'object') {
+        console.warn('[BackgroundController] Invalid message format for blocked items report:', message);
+        return { success: false, error: 'Invalid message format' };
       }
 
-      if (!message.url) {
-        throw new Error('Missing URL');
+      if (!message.items || !Array.isArray(message.items)) {
+        console.warn('[BackgroundController] Invalid items data for blocked items report:', message.items);
+        return { success: false, error: 'Invalid items data' };
+      }
+
+      if (!message.url || typeof message.url !== 'string') {
+        console.warn('[BackgroundController] Missing or invalid URL for blocked items report:', message.url);
+        return { success: false, error: 'Missing or invalid URL' };
       }
 
       // Prepare report data
@@ -2111,10 +2119,11 @@ class BackgroundController {
       };
 
     } catch (error) {
+      console.error('[BackgroundController] Failed to handle blocked items report:', error);
       this.logger.error('Failed to handle blocked items report', error);
       return {
         success: false,
-        error: error.message
+        error: error.message || 'Unknown error occurred'
       };
     }
   }
