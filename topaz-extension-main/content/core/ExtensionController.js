@@ -35,9 +35,14 @@ class ExtensionController {
 
       this.elementsAnalyzedInCurrentCycle = new Map(); // Track elements sent for analysis
 
-      // Initialize bulletproof counting system
-      this.truthfulCounter = new TruthfulCounter();
-      console.log("✅ TruthfulCounter initialized");
+      // Initialize bulletproof counting system with fallback
+      if (typeof TruthfulCounter !== 'undefined') {
+        this.truthfulCounter = new TruthfulCounter();
+        console.log("✅ TruthfulCounter initialized");
+      } else {
+        console.warn("⚠️ TruthfulCounter not available, creating fallback");
+        this.truthfulCounter = this.createFallbackCounter();
+      }
     } catch (error) {
       console.error("❌ [TOPAZ DEBUG] Error during core systems initialization:", error);
       this.initializationErrors.push(error);
@@ -45,6 +50,7 @@ class ExtensionController {
       this.eventBus = this.eventBus || { on: () => {}, emit: () => {}, off: () => {} };
       this.configManager = this.configManager || { getConfig: () => ({}), updateConfig: () => {} };
       this.gridManager = this.gridManager || { findAllGridContainers: () => [], getAllGrids: () => [] };
+      this.truthfulCounter = this.truthfulCounter || this.createFallbackCounter();
     }
     // Track preview state and items for toggle preview feature
     this.previewState = { enabled: false, items: [] };
@@ -141,12 +147,17 @@ class ExtensionController {
     try {
       console.log('🚀 [ExtensionController] Initializing new architecture...');
 
-      // Initialize lifecycle manager with proper cleanup
-      this.lifecycleManager = new ExtensionLifecycleManager({
-        debugName: 'ExtensionController-Lifecycle',
-        enableHealthMonitoring: true,
-        enablePerformanceTracking: true
-      });
+      // Initialize lifecycle manager with proper cleanup and fallback
+      if (typeof ExtensionLifecycleManager !== 'undefined') {
+        this.lifecycleManager = new ExtensionLifecycleManager({
+          debugName: 'ExtensionController-Lifecycle',
+          enableHealthMonitoring: true,
+          enablePerformanceTracking: true
+        });
+      } else {
+        console.warn("⚠️ ExtensionLifecycleManager not available, creating fallback");
+        this.lifecycleManager = this.createFallbackLifecycleManager();
+      }
 
       const result = await this.lifecycleManager.initialize();
 
@@ -2921,6 +2932,47 @@ class ExtensionController {
     const scrollY = window.scrollY || 0;
     const viewportHeight = window.innerHeight || 600;
     return Math.floor(scrollY / viewportHeight).toString();
+  }
+
+  /**
+   * Create fallback counter when TruthfulCounter is not available
+   */
+  createFallbackCounter() {
+    return {
+      countBlockedElements: (elements, source) => {
+        console.warn("🔄 [FALLBACK] TruthfulCounter not available, using basic counter");
+        return Array.isArray(elements) ? elements.length : 0;
+      },
+      getCounts: () => ({
+        totalBlocked: 0,
+        blockedToday: 0,
+        countsBySource: { autoDelete: 0, aiAnalysis: 0, manual: 0 },
+        blockedElementsCount: 0
+      }),
+      reset: () => console.warn("🔄 [FALLBACK] TruthfulCounter reset called on fallback"),
+      getDebugInfo: () => ({ fallback: true })
+    };
+  }
+
+  /**
+   * Create fallback lifecycle manager when ExtensionLifecycleManager is not available
+   */
+  createFallbackLifecycleManager() {
+    return {
+      isDestroyed: false,
+      initialize: async () => {
+        console.warn("🔄 [FALLBACK] ExtensionLifecycleManager not available, using fallback");
+        return { success: false, error: "ExtensionLifecycleManager not available", fallback: true };
+      },
+      startProgressiveFiltering: async (options) => {
+        console.warn("🔄 [FALLBACK] Progressive filtering not available");
+        return { success: false, error: "ProgressiveFilteringOrchestrator not available", fallback: true };
+      },
+      destroy: async () => {
+        this.isDestroyed = true;
+        console.warn("🔄 [FALLBACK] Lifecycle manager fallback destroyed");
+      }
+    };
   }
 
   destroy() {
