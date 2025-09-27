@@ -1030,12 +1030,12 @@ class ExtensionController {
         validElementsToHide.map(el => el.element)
       );
 
-      // NEW: Blur elements that are about to be removed for better UX
+      // Apply blur effect before hiding (without jumping animation)
       console.log("🔍 [TOPAZ DEBUG] Blurring elements about to be removed:", validElementsToHide.length);
       this.elementEffects.blurElements(validElementsToHide);
 
-      // Wait a moment for user to see the blur effect before hiding
-      await new Promise(resolve => setTimeout(resolve, 200)); // Reduced wait time for better responsiveness
+      // Brief pause to show blur effect before smooth fade-out
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     const hidingMethod = this.configManager.getHidingMethod();
