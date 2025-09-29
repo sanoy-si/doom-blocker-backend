@@ -3,7 +3,7 @@
 
 class SupabaseSync {
     constructor() {
-        this.backendUrl = 'http://localhost:8000';
+        this.backendUrl = 'https://topaz-backend1.onrender.com';
         this.syncInProgress = false;
         this.syncInterval = null;
         this.retryAttempts = 3;

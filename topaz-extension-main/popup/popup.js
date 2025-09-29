@@ -605,7 +605,7 @@ async function sendCurrentStatsToBackend(sessionId) {
     // Send session data
     const tokenRes1 = await chrome.storage.local.get(['topaz_access_token']);
     const token1 = tokenRes1?.topaz_access_token;
-    const sessionResponse = await fetch('http://localhost:8000/api/user-session', {
+    const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token1 ? { 'X-User-Token': token1 } : {}) },
       body: JSON.stringify(sessionData)
@@ -617,7 +617,7 @@ async function sendCurrentStatsToBackend(sessionId) {
     // Send metrics with current stats
     const tokenRes2 = await chrome.storage.local.get(['topaz_access_token']);
     const token2 = tokenRes2?.topaz_access_token;
-    const metricsResponse = await fetch('http://localhost:8000/api/user-metrics', {
+    const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token2 ? { 'X-User-Token': token2 } : {}) },
       body: JSON.stringify(metricsData)
@@ -658,7 +658,7 @@ async function sendUserDataToBackend(sessionId) {
       // Send real session data
       if (realData.sessionData) {
         const tA = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-        const sessionResponse = await fetch('http://localhost:8000/api/user-session', {
+        const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(tA ? { 'X-User-Token': tA } : {}) },
           body: JSON.stringify(realData.sessionData)
@@ -669,7 +669,7 @@ async function sendUserDataToBackend(sessionId) {
       // Send real metrics data
       if (realData.metricsData) {
         const tB = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-        const metricsResponse = await fetch('http://localhost:8000/api/user-metrics', {
+        const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', ...(tB ? { 'X-User-Token': tB } : {}) },
           body: JSON.stringify(realData.metricsData)
@@ -717,7 +717,7 @@ async function sendUserDataToBackend(sessionId) {
       };
 
       const tD = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-      const sessionResponse = await fetch('http://localhost:8000/api/user-session', {
+      const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(tD ? { 'X-User-Token': tD } : {}) },
         body: JSON.stringify(sessionData)
@@ -726,7 +726,7 @@ async function sendUserDataToBackend(sessionId) {
 
       // Send metrics with real background stats
       const tE = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-      const metricsResponse = await fetch('http://localhost:8000/api/user-metrics', {
+      const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(tE ? { 'X-User-Token': tE } : {}) },
         body: JSON.stringify(basicMetricsData)
@@ -844,7 +844,7 @@ async function sendTestDataToBackend(sessionId) {
 
     // Send session data
     const tF = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-    const sessionResponse = await fetch('http://localhost:8000/api/user-session', {
+    const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(tF ? { 'X-User-Token': tF } : {}) },
       body: JSON.stringify(sessionData)
@@ -869,7 +869,7 @@ async function sendTestDataToBackend(sessionId) {
 
     // Send metrics data
     const tG = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-    const metricsResponse = await fetch('http://localhost:8000/api/user-metrics', {
+    const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(tG ? { 'X-User-Token': tG } : {}) },
       body: JSON.stringify(metricsData)
@@ -900,7 +900,7 @@ async function sendTestDataToBackend(sessionId) {
 
     // Send blocked items data
     const tH = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-    const blockedResponse = await fetch('http://localhost:8000/api/blocked-items', {
+    const blockedResponse = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(tH ? { 'X-User-Token': tH } : {}) },
       body: JSON.stringify(blockedItemsData)
