@@ -673,6 +673,7 @@ async function sendUserDataToBackend(sessionId) {
 
       // Send real blocked items data
       if (realData.blockedItemsData && realData.blockedItemsData.blocked_items.length > 0) {
+        const tC = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
         const blockedResponse = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
