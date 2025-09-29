@@ -986,7 +986,6 @@ class BackgroundController {
       [MESSAGE_TYPES.CONTENT_BLOCKED]: this.handleContentBlocked.bind(this),
       [MESSAGE_TYPES.GET_BLOCK_STATS]: this.handleGetBlockStats.bind(this),
       [MESSAGE_TYPES.REPORT_BLOCKED_ITEMS]: this.handleReportBlockedItems.bind(this),
-      'REPORT_BLOCKED_CONTENTS': this.handleReportBlockedContents.bind(this),
       // Authentication handlers
       [MESSAGE_TYPES.AUTO_LOGIN]: this.handleAutoLogin.bind(this),
       [MESSAGE_TYPES.GET_AUTH_STATE]: this.handleGetAuthState.bind(this),
@@ -1046,34 +1045,6 @@ class BackgroundController {
       }
     } catch (e) {
       console.error('❌ Error reporting blocked items:', e);
-    }
-  }
-
-  /**
-   * Handle reporting blocked contents (detailed items) to backend
-   */
-  async handleReportBlockedContents(message, sender) {
-    try {
-      if (!message || !Array.isArray(message.items) || message.items.length === 0) {
-        return { success: false, error: 'Invalid items data' };
-      }
-
-      let successCount = 0;
-      for (const item of message.items) {
-        const res = await this.api.reportBlockedContent({
-          session_id: item.session_id,
-          provider: item.provider,
-          url: item.url,
-          title: item.title || '',
-          channel: item.channel || '',
-          blocking_keywords: Array.isArray(item.blocking_keywords) ? item.blocking_keywords : []
-        });
-        if (res?.success) successCount++;
-      }
-
-      return { success: true, count: successCount };
-    } catch (error) {
-      return { success: false, error: error?.message || 'Failed to report contents' };
     }
   }
 
