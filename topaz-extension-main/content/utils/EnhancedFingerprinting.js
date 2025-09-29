@@ -193,13 +193,20 @@ class EnhancedContentFingerprint {
     }
 
     /**
-     * Twitter-specific text normalization
+     * Twitter/X-specific text normalization - Enhanced for 2024
      */
     normalizeTwitterText(text) {
         return text
             .replace(/@\w+/g, '') // Remove mentions
             .replace(/#\w+/g, '') // Remove hashtags
             .replace(/https?:\/\/\S+/g, '') // Remove URLs
+            .replace(/t\.co\/\w+/g, '') // Remove t.co short URLs
+            .replace(/\d+:\d+\s?(AM|PM)?/g, '') // Remove timestamps
+            .replace(/\d+[hm]\s?ago/g, '') // Remove relative time
+            .replace(/Replying to/g, '') // Remove reply indicators
+            .replace(/Show this thread/g, '') // Remove thread indicators
+            .replace(/Translate post/g, '') // Remove translation prompts
+            .replace(/\s+/g, ' ') // Normalize whitespace
             .trim();
     }
 

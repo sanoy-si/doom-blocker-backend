@@ -165,15 +165,21 @@ class GridDetector {
       '[id*="feed"]',
       '[id*="main"]',
 
-      // Social media patterns
+      // Social media patterns - Enhanced Twitter/X support
       '[data-testid*="stream"]',
       '[data-testid*="feed"]',
       '[data-testid*="timeline"]',
       '[data-testid*="cellInnerDiv"]',
       '[data-testid*="tweet"]',
+      '[data-testid="tweetText"]',
+      '[data-testid="UserCell"]',
+      '[data-testid="placementTracking"]',
+      'article[data-testid="tweet"]',
+      'div[data-testid="cellInnerDiv"]',
       '[role="main"]',
       '[role="feed"]',
       '[role="list"]',
+      '[role="region"]',
 
       // Common layout containers
       'main',

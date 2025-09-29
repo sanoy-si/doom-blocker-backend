@@ -1587,9 +1587,17 @@ class ExtensionController {
         () => element.querySelector('img[alt]')?.getAttribute('alt')?.trim(),
         () => element.querySelector('[data-testid*="title"], [data-testid*="heading"]')?.textContent?.trim(),
 
-        // Social media posts
-        () => element.querySelector('[data-testid="tweetText"], .tweet-text, .post-content')?.textContent?.trim(),
-        () => element.querySelector('[data-testid="User-Name"] ~ div, .post-text, .feed-shared-text')?.textContent?.trim(),
+        // Twitter/X posts - Enhanced selectors for 2024
+        () => element.querySelector('[data-testid="tweetText"]')?.textContent?.trim(),
+        () => element.querySelector('div[data-testid="tweetText"]')?.textContent?.trim(),
+        () => element.querySelector('[data-testid="tweetText"] span')?.textContent?.trim(),
+        () => element.querySelector('.tweet-text, .post-content')?.textContent?.trim(),
+        () => element.querySelector('[data-testid="User-Name"] ~ div')?.textContent?.trim(),
+        () => element.querySelector('[role="group"] [lang]')?.textContent?.trim(),
+        () => element.querySelector('article[data-testid="tweet"] div[lang]')?.textContent?.trim(),
+        
+        // Other social media
+        () => element.querySelector('.post-text, .feed-shared-text')?.textContent?.trim(),
 
         // Fallback to general content
         () => element.textContent?.trim()
