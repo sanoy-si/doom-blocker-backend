@@ -54,7 +54,7 @@
   "hidingMethod": "display"
 },
 "twitter-home-explore": {
-  "urlPattern": "^(https?://)?((www\\.)?twitter\\.com|x\\.com)(/?(home|explore)(/.*)?|/?$)",
+  "urlPattern": "^(https?://)?((www\\.)?twitter\\.com|x\\.com)(/?(home|explore|for_you|following)(/.*)?|/?$)",
   "tagsToIgnore": [
     "script",
     "style",
@@ -63,8 +63,14 @@
     "body",
     "tablist",
     "[data-testid='DMDrawer'] *",
+    "[data-testid='sidebarColumn'] *",
     "[role='banner'] *",
-    "form[aria-label='Search'] *"
+    "[role='navigation'] *",
+    "form[aria-label='Search'] *",
+    "header[role='banner'] *",
+    "nav[role='navigation'] *",
+    "[data-testid='AppTabBar'] *",
+    "[data-testid='SideNav'] *"
   ],
   "tagsToCollapse": [".ytd-rich-section-renderer", ".ytd-horizontal-card-list-renderer"],
   "skipExtraction": false,
