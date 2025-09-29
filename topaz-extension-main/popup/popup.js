@@ -603,11 +603,9 @@ async function sendCurrentStatsToBackend(sessionId) {
     console.log('📊 Sending metrics data:', metricsData);
 
     // Send session data
-    const tokenRes1 = await chrome.storage.local.get(['topaz_access_token']);
-    const token1 = tokenRes1?.topaz_access_token;
     const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(token1 ? { 'X-User-Token': token1 } : {}) },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sessionData)
     });
 
@@ -615,11 +613,9 @@ async function sendCurrentStatsToBackend(sessionId) {
     console.log('📝 Session data response:', sessionResult);
 
     // Send metrics with current stats
-    const tokenRes2 = await chrome.storage.local.get(['topaz_access_token']);
-    const token2 = tokenRes2?.topaz_access_token;
     const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(token2 ? { 'X-User-Token': token2 } : {}) },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(metricsData)
     });
 
@@ -657,10 +653,9 @@ async function sendUserDataToBackend(sessionId) {
 
       // Send real session data
       if (realData.sessionData) {
-        const tA = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
         const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(tA ? { 'X-User-Token': tA } : {}) },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(realData.sessionData)
         });
         console.log('📝 Real session data response:', await sessionResponse.json());
@@ -668,10 +663,9 @@ async function sendUserDataToBackend(sessionId) {
 
       // Send real metrics data
       if (realData.metricsData) {
-        const tB = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
         const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(tB ? { 'X-User-Token': tB } : {}) },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(realData.metricsData)
         });
         console.log('📊 Real metrics data response:', await metricsResponse.json());
@@ -679,10 +673,9 @@ async function sendUserDataToBackend(sessionId) {
 
       // Send real blocked items data
       if (realData.blockedItemsData && realData.blockedItemsData.blocked_items.length > 0) {
-        const tC = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-        const blockedResponse = await fetch('http://localhost:8000/api/blocked-items', {
+        const blockedResponse = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(tC ? { 'X-User-Token': tC } : {}) },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(realData.blockedItemsData)
         });
         console.log('🚫 Real blocked items response:', await blockedResponse.json());
@@ -716,19 +709,17 @@ async function sendUserDataToBackend(sessionId) {
         first_install: false
       };
 
-      const tD = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
       const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(tD ? { 'X-User-Token': tD } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sessionData)
       });
       console.log('📝 Basic session data response:', await sessionResponse.json());
 
       // Send metrics with real background stats
-      const tE = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
       const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(tE ? { 'X-User-Token': tE } : {}) },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(basicMetricsData)
       });
       console.log('📊 Real background metrics response:', await metricsResponse.json());
@@ -843,10 +834,9 @@ async function sendTestDataToBackend(sessionId) {
     };
 
     // Send session data
-    const tF = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
     const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(tF ? { 'X-User-Token': tF } : {}) },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sessionData)
     });
 
@@ -868,10 +858,9 @@ async function sendTestDataToBackend(sessionId) {
     };
 
     // Send metrics data
-    const tG = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
     const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(tG ? { 'X-User-Token': tG } : {}) },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(metricsData)
     });
 
@@ -899,10 +888,9 @@ async function sendTestDataToBackend(sessionId) {
     };
 
     // Send blocked items data
-    const tH = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
     const blockedResponse = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(tH ? { 'X-User-Token': tH } : {}) },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(blockedItemsData)
     });
 
