@@ -580,6 +580,36 @@ class API {
     }
   }
 
+  // Report a single blocked content record
+  async reportBlockedContent(payload) {
+    try {
+      const response = await this.makeAuthenticatedRequest('/api/blocked-contents', {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      }, API_ENDPOINTS.BASE_URL);
+
+      if (!response.ok) {
+        let detail;
+        try {
+          detail = await response.clone().json();
+        } catch (_) {
+          try { detail = await response.text(); } catch (_) { detail = null; }
+        }
+        console.warn(`🌐 API: Report blocked content failed - HTTP ${response.status}: ${response.statusText}`, detail);
+        return { success: false, error: `HTTP ${response.status}`, detail };
+      }
+
+      const data = await response.json();
+      return { success: true, data };
+    } catch (error) {
+      console.error(`🌐 API: Report blocked content error: ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
   // COMMENTED OUT: Auth functionality disabled
   // Get current auth state
   getAuthState() {

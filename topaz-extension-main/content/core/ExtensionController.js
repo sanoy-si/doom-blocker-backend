@@ -1088,18 +1088,26 @@ class ExtensionController {
 
       // Track blocked items for analytics
       const blockedItemDetails = elementsToHide.map(item => {
-        const extractedTitle = this.extractBetterTitle(item.element);
+        const el = item.element;
+        const extractedTitle = this.extractBetterTitle(el);
+
+        // Try to extract per-item canonical URL and channel/author
+        const { url: itemUrl, channel } = this.extractItemMeta(el);
+
         console.log('📊 [Analytics Debug] Sending blocked item:', {
           id: item.id,
           title: extractedTitle,
-          hostname: window.location.hostname
+          hostname: window.location.hostname,
+          url: itemUrl,
+          channel
         });
         return {
           id: item.id,
           text: extractedTitle,
-          title: extractedTitle, // Add title field for backend compatibility
+          title: extractedTitle,
           type: 'ai-filtered',
-          url: window.location.href,
+          url: itemUrl || window.location.href,
+          channel: channel || '',
           hostname: window.location.hostname,
           timestamp: Date.now()
         };
@@ -1639,12 +1647,81 @@ class ExtensionController {
   // Send blocked items directly to backend in real-time
   async sendBlockedItemsToBackend(blockedItemDetails) {
     try {
-      // Disable duplicate network calls from content to avoid CORS/auth issues.
-      // Background already reports counts via API.reportBlockedItems and SupabaseSync.
+      if (!blockedItemDetails || blockedItemDetails.length === 0) return;
+
+      // Build payload for background → backend
+      const sessionId = this.sessionManager ? this.sessionManager.getSessionId() : null;
+      const hostname = (window.location.hostname || '').toLowerCase().replace(/^www\./, '');
+      const provider = hostname.includes('youtube') ? 'youtube'
+        : (hostname === 'twitter.com' || hostname === 'x.com' || hostname.endsWith('.x.com')) ? 'twitter'
+        : hostname.includes('linkedin') ? 'linkedin'
+        : hostname.includes('reddit') ? 'reddit'
+        : hostname;
+
+      const items = blockedItemDetails.map(item => ({
+        session_id: sessionId || 'unknown',
+        provider,
+        url: item.url || window.location.href,
+        title: item.title || item.text || '',
+        channel: item.channel || '',
+        blocking_keywords: []
+      }));
+
+      await this.messageHandler.sendMessageToBackground({
+        type: 'REPORT_BLOCKED_CONTENTS',
+        items
+      });
       return;
     } catch (_) {
       return;
     }
+  }
+
+  // Extract per-item URL and channel/author depending on site
+  extractItemMeta(element) {
+    const hostname = (window.location.hostname || '').toLowerCase();
+    const clean = hostname.replace(/^www\./, '');
+
+    // YouTube extractors
+    if (clean === 'youtube.com' || clean.endsWith('.youtube.com')) {
+      // URL: prefer a within the element; fall back to closest anchor with href containing /watch?v=
+      const link = element.querySelector('a[href*="/watch?v="]')
+        || element.querySelector('#video-title-link, a#video-title, a.yt-simple-endpoint');
+      let url = link && link.getAttribute('href');
+      if (url && url.startsWith('/')) url = `https://www.youtube.com${url}`;
+
+      // Channel: query common channel selectors
+      const channelEl = element.querySelector('ytd-channel-name a, a.yt-simple-endpoint.yt-formatted-string, a[href^="/@"], a[href^="/channel/"]');
+      const channel = channelEl?.textContent?.trim() || '';
+      return { url, channel };
+    }
+
+    // Twitter/X
+    if (clean === 'twitter.com' || clean === 'x.com' || clean.endsWith('.x.com')) {
+      const link = element.querySelector('a[href*="/status/"]');
+      const url = link?.href || '';
+      const channel = (element.querySelector('[data-testid="User-Name"] a')?.textContent || '').trim();
+      return { url, channel };
+    }
+
+    // LinkedIn
+    if (clean.includes('linkedin.com')) {
+      const link = element.querySelector('a[href*="linkedin.com/posts"]') || element.querySelector('a[href*="/feed/update/"]');
+      const url = link?.href || '';
+      const channel = (element.querySelector('span.feed-shared-actor__title, a.feed-shared-actor__container-link')?.textContent || '').trim();
+      return { url, channel };
+    }
+
+    // Reddit
+    if (clean.includes('reddit.com')) {
+      const link = element.querySelector('a[data-click-id="body"]') || element.querySelector('a[href*="/comments/"]');
+      const url = link?.href || '';
+      const channel = (element.querySelector('a[href^="/r/"]')?.textContent || '').trim();
+      return { url, channel };
+    }
+
+    // Fallback
+    return { url: '', channel: '' };
   }
 
   // Get current background stats
