@@ -23,6 +23,7 @@ from supabase import create_client, Client
 import uuid
 import secrets
 from functools import wraps
+import jwt
 
 # HTTP requests
 import httpx
@@ -136,6 +137,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         # Use a consistent API key that can be configured
         self.api_key = os.getenv("API_AUTH_KEY", "doom-blocker-extension-api-key-2024")
+        self.jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
+        supabase_url = os.getenv("SUPABASE_URL")
+        # Expected issuer like: https://<project>.supabase.co/auth/v1
+        self.expected_iss = f"{supabase_url.rstrip('/')}/auth/v1" if supabase_url else None
         logger.info("Authentication middleware initialized", api_key_configured=bool(os.getenv("API_AUTH_KEY")))
 
     async def dispatch(self, request: Request, call_next):
@@ -165,6 +170,30 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
                     status_code=401,
                     content={"error": "Invalid API key"}
                 )
+            
+            # Also verify Supabase JWT token if present (for user context)
+            user_token = request.headers.get("X-User-Token")
+            if user_token and self.jwt_secret and self.expected_iss:
+                try:
+                    import jwt
+                    claims = jwt.decode(user_token, self.jwt_secret, algorithms=["HS256"], 
+                                     audience="authenticated", issuer=self.expected_iss)
+                    
+                    user_email = claims.get("email") or (claims.get("user_metadata") or {}).get("email")
+                    app_md = claims.get("app_metadata") or {}
+                    
+                    request.state.user_claims = dict(claims)
+                    request.state.user = {
+                        "id": claims.get("sub"),
+                        "email": user_email,
+                        "role": claims.get("role"),
+                        "session_id": claims.get("session_id"),
+                        "provider": app_md.get("provider"),
+                        "aud": claims.get("aud"),
+                    }
+                except Exception as e:
+                    logger.warning("User token verification failed", error=str(e))
+                    # Don't fail the request, just log the warning
         
         # Add correlation ID to request
         correlation_id = str(uuid.uuid4())
@@ -843,6 +872,14 @@ class BlockedItemsRequest(BaseModel):
     session_id: str
     blocked_items: List[dict]
 
+class BlockedContentCreate(BaseModel):
+    session_id: str
+    provider: str
+    url: str
+    title: str = ""
+    channel: str = ""
+    blocking_keywords: List[str] = []
+
 class UserMetricsRequest(BaseModel):
     session_id: str
     total_blocked: int = 0
@@ -989,6 +1026,9 @@ async def root():
             "health": "/health",
             "docs": "/docs",
             "blocked_count": "/api/blocked-count",
+            "blocked_contents": "/api/blocked-contents",
+            "blocked_items": "/api/blocked-items",
+            "report_blocked_items": "/api/report-blocked-items",
             "ai_analysis": "/fetch_distracting_chunks"
         }
     }
@@ -1204,6 +1244,88 @@ async def save_blocked_items(blocked_request: BlockedItemsRequest, request: Requ
 
     except Exception as e:
         logger.error(f"❌ Error saving blocked items: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
+
+@app.options("/api/blocked-contents")
+async def options_blocked_contents():
+    """Handle CORS preflight for blocked contents endpoint"""
+    return Response(status_code=200)
+
+@app.post("/api/blocked-contents")
+async def create_blocked_content(item: BlockedContentCreate, request: Request):
+    """Save a blocked content record for the authenticated user"""
+    try:
+        if not supabase:
+            return JSONResponse(status_code=503, content={"success": False, "error": "Database unavailable"})
+
+        user = getattr(request.state, "user", None)
+        if not user or not user.get("id"):
+            return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized"})
+
+        # Ensure Supabase PostgREST uses the caller's JWT so RLS policies allow the write
+        try:
+            user_token = request.headers.get("X-User-Token")
+            if user_token and hasattr(supabase, "postgrest"):
+                supabase.postgrest.auth(user_token)
+        except Exception as e:
+            logger.warning(f"Failed to set Supabase auth for user: {e}")
+
+        # Prepare blocked content record
+        record = {
+            "id": str(uuid.uuid4()),
+            "user_id": user["id"],
+            "session_id": item.session_id,
+            "provider": item.provider,
+            "url": item.url,
+            "title": item.title,
+            "channel": item.channel,
+            "blocking_keywords": item.blocking_keywords,
+            "created_at": datetime.now().isoformat(),
+            "updated_at": datetime.now().isoformat(),
+        }
+
+        try:
+            result = supabase.table("blocked_contents").insert(record).execute()
+        except Exception as e:
+            logger.error(f"Error inserting blocked content: {e}")
+            return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
+
+        return {"success": True, "data": result.data[0] if getattr(result, 'data', None) else record}
+    except Exception as e:
+        logger.error(f"Unexpected error in create_blocked_content: {e}")
+        return JSONResponse(status_code=500, content={"success": False, "error": "Internal server error"})
+
+@app.get("/api/blocked-contents")
+async def list_blocked_contents(request: Request, provider: str = None, limit: int = 50, offset: int = 0):
+    """Get blocked content records"""
+    try:
+        if not supabase:
+            logger.warning("Supabase not configured, blocked content not retrieved")
+            return {"success": True, "data": []}
+
+        # Build query
+        query = supabase.table("blocked_contents").select("*").order("created_at", desc=True)
+        
+        if provider:
+            query = query.eq("provider", provider)
+        if limit:
+            query = query.limit(max(1, min(limit, 200)))
+        if offset:
+            query = query.range(offset, offset + max(1, min(limit, 200)) - 1)
+
+        result = query.execute()
+        logger.info(f"✅ Retrieved {len(result.data)} blocked content records")
+
+        return {
+            "success": True,
+            "data": result.data
+        }
+
+    except Exception as e:
+        logger.error(f"❌ Error retrieving blocked content: {e}")
         return JSONResponse(
             status_code=500,
             content={"success": False, "error": str(e)}
