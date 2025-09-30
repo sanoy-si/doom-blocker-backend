@@ -1885,7 +1885,8 @@ async def fetch_distracting_chunks(analysis_request: GridAnalysisRequest, reques
                         items_found=total_children_to_remove)
             
             return result
-        # If the OpenAI request succeeded, proceed to parse the response
+        else:
+            raise HTTPException(status_code=502, detail="AI service temporarily unavailable")
 
         api_result = response.json()
         response_content = api_result['choices'][0]['message']['content'].strip()
