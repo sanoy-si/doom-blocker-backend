@@ -226,19 +226,6 @@ class SupabaseSync {
                 },
             };
 
-            // Attach user token from storage for server-side auth
-            try {
-                const result = await chrome.storage.local.get(['topaz_access_token']);
-                const userToken = result && result.topaz_access_token;
-                if (userToken) {
-                    options.headers['X-User-Token'] = userToken;
-                } else {
-                    console.warn('SupabaseSync: missing topaz_access_token; request may be rejected');
-                }
-            } catch (e) {
-                console.warn('SupabaseSync: failed to read access token from storage');
-            }
-
             if (data) {
                 options.body = JSON.stringify(data);
             }
