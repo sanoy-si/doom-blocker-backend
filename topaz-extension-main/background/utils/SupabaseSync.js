@@ -3,7 +3,7 @@
 
 class SupabaseSync {
     constructor() {
-        this.backendUrl = 'https://topaz-backend1.onrender.com';
+        this.backendUrl = 'https://doom-blocker-backend.onrender.com';
         this.syncInProgress = false;
         this.syncInterval = null;
         this.retryAttempts = 3;

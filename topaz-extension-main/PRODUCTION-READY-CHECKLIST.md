@@ -23,7 +23,7 @@
 - ✅ **Code Security** - No eval(), innerHTML injection, or XSS risks
 
 ### 🌐 **Network & API**
-- ✅ **Backend API** - Live and responding (topaz-backend1.onrender.com)
+- ✅ **Backend API** - Live and responding (doom-blocker-backend.onrender.com)
 - ✅ **CORS** - Properly configured in CSP
 - ✅ **Timeout Handling** - 10-second timeouts implemented
 - ✅ **Error Handling** - Comprehensive error handling and fallbacks

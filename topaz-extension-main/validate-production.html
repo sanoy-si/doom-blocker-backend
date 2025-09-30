@@ -282,7 +282,7 @@
             document.getElementById('results').innerHTML = '<p style="text-align: center;">🌐 Testing Backend API...</p>';
 
             try {
-                const response = await fetch('https://topaz-backend1.onrender.com/health');
+                const response = await fetch('https://doom-blocker-backend.onrender.com/health');
                 if (response.ok) {
                     addResult('Backend API', 'Backend Connectivity', 'pass', 'Backend is responding');
                 } else {
