@@ -603,7 +603,9 @@ async function sendCurrentStatsToBackend(sessionId) {
     console.log('📊 Sending metrics data:', metricsData);
 
     // Send session data
-    const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
+    const tokenRes1 = await chrome.storage.local.get(['topaz_access_token']);
+    const token1 = tokenRes1?.topaz_access_token;
+    const sessionResponse = await fetch('https://doom-blocker-backend.onrender.com/api/user-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sessionData)
@@ -613,7 +615,9 @@ async function sendCurrentStatsToBackend(sessionId) {
     console.log('📝 Session data response:', sessionResult);
 
     // Send metrics with current stats
-    const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+    const tokenRes2 = await chrome.storage.local.get(['topaz_access_token']);
+    const token2 = tokenRes2?.topaz_access_token;
+    const metricsResponse = await fetch('https://doom-blocker-backend.onrender.com/api/user-metrics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(metricsData)
@@ -653,7 +657,8 @@ async function sendUserDataToBackend(sessionId) {
 
       // Send real session data
       if (realData.sessionData) {
-        const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
+        const tA = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
+        const sessionResponse = await fetch('https://doom-blocker-backend.onrender.com/api/user-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(realData.sessionData)
@@ -663,7 +668,8 @@ async function sendUserDataToBackend(sessionId) {
 
       // Send real metrics data
       if (realData.metricsData) {
-        const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+        const tB = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
+        const metricsResponse = await fetch('https://doom-blocker-backend.onrender.com/api/user-metrics', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(realData.metricsData)
@@ -674,7 +680,7 @@ async function sendUserDataToBackend(sessionId) {
       // Send real blocked items data
       if (realData.blockedItemsData && realData.blockedItemsData.blocked_items.length > 0) {
         const tC = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
-        const blockedResponse = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
+        const blockedResponse = await fetch('https://doom-blocker-backend.onrender.com/api/blocked-items', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(realData.blockedItemsData)
@@ -710,7 +716,9 @@ async function sendUserDataToBackend(sessionId) {
         first_install: false
       };
 
-      const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
+
+      const tD = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
+      const sessionResponse = await fetch('https://doom-blocker-backend.onrender.com/api/user-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sessionData)
@@ -718,7 +726,8 @@ async function sendUserDataToBackend(sessionId) {
       console.log('📝 Basic session data response:', await sessionResponse.json());
 
       // Send metrics with real background stats
-      const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+      const tE = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
+      const metricsResponse = await fetch('https://doom-blocker-backend.onrender.com/api/user-metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(basicMetricsData)
@@ -835,7 +844,8 @@ async function sendTestDataToBackend(sessionId) {
     };
 
     // Send session data
-    const sessionResponse = await fetch('https://topaz-backend1.onrender.com/api/user-session', {
+    const tF = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
+    const sessionResponse = await fetch('https://doom-blocker-backend.onrender.com/api/user-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sessionData)
@@ -859,7 +869,8 @@ async function sendTestDataToBackend(sessionId) {
     };
 
     // Send metrics data
-    const metricsResponse = await fetch('https://topaz-backend1.onrender.com/api/user-metrics', {
+    const tG = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
+    const metricsResponse = await fetch('https://doom-blocker-backend.onrender.com/api/user-metrics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(metricsData)
@@ -889,7 +900,8 @@ async function sendTestDataToBackend(sessionId) {
     };
 
     // Send blocked items data
-    const blockedResponse = await fetch('https://topaz-backend1.onrender.com/api/blocked-items', {
+    const tH = (await chrome.storage.local.get(['topaz_access_token']))?.topaz_access_token;
+    const blockedResponse = await fetch('https://doom-blocker-backend.onrender.com/api/blocked-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(blockedItemsData)

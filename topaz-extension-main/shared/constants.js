@@ -193,7 +193,7 @@ export const STORAGE_KEYS = {
 };
 
 export const CONFIG = {
-  STAGING_WEBSITE: 'https://topaz-backend1.onrender.com',
+  STAGING_WEBSITE: 'https://doom-blocker-backend.onrender.com',
   SIGNIN_WEBSITE: 'https://www.doomblocker.com',
   ALLOWED_WEBSITES: ['youtube.com', 'twitter.com', 'x.com', "linkedin.com", "reddit.com"],
   TAB_ENABLE_MAX_RETRIES: 3,
@@ -273,7 +273,7 @@ export const DEFAULT_PROFILES = [
 
 // API endpoints
 export const API_ENDPOINTS = {
-  BASE_URL: 'https://topaz-backend1.onrender.com',
+  BASE_URL: 'https://doom-blocker-backend.onrender.com',
   FETCH_DISTRACTING_CHUNKS: '/fetch_distracting_chunks',
   FETCH_SEARCH_RESULTS: '/fetch_search_results'
 };
