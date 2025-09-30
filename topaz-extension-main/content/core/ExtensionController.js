@@ -1088,18 +1088,21 @@ class ExtensionController {
 
       // Track blocked items for analytics
       const blockedItemDetails = elementsToHide.map(item => {
-        const extractedTitle = this.extractBetterTitle(item.element);
+        const extractedData = this.extractVideoData(item.element);
         console.log('📊 [Analytics Debug] Sending blocked item:', {
           id: item.id,
-          title: extractedTitle,
+          title: extractedData.title,
+          channel: extractedData.channel,
+          url: extractedData.url,
           hostname: window.location.hostname
         });
         return {
           id: item.id,
-          text: extractedTitle,
-          title: extractedTitle, // Add title field for backend compatibility
+          text: extractedData.title,
+          title: extractedData.title,
+          channel: extractedData.channel,
+          url: extractedData.url,
           type: 'ai-filtered',
-          url: window.location.href,
           hostname: window.location.hostname,
           timestamp: Date.now()
         };
@@ -1511,6 +1514,7 @@ class ExtensionController {
     try {
       if (this.sessionManager) {
         const sessionId = await this.sessionManager.initializeSession();
+        this.userSessionId = sessionId;
         console.log('🆔 User session initialized:', sessionId);
 
         // Track site visit
@@ -1644,14 +1648,173 @@ class ExtensionController {
     }
   }
 
+  // Extract comprehensive video data (title, channel, URL) from blocked elements
+  extractVideoData(element) {
+    if (!element) return { title: 'Unknown content', channel: '', url: window.location.href };
+
+    try {
+      let title = '';
+      let channel = '';
+      let url = window.location.href;
+
+      // Extract title using existing method
+      title = this.extractBetterTitle(element);
+
+      // Extract channel name for YouTube
+      if (window.location.hostname.includes('youtube')) {
+        const channelSelectors = [
+          // YouTube channel name selectors
+          () => element.querySelector('#channel-name a, #channel-name yt-formatted-string')?.textContent?.trim(),
+          () => element.querySelector('.ytd-channel-name a, .ytd-channel-name yt-formatted-string')?.textContent?.trim(),
+          () => element.querySelector('[id*="channel-name"] a, [id*="channel-name"] yt-formatted-string')?.textContent?.trim(),
+          () => element.querySelector('.ytd-video-meta-block #channel-name a')?.textContent?.trim(),
+          () => element.querySelector('.ytd-compact-video-renderer #channel-name a')?.textContent?.trim(),
+          () => element.querySelector('[aria-label*="channel"]')?.getAttribute('aria-label')?.replace(/.*channel\s*/i, '')?.trim(),
+          () => element.querySelector('a[href*="/channel/"], a[href*="/@"]')?.textContent?.trim(),
+          () => element.querySelector('.ytd-video-renderer #channel-name a')?.textContent?.trim(),
+          () => element.querySelector('.ytd-compact-video-renderer #channel-name a')?.textContent?.trim(),
+          () => element.querySelector('#owner-name a, #owner-name yt-formatted-string')?.textContent?.trim(),
+          () => element.querySelector('.ytd-video-owner-renderer #owner-name a')?.textContent?.trim(),
+          () => element.querySelector('[data-testid*="channel"]')?.textContent?.trim(),
+          () => element.querySelector('.ytd-video-meta-block #owner-name a')?.textContent?.trim()
+        ];
+
+        for (const selector of channelSelectors) {
+          try {
+            const result = selector();
+            if (result && result.length > 1 && result.length < 100) {
+              channel = result.replace(/\s+/g, ' ').trim();
+              break;
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
+        }
+      }
+
+      // Extract video URL for YouTube
+      if (window.location.hostname.includes('youtube')) {
+        const urlSelectors = [
+          // YouTube video URL selectors
+          () => element.querySelector('#video-title-link')?.href,
+          () => element.querySelector('a#video-title')?.href,
+          () => element.querySelector('h3.ytd-video-renderer a')?.href,
+          () => element.querySelector('h3.ytd-compact-video-renderer a')?.href,
+          () => element.querySelector('a[href*="/watch?v="]')?.href,
+          () => element.querySelector('[id*="video-title"] a')?.href,
+          () => element.querySelector('.ytd-video-renderer a[href*="/watch"]')?.href,
+          () => element.querySelector('.ytd-compact-video-renderer a[href*="/watch"]')?.href,
+          () => element.querySelector('a[aria-describedby*="video"]')?.href
+        ];
+
+        for (const selector of urlSelectors) {
+          try {
+            const result = selector();
+            if (result && result.includes('/watch?v=')) {
+              // Ensure it's a full URL
+              url = result.startsWith('http') ? result : `https://www.youtube.com${result}`;
+              break;
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
+        }
+      }
+
+      // Extract channel for Twitter/X
+      if (window.location.hostname.includes('twitter') || window.location.hostname.includes('x.com')) {
+        const twitterChannelSelectors = [
+          () => element.querySelector('[data-testid="User-Name"]')?.textContent?.trim(),
+          () => element.querySelector('[data-testid="User-Names"]')?.textContent?.trim(),
+          () => element.querySelector('.css-1dbjc4n.r-1awozwy.r-18u37iz.r-1wbh5a2')?.textContent?.trim(),
+          () => element.querySelector('[data-testid="tweet"] [role="link"]')?.textContent?.trim(),
+          () => element.querySelector('a[href*="/"]')?.textContent?.trim()
+        ];
+
+        for (const selector of twitterChannelSelectors) {
+          try {
+            const result = selector();
+            if (result && result.length > 1 && result.length < 50) {
+              channel = result.replace(/\s+/g, ' ').trim();
+              break;
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
+        }
+      }
+
+      // Extract URL for Twitter/X
+      if (window.location.hostname.includes('twitter') || window.location.hostname.includes('x.com')) {
+        const twitterUrlSelectors = [
+          () => element.querySelector('a[href*="/status/"]')?.href,
+          () => element.querySelector('[data-testid="tweet"] a[href*="/"]')?.href,
+          () => element.querySelector('article a[href*="/"]')?.href
+        ];
+
+        for (const selector of twitterUrlSelectors) {
+          try {
+            const result = selector();
+            if (result && (result.includes('/status/') || result.includes('twitter.com') || result.includes('x.com'))) {
+              url = result;
+              break;
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
+        }
+      }
+
+      // Log successful extraction for debugging
+      if (window.location.hostname.includes('youtube')) {
+        console.log('🎬 [Video Data Debug] Extracted:', {
+          title: title.substring(0, 30) + '...',
+          channel: channel || 'No channel found',
+          url: url.includes('/watch?v=') ? 'Video URL found' : 'No video URL'
+        });
+      }
+
+      return {
+        title: title || 'Blocked content',
+        channel: channel || '',
+        url: url
+      };
+
+    } catch (error) {
+      console.warn('Error extracting video data:', error);
+      return { title: 'Blocked content', channel: '', url: window.location.href };
+    }
+  }
+
   // Send blocked items directly to backend in real-time
   async sendBlockedItemsToBackend(blockedItemDetails) {
     try {
-      // Disable duplicate network calls from content to avoid CORS/auth issues.
-      // Background already reports counts via API.reportBlockedItems and SupabaseSync.
-      return;
-    } catch (_) {
-      return;
+      if (!blockedItemDetails || blockedItemDetails.length === 0) {
+        return;
+      }
+
+      // Send detailed blocked items to background for reporting to /api/blocked-contents
+      const message = {
+        type: 'REPORT_BLOCKED_CONTENTS',
+        items: blockedItemDetails.map(item => ({
+          session_id: this.userSessionId || 'unknown-session',
+          provider: window.location.hostname,
+          url: item.url || window.location.href,
+          title: item.title || item.text || '',
+          channel: item.channel || '',
+          blocking_keywords: item.blocking_keywords || []
+        }))
+      };
+      
+      console.log('📊 [Analytics Debug] Sending message with session_id:', this.userSessionId);
+      console.log('📊 [Analytics Debug] Message items:', message.items);
+      
+      const response = await this.messageHandler.sendMessageToBackground(message);
+      console.log('📊 [Analytics] Blocked items sent to backend:', response);
+      return response;
+    } catch (error) {
+      console.warn('📊 [Analytics] Failed to send blocked items to backend:', error);
+      return null;
     }
   }
 
