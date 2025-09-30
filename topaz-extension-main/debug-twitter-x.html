@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter/X Debug Tool - Doom Blocker</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .debug-section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .debug-section h3 {
+            color: #1da1f2;
+            margin-top: 0;
+        }
+        .debug-results {
+            background: #1a1a1a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .btn {
+            background: #1da1f2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .btn:hover {
+            background: #0d8bd9;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .status.success { background: #1e7e34; }
+        .status.error { background: #721c24; }
+        .status.warning { background: #856404; }
+        .selector-test {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px;
+            border-bottom: 1px solid #333;
+        }
+        .count {
+            background: #333;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🐦 Twitter/X Debug Tool - Doom Blocker</h1>
+        <p>Use this tool to debug Twitter/X content detection issues.</p>
+
+        <div class="debug-section">
+            <h3>🔍 Site Detection</h3>
+            <button class="btn" onclick="testSiteDetection()">Test Site Detection</button>
+            <div id="site-detection-results" class="debug-results"></div>
+        </div>
+
+        <div class="debug-section">
+            <h3>🎯 Selector Testing</h3>
+            <button class="btn" onclick="testSelectors()">Test All Selectors</button>
+            <button class="btn" onclick="testTweetExtraction()">Test Tweet Extraction</button>
+            <div id="selector-results" class="debug-results"></div>
+        </div>
+
+        <div class="debug-section">
+            <h3>🤖 Extension Status</h3>
+            <button class="btn" onclick="testExtensionStatus()">Check Extension</button>
+            <button class="btn" onclick="forceGridScan()">Force Grid Scan</button>
+            <div id="extension-status" class="debug-results"></div>
+        </div>
+
+        <div class="debug-section">
+            <h3>⚡ Manual Test</h3>
+            <button class="btn" onclick="simulateContentFiltering()">Simulate Filtering</button>
+            <button class="btn" onclick="testHidingMethods()">Test Hiding Methods</button>
+            <div id="manual-test-results" class="debug-results"></div>
+        </div>
+    </div>
+
+    <script>
+        // Twitter/X Debug Functions
+        function testSiteDetection() {
+            const results = document.getElementById('site-detection-results');
+            let output = '';
+            
+            output += `Current URL: ${window.location.href}\n`;
+            output += `Hostname: ${window.location.hostname}\n`;
+            output += `Is Twitter: ${window.location.hostname.includes('twitter.com')}\n`;
+            output += `Is X: ${window.location.hostname.includes('x.com')}\n`;
+            output += `User Agent: ${navigator.userAgent}\n`;
+            output += `Page Title: ${document.title}\n`;
+            
+            results.textContent = output;
+        }
+
+        function testSelectors() {
+            const results = document.getElementById('selector-results');
+            let output = '';
+            
+            const twitterSelectors = [
+                '[data-testid="primaryColumn"]',
+                '[data-testid="timeline"]',
+                '[data-testid="cellInnerDiv"]',
+                'article[data-testid="tweet"]',
+                '[data-testid="tweetText"]',
+                'div[data-testid="tweetText"]',
+                '[aria-label*="Timeline"]',
+                'section[role="region"]',
+                '[data-testid="UserCell"]',
+                '[data-testid="placementTracking"]',
+                '[role="main"] section',
+                '[role="group"] [lang]',
+                'article[data-testid="tweet"] div[lang]'
+            ];
+
+            output += 'TWITTER/X SELECTOR TEST RESULTS:\n';
+            output += '================================\n\n';
+
+            twitterSelectors.forEach(selector => {
+                try {
+                    const elements = document.querySelectorAll(selector);
+                    const count = elements.length;
+                    output += `${selector.padEnd(35)} → ${count} elements\n`;
+                    
+                    if (count > 0 && count <= 3) {
+                        // Show sample content for small counts
+                        elements.forEach((el, i) => {
+                            const text = el.textContent?.trim().substring(0, 100) || '[no text]';
+                            output += `  Sample ${i + 1}: ${text}${text.length > 100 ? '...' : ''}\n`;
+                        });
+                    }
+                } catch (e) {
+                    output += `${selector.padEnd(35)} → ERROR: ${e.message}\n`;
+                }
+            });
+            
+            results.textContent = output;
+        }
+
+        function testTweetExtraction() {
+            const results = document.getElementById('selector-results');
+            let output = '';
+            
+            const tweets = document.querySelectorAll('article[data-testid="tweet"]');
+            output += `\nTWEET EXTRACTION TEST:\n`;
+            output += `=====================\n`;
+            output += `Found ${tweets.length} tweet articles\n\n`;
+            
+            tweets.forEach((tweet, i) => {
+                if (i >= 5) return; // Limit to first 5 tweets
+                
+                output += `Tweet ${i + 1}:\n`;
+                output += `----------\n`;
+                
+                // Test different extraction methods
+                const extractors = [
+                    () => tweet.querySelector('[data-testid="tweetText"]')?.textContent?.trim(),
+                    () => tweet.querySelector('div[data-testid="tweetText"]')?.textContent?.trim(),
+                    () => tweet.querySelector('[data-testid="tweetText"] span')?.textContent?.trim(),
+                    () => tweet.querySelector('[role="group"] [lang]')?.textContent?.trim(),
+                    () => tweet.querySelector('div[lang]')?.textContent?.trim()
+                ];
+                
+                extractors.forEach((extractor, j) => {
+                    try {
+                        const text = extractor();
+                        if (text) {
+                            output += `Method ${j + 1}: ${text.substring(0, 150)}${text.length > 150 ? '...' : ''}\n`;
+                        }
+                    } catch (e) {
+                        output += `Method ${j + 1}: ERROR - ${e.message}\n`;
+                    }
+                });
+                
+                output += '\n';
+            });
+            
+            results.textContent = output;
+        }
+
+        function testExtensionStatus() {
+            const results = document.getElementById('extension-status');
+            let output = '';
+            
+            output += 'EXTENSION STATUS CHECK:\n';
+            output += '======================\n\n';
+            
+            // Check if extension controller exists
+            if (window.__topazController) {
+                output += '✅ Extension Controller: FOUND\n';
+                output += `Controller Type: ${typeof window.__topazController}\n`;
+                
+                // Test controller methods
+                const controller = window.__topazController;
+                if (typeof controller.enable === 'function') {
+                    output += '✅ Enable Method: AVAILABLE\n';
+                }
+                if (typeof controller.disable === 'function') {
+                    output += '✅ Disable Method: AVAILABLE\n';
+                }
+            } else {
+                output += '❌ Extension Controller: NOT FOUND\n';
+            }
+            
+            // Check for other extension components
+            const components = [
+                'GridDetector',
+                'ElementEffects', 
+                'NotificationManager',
+                'ContentFingerprint'
+            ];
+            
+            components.forEach(component => {
+                if (window[component]) {
+                    output += `✅ ${component}: AVAILABLE\n`;
+                } else {
+                    output += `❌ ${component}: NOT FOUND\n`;
+                }
+            });
+            
+            results.textContent = output;
+        }
+
+        function forceGridScan() {
+            const results = document.getElementById('extension-status');
+            let output = results.textContent + '\n\nFORCE GRID SCAN:\n';
+            output += '================\n';
+            
+            if (window.__topazController) {
+                try {
+                    // Try to trigger grid scanning
+                    output += 'Attempting to trigger grid scan...\n';
+                    
+                    // Simulate the extension's grid detection
+                    const gridDetector = new window.GridDetector();
+                    const grids = gridDetector.findAllGridContainers(true);
+                    
+                    output += `Found ${grids.length} grid containers\n`;
+                    
+                    grids.forEach((grid, i) => {
+                        if (i < 3) { // Show first 3 grids
+                            output += `Grid ${i + 1}: ${grid.tagName} (${grid.children.length} children)\n`;
+                        }
+                    });
+                    
+                } catch (e) {
+                    output += `ERROR: ${e.message}\n`;
+                }
+            } else {
+                output += 'Extension controller not available\n';
+            }
+            
+            results.textContent = output;
+        }
+
+        function simulateContentFiltering() {
+            const results = document.getElementById('manual-test-results');
+            let output = '';
+            
+            output += 'CONTENT FILTERING SIMULATION:\n';
+            output += '=============================\n\n';
+            
+            const tweets = document.querySelectorAll('article[data-testid="tweet"]');
+            output += `Processing ${tweets.length} tweets...\n\n`;
+            
+            // Simulate filtering with sample blacklist
+            const sampleBlacklist = ['politics', 'drama', 'controversy'];
+            let filteredCount = 0;
+            
+            tweets.forEach((tweet, i) => {
+                if (i >= 10) return; // Process first 10 tweets
+                
+                const tweetText = tweet.querySelector('[data-testid="tweetText"]')?.textContent?.toLowerCase() || '';
+                const shouldHide = sampleBlacklist.some(term => tweetText.includes(term));
+                
+                if (shouldHide) {
+                    filteredCount++;
+                    output += `Tweet ${i + 1}: WOULD HIDE - Contains blacklisted content\n`;
+                    output += `  Text: ${tweetText.substring(0, 100)}...\n`;
+                } else {
+                    output += `Tweet ${i + 1}: WOULD KEEP\n`;
+                }
+            });
+            
+            output += `\nSummary: ${filteredCount} out of ${Math.min(tweets.length, 10)} tweets would be hidden\n`;
+            
+            results.textContent = output;
+        }
+
+        function testHidingMethods() {
+            const results = document.getElementById('manual-test-results');
+            let output = results.textContent + '\n\nHIDING METHOD TEST:\n';
+            output += '===================\n';
+            
+            const tweets = document.querySelectorAll('article[data-testid="tweet"]');
+            if (tweets.length > 0) {
+                const testTweet = tweets[0];
+                
+                output += 'Testing height hiding method on first tweet...\n';
+                
+                // Test height hiding (Twitter's preferred method)
+                testTweet.style.height = '0px';
+                testTweet.style.minHeight = '0px';
+                testTweet.style.maxHeight = '0px';
+                testTweet.style.overflow = 'hidden';
+                testTweet.style.transition = 'all 0.3s ease';
+                
+                output += 'Applied height hiding styles\n';
+                
+                // Restore after 3 seconds
+                setTimeout(() => {
+                    testTweet.style.height = '';
+                    testTweet.style.minHeight = '';
+                    testTweet.style.maxHeight = '';
+                    testTweet.style.overflow = '';
+                    console.log('Restored tweet visibility');
+                }, 3000);
+                
+                output += 'Tweet will be restored in 3 seconds...\n';
+            } else {
+                output += 'No tweets found to test hiding method\n';
+            }
+            
+            results.textContent = output;
+        }
+
+        // Auto-run site detection on load
+        window.addEventListener('load', () => {
+            setTimeout(testSiteDetection, 1000);
+        });
+    </script>
+</body>
+</html>

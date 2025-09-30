@@ -6,6 +6,7 @@ import asyncio
 import re
 from typing import Dict, Optional, Any, Union, List
 
+from datetime import datetime
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Depends, HTTPException, Request, Response, status, WebSocket, WebSocketDisconnect
@@ -22,11 +23,9 @@ from supabase import create_client, Client
 import uuid
 import secrets
 from functools import wraps
-from datetime import datetime
 
 # HTTP requests
 import httpx
-from authlib.jose import jwt
 
 # Configure structured logging (env-driven)
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -131,70 +130,49 @@ class CircuitBreaker:
 # Global circuit breaker for OpenAI API
 openai_circuit_breaker = CircuitBreaker(failure_threshold=3, reset_timeout=30)
 
-# Correlation ID middleware (kept while removing API key auth)
-class CorrelationIdMiddleware(BaseHTTPMiddleware):
+# Authentication middleware
+class AuthenticationMiddleware(BaseHTTPMiddleware):
+    def __init__(self, app):
+        super().__init__(app)
+        # Use a consistent API key that can be configured
+        self.api_key = os.getenv("API_AUTH_KEY", "doom-blocker-extension-api-key-2024")
+        logger.info("Authentication middleware initialized", api_key_configured=bool(os.getenv("API_AUTH_KEY")))
+
     async def dispatch(self, request: Request, call_next):
+        # Skip auth for health checks, public endpoints, and OPTIONS requests
+        if request.url.path in ["/", "/health", "/docs", "/openapi.json"]:
+            return await call_next(request)
+        
+        # Skip auth for OPTIONS requests (CORS preflight)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+        
+        # Check for API key in header for protected endpoints
+        if request.url.path.startswith("/fetch_") or request.url.path.startswith("/api/"):
+            auth_header = request.headers.get("Authorization")
+            if not auth_header or not auth_header.startswith("Bearer "):
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "Missing or invalid authorization header"}
+                )
+            
+            token = auth_header.replace("Bearer ", "")
+            if token != self.api_key:
+                logger.warning("Invalid API key attempt", 
+                             correlation_id=str(uuid.uuid4()),
+                             ip=get_client_ip(request))
+                return JSONResponse(
+                    status_code=401,
+                    content={"error": "Invalid API key"}
+                )
+        
+        # Add correlation ID to request
         correlation_id = str(uuid.uuid4())
         request.state.correlation_id = correlation_id
+        
         response = await call_next(request)
         response.headers["X-Correlation-ID"] = correlation_id
         return response
-
-# User token (Supabase) verification middleware
-class UserTokenMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app):
-        super().__init__(app)
-        self.jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
-        supabase_url = os.getenv("SUPABASE_URL")
-        # Expected issuer like: https://<project>.supabase.co/auth/v1
-        self.expected_iss = f"{supabase_url.rstrip('/')}/auth/v1" if supabase_url else None
-
-    async def dispatch(self, request: Request, call_next):
-        # Public endpoints and CORS preflight
-        if request.method == "OPTIONS" or request.url.path in ["/", "/health", "/docs", "/openapi.json"]:
-            return await call_next(request)
-
-        # Enforce user token on protected paths
-        if request.url.path.startswith("/fetch_") or request.url.path.startswith("/api/"):
-            token = request.headers.get("X-User-Token")
-            if not token:
-                return JSONResponse(status_code=401, content={"error": "Missing X-User-Token"})
-
-            if not self.jwt_secret:
-                return JSONResponse(status_code=500, content={"error": "Server missing SUPABASE_JWT_SECRET"})
-
-            try:
-                claims = jwt.decode(token, self.jwt_secret)
-                claims.validate()
-
-                if self.expected_iss and claims.get("iss") != self.expected_iss:
-                    return JSONResponse(status_code=401, content={"error": "Invalid token issuer"})
-
-                aud = claims.get("aud")
-                if aud and aud != "authenticated":
-                    return JSONResponse(status_code=401, content={"error": "Invalid token audience"})
-
-                # Attach user info
-                try:
-                    user_email = claims.get("email") or (claims.get("user_metadata") or {}).get("email")
-                except Exception:
-                    user_email = None
-                app_md = claims.get("app_metadata") or {}
-
-                request.state.user_claims = dict(claims)
-                request.state.user = {
-                    "id": claims.get("sub"),
-                    "email": user_email,
-                    "role": claims.get("role"),
-                    "session_id": claims.get("session_id"),
-                    "provider": app_md.get("provider"),
-                    "aud": aud,
-                }
-            except Exception as e:
-                logger.warning("User token verification failed", error=str(e))
-                return JSONResponse(status_code=401, content={"error": "Invalid or expired token"})
-
-        return await call_next(request)
 
 # Load environment variables (skip local dotenv in production)
 ENV = os.getenv("ENV", os.getenv("ENVIRONMENT", "development"))
@@ -294,10 +272,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 if ENV == "production":
     app.add_middleware(SecurityHeadersMiddleware)
 
-# Add correlation ID middleware always
-app.add_middleware(CorrelationIdMiddleware)
-# Enforce user token verification as auth for protected paths
-app.add_middleware(UserTokenMiddleware)
+# Add authentication middleware
+app.add_middleware(AuthenticationMiddleware)
 
 
 # WebSocket connection manager
@@ -1188,14 +1164,6 @@ async def create_user_session(session_request: UserSessionRequest, request: Requ
             content={"success": False, "error": str(e)}
         )
 
-class BlockedContentCreate(BaseModel):
-    session_id: str
-    provider: str
-    url: str
-    title: str = ""
-    channel: str = ""
-    blocking_keywords: list[str] = []
-
 @app.options("/api/blocked-items")
 async def options_blocked_items():
     """Handle CORS preflight for blocked items endpoint"""
@@ -1285,91 +1253,6 @@ async def save_user_metrics(metrics_request: UserMetricsRequest, request: Reques
             status_code=500,
             content={"success": False, "error": str(e)}
         )
-
-@app.options("/api/blocked-contents")
-async def options_blocked_contents():
-    return Response(status_code=200)
-
-@app.post("/api/blocked-contents")
-async def create_blocked_content(item: BlockedContentCreate, request: Request):
-    """Save a blocked content record for the authenticated user"""
-    try:
-        if not supabase:
-            return JSONResponse(status_code=503, content={"success": False, "error": "Database unavailable"})
-
-        user = getattr(request.state, "user", None)
-        if not user or not user.get("id"):
-            return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized"})
-
-        # Ensure Supabase PostgREST uses the caller's JWT so RLS policies allow the write
-        try:
-            user_token = request.headers.get("X-User-Token")
-            if user_token and hasattr(supabase, "postgrest"):
-                supabase.postgrest.auth(user_token)
-        except Exception as e:
-            logger.warning(f"Failed to set Supabase auth for user: {e}")
-
-        record = {
-            "id": str(uuid.uuid4()),
-            "user_id": user["id"],
-            "session_id": item.session_id,
-            "provider": item.provider,
-            "url": item.url,
-            "title": item.title,
-            "channel": item.channel,
-            "blocking_keywords": item.blocking_keywords,
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
-        }
-
-        try:
-            result = supabase.table("blocked_contents").insert(record).execute()
-        except Exception as e:
-            logger.error(f"Error inserting blocked content: {e}")
-            return JSONResponse(status_code=500, content={"success": False, "error": str(e)})
-
-        return {"success": True, "data": result.data[0] if getattr(result, 'data', None) else record}
-    except Exception as e:
-        logger.error(f"Unexpected error in create_blocked_content: {e}")
-        return JSONResponse(status_code=500, content={"success": False, "error": "Internal server error"})
-
-@app.get("/api/blocked-contents")
-async def list_blocked_contents(request: Request, provider: str | None = None, limit: int = 50, offset: int = 0):
-    """Get blocked content records for the authenticated user"""
-    try:
-        if not supabase:
-            return JSONResponse(status_code=503, content={"success": False, "error": "Database unavailable"})
-
-        user = getattr(request.state, "user", None)
-        if not user or not user.get("id"):
-            return JSONResponse(status_code=401, content={"success": False, "error": "Unauthorized"})
-
-        # Set per-request auth so RLS policies evaluate with the user's identity
-        try:
-            user_token = request.headers.get("X-User-Token")
-            if user_token and hasattr(supabase, "postgrest"):
-                supabase.postgrest.auth(user_token)
-        except Exception as e:
-            logger.warning(f"Failed to set Supabase auth for user on list: {e}")
-
-        query = supabase.table("blocked_contents").select("*").eq("user_id", user["id"]).order("updated_at", desc=True)
-        if provider:
-            query = query.eq("provider", provider)
-        if limit:
-            query = query.limit(max(1, min(limit, 200)))
-        if offset:
-            query = query.range(offset, offset + max(1, min(limit, 200)) - 1)
-
-        try:
-            result = query.execute()
-        except Exception as e:
-            logger.error(f"Error fetching blocked contents: {e}")
-            return JSONResponse(status_code=500, content={"success": False, "error": "Query failed"})
-
-        return {"success": True, "data": getattr(result, 'data', [])}
-    except Exception as e:
-        logger.error(f"Unexpected error in list_blocked_contents: {e}")
-        return JSONResponse(status_code=500, content={"success": False, "error": "Internal server error"})
 
 @app.get("/api/analytics/{session_id}")
 async def get_user_analytics(session_id: str):

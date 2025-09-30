@@ -47,6 +47,30 @@ function initialize() {
   }
 
   console.log("🔍 [TOPAZ DEBUG] Website is allowed, proceeding with initialization");
+  
+  // Enhanced Twitter/X debugging
+  if (window.location.hostname.includes('twitter.com') || window.location.hostname.includes('x.com')) {
+    console.log("🐦 [TWITTER DEBUG] Twitter/X detected!");
+    console.log("🐦 [TWITTER DEBUG] URL:", window.location.href);
+    console.log("🐦 [TWITTER DEBUG] Hostname:", window.location.hostname);
+    
+    // Test selector availability after DOM loads
+    setTimeout(() => {
+      const testSelectors = [
+        '[data-testid="primaryColumn"]',
+        '[data-testid="timeline"]', 
+        '[data-testid="cellInnerDiv"]',
+        'article[data-testid="tweet"]',
+        '[data-testid="tweetText"]'
+      ];
+      
+      testSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        console.log(`🐦 [TWITTER DEBUG] ${selector}: ${elements.length} elements found`);
+      });
+    }, 3000);
+  }
+  
   loadCSS();
 
   const controller = new ExtensionController();
